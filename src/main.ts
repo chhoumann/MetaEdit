@@ -1,5 +1,7 @@
 import {Plugin} from 'obsidian';
 import {MetaEditSettingsTab} from "./metaEditSettingsTab";
+import MetaEditSuggester from "./MetaEditSuggester/metaEditSuggester";
+import MetaController from "./metaController";
 
 interface MetaEditSettings {
 	mySetting: string;
@@ -10,14 +12,14 @@ const DEFAULT_SETTINGS: MetaEditSettings = {
 }
 
 export default class MetaEdit extends Plugin {
-	settings: MetaEditSettings;
+	private settings: MetaEditSettings;
+	private controller: MetaController;
 
 	async onload() {
+		this.controller = new MetaController(this.app);
 		console.log('Loading MetaEdit');
 
 		await this.loadSettings();
-
-		this.addStatusBarItem().setText('Status Bar Text');
 
 		if (process.env.BUILD !== 'production') {
 			this.addCommand({
@@ -29,6 +31,17 @@ export default class MetaEdit extends Plugin {
 				},
 			});
 		}
+
+		this.addCommand({
+			id: 'metaEditRun',
+			name: 'Run MetaEdit',
+			callback: async () => {
+				const data = await this.controller.GetForCurrentFile();
+
+				const suggester: MetaEditSuggester = new MetaEditSuggester(this.app, this);
+				suggester.open();
+			}
+		})
 
 		this.addSettingTab(new MetaEditSettingsTab(this.app, this));
 	}
