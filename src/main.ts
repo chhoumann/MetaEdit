@@ -38,7 +38,7 @@ export default class MetaEdit extends Plugin {
 			callback: async () => {
 				const data = await this.controller.GetForCurrentFile();
 
-				const suggester: MetaEditSuggester = new MetaEditSuggester(this.app, this);
+				const suggester: MetaEditSuggester = new MetaEditSuggester(this.app, this, data);
 				suggester.open();
 			}
 		})

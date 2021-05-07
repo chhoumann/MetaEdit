@@ -1,26 +1,38 @@
 import {App, FuzzySuggestModal} from "obsidian";
 import MetaEdit from "../main";
 
+const options = {
+    progressProps: "Update Progress Properties",
+    newYaml: "New YAML property",
+    newDataView: "New Dataview field"
+}
+
+type SuggestData = {[key: string]: string};
+
 export default class MetaEditSuggester extends FuzzySuggestModal<string> {
     public app: App;
     private plugin: MetaEdit;
+    private readonly data: SuggestData;
 
-    constructor(app: App, plugin: MetaEdit) {
+    constructor(app: App, plugin: MetaEdit, data: SuggestData) {
         super(app);
         this.app = app;
         this.plugin = plugin;
+        this.data = data;
     }
 
-
     getItemText(item: string): string {
-        return "Some item";
+        return item;
     }
 
     getItems(): string[] {
-        return ["Item 1", "Item 2"];
+        const dataKeys = Object.keys(this.data);
+        const optionKeys = Object.values(options);
+        return [...optionKeys, ...dataKeys];
     }
 
     onChooseItem(item: string, evt: MouseEvent | KeyboardEvent): void {
+        console.log(item, this.data[item]);
     }
 
 }
