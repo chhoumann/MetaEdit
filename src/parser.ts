@@ -1,4 +1,4 @@
-import {App, TFile} from "obsidian";
+import type {App, TFile} from "obsidian";
 
 export default class MetaEditParser {
     private app: App;

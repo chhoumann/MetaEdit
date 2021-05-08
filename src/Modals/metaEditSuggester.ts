@@ -1,5 +1,5 @@
 import {App, FuzzySuggestModal} from "obsidian";
-import MetaEdit from "../main";
+import type MetaEdit from "../main";
 
 const options = {
     progressProps: "Update Progress Properties",
@@ -34,5 +34,4 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
     onChooseItem(item: string, evt: MouseEvent | KeyboardEvent): void {
         console.log(item, this.data[item]);
     }
-
 }
