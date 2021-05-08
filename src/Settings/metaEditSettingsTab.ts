@@ -44,7 +44,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                     .onClick(async () => {
                         const modal = new ProgressPropertiesModal(this.app, this.plugin, this.plugin.settings.ProgressProperties.properties);
                         const newProps = await modal.waitForResolve;
-                        console.log(newProps)
+
                         if (newProps) {
                             this.plugin.settings.ProgressProperties.properties = newProps;
                             await this.plugin.saveSettings();
