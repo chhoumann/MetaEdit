@@ -1,5 +1,6 @@
 import type {EditMode} from "../Types/editMode";
 import type {ProgressProperty} from "../Types/progressProperty";
+import type {AutoProperty} from "../Types/autoProperty";
 
 export interface MetaEditSettings {
     ProgressProperties: {
@@ -12,7 +13,7 @@ export interface MetaEditSettings {
     },
     AutoProperties: {
         enabled: boolean,
-        properties: {[key: string]: string[]}
+        properties: AutoProperty[]
     },
     EditMode: {
         mode: EditMode,

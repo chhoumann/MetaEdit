@@ -1,4 +1,4 @@
-import {Plugin} from 'obsidian';
+import {Notice, Plugin} from 'obsidian';
 import {MetaEditSettingsTab} from "./Settings/metaEditSettingsTab";
 import MEMainSuggester from "./Modals/metaEditSuggester";
 import MetaController from "./metaController";
@@ -10,7 +10,7 @@ export default class MetaEdit extends Plugin {
     private controller: MetaController;
 
     async onload() {
-        this.controller = new MetaController(this.app);
+        this.controller = new MetaController(this.app, this);
         console.log('Loading MetaEdit');
 
         await this.loadSettings();
@@ -31,6 +31,7 @@ export default class MetaEdit extends Plugin {
             name: 'Run MetaEdit',
             callback: async () => {
                 const data = await this.controller.getForCurrentFile();
+                if (!data) return;
 
                 const suggester: MEMainSuggester = new MEMainSuggester(this.app, this, data);
                 suggester.open();
@@ -50,6 +51,9 @@ export default class MetaEdit extends Plugin {
 
     async saveSettings() {
         await this.saveData(this.settings);
+    }
+    public logError(error: string) {
+        new Notice(`MetaEdit: ${error}`);
     }
 }
 

@@ -2,6 +2,8 @@ import {App, PluginSettingTab, Setting} from "obsidian";
 import type MetaEdit from "../main";
 import {EditMode} from "../Types/editMode";
 import ProgressPropertiesModal from "../Modals/ProgressPropertiesSettingModal/ProgressPropertiesModal";
+import AutoPropertiesModal from "../Modals/AutoPropertiesSettingModal/AutoPropertiesModal";
+import IgnoredPropertiesModal from "../Modals/IgnoredPropertiesSettingModal/IgnoredPropertiesModal";
 
 export class MetaEditSettingsTab extends PluginSettingTab {
     plugin: MetaEdit;
@@ -71,7 +73,13 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                 button
                     .setTooltip("Configure Auto Properties")
                     .onClick(async () => {
+                        const modal = new AutoPropertiesModal(this.app, this.plugin, this.plugin.settings.AutoProperties.properties);
+                        const newProps = await modal.waitForResolve;
 
+                        if (newProps) {
+                            this.plugin.settings.AutoProperties.properties = newProps;
+                            await this.plugin.saveSettings();
+                        }
                     })
             })
     }
@@ -94,7 +102,13 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                 button
                     .setTooltip("Configure Ignored Properties")
                     .onClick(async () => {
+                        const modal = new IgnoredPropertiesModal(this.app, this.plugin, this.plugin.settings.IgnoredProperties.properties);
+                        const newProps = await modal.waitForResolve;
 
+                        if (newProps) {
+                            this.plugin.settings.IgnoredProperties.properties = newProps;
+                            await this.plugin.saveSettings();
+                        }
                     })
             })
     }

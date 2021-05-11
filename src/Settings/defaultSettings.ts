@@ -12,7 +12,7 @@ export const DEFAULT_SETTINGS: MetaEditSettings = Object.freeze({
     },
     AutoProperties: {
         enabled: false,
-        properties: {}
+        properties: []
     },
     EditMode: {
         mode: EditMode.AllSingle,
