@@ -119,11 +119,29 @@ export class MetaEditSettingsTab extends PluginSettingTab {
             .setDesc("Single: property values are just one value. Multi: properties are arrays.")
             .addDropdown(dropdown => {
                 dropdown
-                    .setValue(this.plugin.settings.EditMode.mode)
                     .addOption(EditMode.AllSingle, EditMode.AllSingle)
                     .addOption(EditMode.AllMulti, EditMode.AllMulti)
                     .addOption(EditMode.SomeMulti, EditMode.SomeMulti)
                     .addOption(EditMode.SomeSingle, EditMode.SomeSingle)
+                    .setValue(this.plugin.settings.EditMode.mode)
+                    .onChange(async value => {
+                        switch (value) {
+                            case EditMode.AllMulti:
+                                this.plugin.settings.EditMode.mode = EditMode.AllMulti;
+                                break;
+                            case EditMode.AllSingle:
+                                this.plugin.settings.EditMode.mode = EditMode.AllSingle;
+                                break;
+                            case EditMode.SomeMulti:
+                                this.plugin.settings.EditMode.mode = EditMode.SomeMulti;
+                                break;
+                            case EditMode.SomeSingle:
+                                this.plugin.settings.EditMode.mode = EditMode.SomeSingle;
+                                break;
+                        }
+
+                        await this.plugin.saveSettings();
+                    })
             })
             .addExtraButton(button => {
                 button

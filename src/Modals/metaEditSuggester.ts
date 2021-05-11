@@ -1,5 +1,6 @@
 import {App, FuzzyMatch, FuzzySuggestModal} from "obsidian";
 import type MetaEdit from "../main";
+import type MetaController from "../metaController";
 
 type SuggestData = {[key: string]: string};
 
@@ -8,12 +9,14 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
     private plugin: MetaEdit;
     private readonly data: SuggestData;
     private options: SuggestData;
+    private controller: MetaController;
 
-    constructor(app: App, plugin: MetaEdit, data: SuggestData) {
+    constructor(app: App, plugin: MetaEdit, data: SuggestData, controller: MetaController) {
         super(app);
         this.app = app;
         this.plugin = plugin;
         this.data = data;
+        this.controller = controller;
 
         this.getMetaOptions();
         this.removeIgnored();
@@ -38,8 +41,23 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
         return [...optionKeys, ...dataKeys];
     }
 
-    onChooseItem(item: string, evt: MouseEvent | KeyboardEvent): void {
-        console.log(item, this.data[item]);
+    async onChooseItem(item: string, evt: MouseEvent | KeyboardEvent): Promise<void> {
+        if (item == "New YAML property") {
+            await this.controller.addYamlProp();
+            return;
+        }
+        /*if (item == "New Dataview field") {
+            await addDataviewField();
+            return;
+        }
+        if (item == "Update Progress Properties") {
+            await handleProgressProps(meta);
+            return;
+        }
+        if (item) {
+            await editMetaElement(meta, choice);
+            return;
+        }*/
     }
 
     private getMetaOptions(): void {

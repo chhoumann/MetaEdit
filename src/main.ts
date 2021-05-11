@@ -33,7 +33,7 @@ export default class MetaEdit extends Plugin {
                 const data = await this.controller.getForCurrentFile();
                 if (!data) return;
 
-                const suggester: MEMainSuggester = new MEMainSuggester(this.app, this, data);
+                const suggester: MEMainSuggester = new MEMainSuggester(this.app, this, data, this.controller);
                 suggester.open();
             }
         })
