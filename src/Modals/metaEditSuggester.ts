@@ -46,18 +46,19 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
             await this.controller.addYamlProp();
             return;
         }
-        /*if (item == "New Dataview field") {
-            await addDataviewField();
+        if (item == "New Dataview field") {
+            await this.controller.addDataviewField();
             return;
         }
+        /*
         if (item == "Update Progress Properties") {
             await handleProgressProps(meta);
             return;
-        }
-        if (item) {
-            await editMetaElement(meta, choice);
-            return;
         }*/
+        if (item) {
+            await this.controller.editMetaElement(item);
+            return;
+        }
     }
 
     private getMetaOptions(): void {

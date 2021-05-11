@@ -1,8 +1,9 @@
 import MetaEditParser from "./parser";
-import type {App, TFile} from "obsidian";
+import type {App, FrontMatterCache, TFile} from "obsidian";
 import type MetaEdit from "./main";
 import GenericPrompt from "./Modals/GenericPrompt/GenericPrompt";
 import {EditMode} from "./Types/editMode";
+import GenericSuggester from "./Modals/GenericSuggester/GenericSuggester";
 
 export default class MetaController {
     private parser: MetaEditParser;
@@ -34,10 +35,10 @@ export default class MetaController {
     }
 
     public async addYamlProp() {
-        let file = this.app.workspace.getActiveFile();
-        let content = await this.app.vault.cachedRead(file);
-        let frontmatter = await this.app.metadataCache.getFileCache(file).frontmatter;
-        let isYamlEmpty = Object.keys(frontmatter).length === 0 && !content.match(/^-{3}\s*\n*\r*-{3}/);
+        let file: TFile = this.app.workspace.getActiveFile();
+        let content: string = await this.app.vault.read(file);
+        let frontmatter: FrontMatterCache = this.app.metadataCache.getFileCache(file).frontmatter;
+        let isYamlEmpty: boolean = (frontmatter === undefined && !content.match(/^-{3}\s*\n*\r*-{3}/));
 
         let newProp = await this.createNewProperty();
         if (!newProp) return;
@@ -64,19 +65,74 @@ export default class MetaController {
         await this.app.vault.modify(file, newFileContent);
     }
 
+    public async addDataviewField() {
+        let newProp = await this.createNewProperty();
+        if (!newProp) return;
+
+        const {propName, propValue} = newProp;
+
+        const file:TFile = this.app.workspace.getActiveFile();
+
+        let content: string = await this.app.vault.read(file);
+        let lines = content.split("\n").reduce((obj: {[key: string]: string}, line: string, idx: number) => {
+            obj[idx] = !!line ? line : "";
+            return obj;
+        }, {});
+
+        let appendAfter: string = await GenericSuggester.Suggest(this.app, Object.values(lines), Object.keys(lines));
+        if (!appendAfter) return;
+
+        let splitContent: string[] = content.split("\n");
+        if (typeof appendAfter === "number" || parseInt(appendAfter)) {
+            splitContent.splice(parseInt(appendAfter), 0, `${propName}:: ${propValue}`);
+        }
+        const newFileContent = splitContent.join("\n");
+
+        await this.app.vault.modify(file, newFileContent);
+    }
+
     private async createNewProperty() {
         let propName = await GenericPrompt.Prompt(this.app, "Enter a property name", "Property");
         if (!propName) return null;
 
-        let propValue = "ay";
-        if (this.plugin.settings.AutoProperties.enabled &&
-            this.plugin.settings.AutoProperties.properties.find(a => a.name === propName))
-            console.log("Suggest");
-        else
+        let propValue: string;
+        const autoProp = this.plugin.settings.AutoProperties.properties.find(a => a.name === propName);
+        if (this.plugin.settings.AutoProperties.enabled && autoProp) {
+            const options = autoProp.choices;
+            propValue = await GenericSuggester.Suggest(this.app, options, options);
+        }
+        else {
             propValue = await GenericPrompt.Prompt(this.app, "Enter a property value", "Value");
+            propValue = propValue.trim()
+        }
 
         if (!propValue) return null;
 
         return {propName, propValue};
+    }
+
+    async editMetaElement(toEdit: string) {
+        const mode: EditMode = this.plugin.settings.EditMode.mode;
+
+        if (mode === EditMode.AllMulti || mode === EditMode.SomeMulti)
+            await multiValueMode(toEdit);
+        else
+            await standardMode(toEdit);
+    }
+
+    async standardMode(toEdit: string) {
+        const autoProp = this.plugin.settings.AutoProperties.properties.find(a => a.name === toEdit);
+        let newValue;
+
+        if (autoProp) {
+            const options = autoProp.choices;
+            newValue = await GenericSuggester.Suggest(this.app, options, options);
+        }
+        else
+            newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${toEdit}`);
+
+        if (newValue) {
+            await updateFile(choice, newValue);
+        }
     }
 }

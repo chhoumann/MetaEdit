@@ -13,7 +13,7 @@ export default class MetaEditParser {
     }
 
     public async parseInlineFields(file: TFile) {
-        const content = await this.app.vault.cachedRead(file);
+        const content = await this.app.vault.read(file);
 
         return content.split("\n").reduce((obj: {[key: string]: string}, str: string) => {
             let parts = str.split("::");

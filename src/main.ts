@@ -4,6 +4,7 @@ import MEMainSuggester from "./Modals/metaEditSuggester";
 import MetaController from "./metaController";
 import type {MetaEditSettings} from "./Settings/metaEditSettings";
 import {DEFAULT_SETTINGS} from "./Settings/defaultSettings";
+import GenericSuggester from "./Modals/GenericSuggester/GenericSuggester";
 
 export default class MetaEdit extends Plugin {
     public settings: MetaEditSettings;

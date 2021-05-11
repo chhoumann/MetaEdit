@@ -14,6 +14,7 @@
 
     function submit(evt: KeyboardEvent) {
         if (evt.key === "Enter") {
+            evt.preventDefault();
             onSubmit(value);
         }
     }
