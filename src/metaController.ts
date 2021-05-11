@@ -46,7 +46,7 @@ export default class MetaController {
 
         const settings = this.plugin.settings;
         if (settings.EditMode.mode === EditMode.AllMulti ||
-            (settings.EditMode.mode === EditMode.SomeMulti && settings.EditMode.multiProperties.contains(propName))) {
+            (settings.EditMode.mode === EditMode.SomeMulti && settings.EditMode.properties.contains(propName))) {
             propValue = `[${propValue}]`;
         }
 

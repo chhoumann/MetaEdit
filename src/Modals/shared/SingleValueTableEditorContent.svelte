@@ -1,17 +1,17 @@
 <script lang="ts">
-    export let save: (ignoredProperties: string[]) => void;
-    export let ignoredProperties: string[] = [];
+    export let save: (properties: string[]) => void;
+    export let properties: string[] = [];
 
     function addNewProperty() {
-        ignoredProperties.push("");
-        ignoredProperties = ignoredProperties; // Svelte
-        save(ignoredProperties);
+        properties.push("");
+        properties = properties; // Svelte
+        save(properties);
     }
 
     function removeProperty(i: number) {
-        ignoredProperties.splice(i, 1);
-        ignoredProperties = ignoredProperties; // Svelte
-        save(ignoredProperties);
+        properties.splice(i, 1);
+        properties = properties; // Svelte
+        save(properties);
     }
 </script>
 
@@ -23,13 +23,13 @@
             <th>Property</th>
         </tr>
         </thead>
-        {#each ignoredProperties as property, i}
+        {#each properties as property, i}
             <tr>
                 <td>
                     <input type="button" value="❌" class="not-a-button" on:click={() => removeProperty(i)}/>
                 </td>
                 <td>
-                    <input on:change={async () => save(ignoredProperties)} style="width: 100%;" type="text" placeholder="Property name" bind:value={property}>
+                    <input on:change={async () => save(properties)} style="width: 100%;" type="text" placeholder="Property name" bind:value={property}>
                 </td>
             </tr>
         {/each}

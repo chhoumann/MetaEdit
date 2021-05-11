@@ -17,7 +17,6 @@ export interface MetaEditSettings {
     },
     EditMode: {
         mode: EditMode,
-        multiProperties: string[],
-        singleProperties: string[],
+        properties: string[],
     }
 }

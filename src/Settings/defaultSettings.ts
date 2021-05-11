@@ -16,7 +16,6 @@ export const DEFAULT_SETTINGS: MetaEditSettings = Object.freeze({
     },
     EditMode: {
         mode: EditMode.AllSingle,
-        multiProperties: [],
-        singleProperties: [],
+        properties: [],
     }
 });

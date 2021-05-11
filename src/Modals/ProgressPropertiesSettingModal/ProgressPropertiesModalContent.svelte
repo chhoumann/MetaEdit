@@ -11,15 +11,16 @@
     function addNewProperty() {
         let newProp: ProgressProperty = {name: "", type: ProgressPropertyOptions.TaskTotal}
         properties = [...properties, newProp];
+        save(properties);
     }
 
     function removeProperty(property) {
         properties = properties.filter(prop => prop !== property);
+        save(properties);
     }
 </script>
 
-<div>
-    <h1>Progress Properties settings</h1>
+<div class="centerSettingContent">
     <table style="width: 100%">
         <thead>
             <tr>
@@ -30,17 +31,17 @@
         {#each properties as property}
             <tr>
                 <td>
-                    <input type="text" placeholder="Property name" bind:value={property.name}>
+                    <input type="text" placeholder="Property name" bind:value={property.name} on:change={() => save(properties)}>
                 </td>
                 <td>
-                    <select bind:value={property.type}>
+                    <select bind:value={property.type} on:change={() => save(properties)}>
                         {#each options as text}
                         <option value={text} label={text}></option>
                         {/each}
                     </select>
                 </td>
                 <td>
-                    <p style="cursor:pointer;" on:click={() => removeProperty(property)}>❌</p>
+                    <input type="button" class="not-a-button" on:click={() => removeProperty(property)} value="❌"/>
                 </td>
             </tr>
         {/each}
@@ -48,14 +49,13 @@
 
     <div class="buttonContainer">
         <button on:click={addNewProperty} class="mod-cta">Add</button>
-        <button on:click={() => save(properties)} class="mod-cta">Save</button>
     </div>
 </div>
 
 <style>
     .buttonContainer {
         display: flex;
-        justify-content: space-between;
+        justify-content: center;
         margin-top: 1rem;
     }
 
@@ -73,5 +73,15 @@
         margin-left: 5px;
         margin-right: 5px;
         font-size: 15px;
+    }
+
+    .not-a-button {
+        background: none;
+        color: inherit;
+        border: none;
+        padding: 0;
+        font: inherit;
+        cursor: pointer;
+        outline: inherit;
     }
 </style>

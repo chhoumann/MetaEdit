@@ -11,15 +11,19 @@
             autoProperties = [newProp];
         else
             autoProperties = [...autoProperties, newProp];
+
+        save(autoProperties);
     }
 
     function removeProperty(property: AutoProperty) {
         autoProperties = autoProperties.filter(ac => ac !== property);
+        save(autoProperties);
     }
 
     function removeChoice(property: AutoProperty, i: number) {
         property.choices.splice(i, 1);
         autoProperties = autoProperties; // Svelte
+        save(autoProperties);
     }
 
     function addChoice(property: AutoProperty) {
@@ -29,12 +33,12 @@
             }
             return prop;
         })
+        save(autoProperties);
     }
 </script>
 
-<div>
-    <h1>Auto Properties settings</h1>
-    <table style="width: 100%">
+<div class="centerSettingContent">
+    <table>
         <thead>
         <tr>
             <th></th>
@@ -48,12 +52,12 @@
                     <input type="button" value="❌" class="not-a-button" on:click={() => removeProperty(property)}/>
                 </td>
                 <td>
-                    <input type="text" placeholder="Property name" bind:value={property.name}>
+                    <input on:change={() => save(autoProperties)} type="text" placeholder="Property name" bind:value={property.name}>
                 </td>
                 <td>
                     {#each property.choices as choice, i}
                         <div style="display: block">
-                            <input type="text" bind:value={choice} />
+                            <input on:change={() => save(autoProperties)} type="text" bind:value={choice} />
                             <input class="not-a-button" type="button" value="❌" on:click={() => removeChoice(property, i)}>
                         </div>
                     {/each}
@@ -70,14 +74,13 @@
 
     <div class="buttonContainer">
         <button on:click={addNewProperty} class="mod-cta">Add</button>
-        <button on:click={() => save(autoProperties)} class="mod-cta">Save</button>
     </div>
 </div>
 
 <style>
     .buttonContainer {
         display: flex;
-        justify-content: space-between;
+        justify-content: center;
         margin-top: 1rem;
     }
 
