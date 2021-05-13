@@ -2,7 +2,7 @@ import {App, FuzzyMatch, FuzzySuggestModal} from "obsidian";
 import type MetaEdit from "../main";
 import type MetaController from "../metaController";
 
-type SuggestData = {[key: string]: string};
+export type SuggestData = {[key: string]: string};
 
 export default class MetaEditSuggester extends FuzzySuggestModal<string> {
     public app: App;
@@ -56,7 +56,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
             return;
         }*/
         if (item) {
-            await this.controller.editMetaElement(item);
+            await this.controller.editMetaElement(item, this.data);
             return;
         }
     }
