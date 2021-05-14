@@ -26,7 +26,7 @@ export default class MetaController {
             const currentFile = this.app.workspace.getActiveFile();
             return await this.get(currentFile);
         }
-        catch {
+        catch (e) {
             this.plugin.logError("could not get current file content.");
             return null;
         }
@@ -105,33 +105,37 @@ export default class MetaController {
             await this.standardMode(toEdit);
     }
 
-    public async handleProgressProps(meta: SuggestData) {
-        const progressProps = this.plugin.settings.ProgressProperties;
-        if (!progressProps.enabled) return;
+    public async handleProgressProps(meta: SuggestData, file: TFile) {
+        try {
+            const progressProps = this.plugin.settings.ProgressProperties;
+            if (!progressProps.enabled) return;
 
-        const file = this.app.workspace.getActiveFile();
-        const listItems = this.app.metadataCache.getFileCache(file).listItems;
+            const listItems = this.app.metadataCache.getFileCache(file).listItems;
 
-        if (!listItems || listItems.length == 0) return;
-        const tasks = listItems.filter(i => i.task);
+            if (!listItems || listItems.length == 0) return;
+            const tasks = listItems.filter(i => i.task);
 
-        const totalTaskCount = tasks.length;
-        if (!totalTaskCount) return;
+            const totalTaskCount = tasks.length;
+            if (!totalTaskCount) return;
 
-        const completedTaskCount = tasks.filter(i => i.task != " ").length;
-        const incompleteTaskCount = totalTaskCount - completedTaskCount;
+            const completedTaskCount = tasks.filter(i => i.task != " ").length;
+            const incompleteTaskCount = totalTaskCount - completedTaskCount;
 
-        const total = progressProps.properties.filter(p => p.type === ProgressPropertyOptions.TaskTotal);
-        const complete = progressProps.properties.filter(p => p.type === ProgressPropertyOptions.TaskComplete);
-        const incomplete = progressProps.properties.filter(p => p.type === ProgressPropertyOptions.TaskIncomplete);
+            const total = progressProps.properties.filter(p => p.type === ProgressPropertyOptions.TaskTotal);
+            const complete = progressProps.properties.filter(p => p.type === ProgressPropertyOptions.TaskComplete);
+            const incomplete = progressProps.properties.filter(p => p.type === ProgressPropertyOptions.TaskIncomplete);
 
-        const props = {
-            ...await this.progressPropHelper(total, meta, totalTaskCount),
-            ...await this.progressPropHelper(complete, meta, completedTaskCount),
-            ...await this.progressPropHelper(incomplete, meta, incompleteTaskCount)
+            const props = {
+                ...await this.progressPropHelper(total, meta, totalTaskCount),
+                ...await this.progressPropHelper(complete, meta, completedTaskCount),
+                ...await this.progressPropHelper(incomplete, meta, incompleteTaskCount)
+            }
+
+            await this.updateMultipleInFile(props, file);
         }
-
-        await this.updateMultipleInFile(props);
+        catch (e) {
+            this.plugin.logError(e);
+        }
     }
 
     private async progressPropHelper(progressProps: ProgressProperty[], meta: SuggestData, count: number) {
@@ -296,9 +300,8 @@ export default class MetaController {
         await this.app.vault.modify(file, newFileContent);
     }
 
-    private async updateMultipleInFile(props: {[key: string]: string}) {
-        const file = this.app.workspace.getActiveFile();
-        let content = await this.app.vault.cachedRead(file);
+    private async updateMultipleInFile(props: {[key: string]: string}, file: TFile) {
+        let content = await this.app.vault.read(file);
 
         let newFileContent = content.split("\n").map(line => {
             Object.keys(props).forEach((prop: string) => {

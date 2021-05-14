@@ -1,14 +1,15 @@
-import {Notice, Plugin} from 'obsidian';
+import {debounce, EventRef, Notice, Plugin, TAbstractFile, TFile} from 'obsidian';
 import {MetaEditSettingsTab} from "./Settings/metaEditSettingsTab";
 import MEMainSuggester from "./Modals/metaEditSuggester";
 import MetaController from "./metaController";
 import type {MetaEditSettings} from "./Settings/metaEditSettings";
 import {DEFAULT_SETTINGS} from "./Settings/defaultSettings";
-import GenericSuggester from "./Modals/GenericSuggester/GenericSuggester";
 
 export default class MetaEdit extends Plugin {
     public settings: MetaEditSettings;
     private controller: MetaController;
+    private prevModFileContent: string;
+    private modifyCallback: (file: TFile) => void;
 
     async onload() {
         this.controller = new MetaController(this.app, this);
@@ -37,13 +38,38 @@ export default class MetaEdit extends Plugin {
                 const suggester: MEMainSuggester = new MEMainSuggester(this.app, this, data, this.controller);
                 suggester.open();
             }
-        })
+        });
+
+        if (this.settings.ProgressProperties.enabled) {
+            this.modifyCallback = (file: TAbstractFile) => this.onModifyUpdateProgressProperties(file)
+            this.app.vault.on("modify", this.modifyCallback);
+        }
 
         this.addSettingTab(new MetaEditSettingsTab(this.app, this));
     }
 
+    private onModifyUpdateProgressProperties =
+        debounce(async (file: TAbstractFile) => {
+            if (file instanceof TFile) {
+                const fileContent = await this.app.vault.read(file);
+
+                if (fileContent !== this.prevModFileContent) {
+                    console.log("Hello", file.name)
+                    const data = await this.controller.get(file);
+                    if (!data) return;
+
+                    this.prevModFileContent = fileContent;
+
+                    await this.controller.handleProgressProps(data, file);
+                }
+            }
+        }, 4000, false);
+
     onunload() {
         console.log('Unloading MetaEdit');
+        if (this.modifyCallback) {
+            this.app.vault.off("modify", this.modifyCallback);
+        }
     }
 
     async loadSettings() {

@@ -51,7 +51,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
             return;
         }
         if (item == "Update Progress Properties") {
-            await this.controller.handleProgressProps(this.data);
+            //await this.controller.handleProgressProps(this.data);
             return;
         }
         if (item) {
