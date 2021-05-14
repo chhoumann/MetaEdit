@@ -5,6 +5,10 @@ import GenericPrompt from "./Modals/GenericPrompt/GenericPrompt";
 import {EditMode} from "./Types/editMode";
 import GenericSuggester from "./Modals/GenericSuggester/GenericSuggester";
 import type {SuggestData} from "./Modals/metaEditSuggester";
+import type {MetaEditSettings} from "./Settings/metaEditSettings";
+import {ADD_FIRST_ELEMENT, ADD_TO_BEGINNING, ADD_TO_END} from "./constants";
+import type {ProgressProperty} from "./Types/progressProperty";
+import {ProgressPropertyOptions} from "./Types/progressPropertyOptions";
 
 export default class MetaController {
     private parser: MetaEditParser;
@@ -92,12 +96,160 @@ export default class MetaController {
         await this.app.vault.modify(file, newFileContent);
     }
 
+    public async editMetaElement(toEdit: string, meta: SuggestData) {
+        const mode: EditMode = this.plugin.settings.EditMode.mode;
+
+        if (mode === EditMode.AllMulti || mode === EditMode.SomeMulti)
+            await this.multiValueMode(toEdit, meta);
+        else
+            await this.standardMode(toEdit);
+    }
+
+    public async handleProgressProps(meta: SuggestData) {
+        const progressProps = this.plugin.settings.ProgressProperties;
+        if (!progressProps.enabled) return;
+
+        const file = this.app.workspace.getActiveFile();
+        const listItems = this.app.metadataCache.getFileCache(file).listItems;
+
+        if (!listItems || listItems.length == 0) return;
+        const tasks = listItems.filter(i => i.task);
+
+        const totalTaskCount = tasks.length;
+        if (!totalTaskCount) return;
+
+        const completedTaskCount = tasks.filter(i => i.task != " ").length;
+        const incompleteTaskCount = totalTaskCount - completedTaskCount;
+
+        const total = progressProps.properties.filter(p => p.type === ProgressPropertyOptions.TaskTotal);
+        const complete = progressProps.properties.filter(p => p.type === ProgressPropertyOptions.TaskComplete);
+        const incomplete = progressProps.properties.filter(p => p.type === ProgressPropertyOptions.TaskIncomplete);
+
+        const props = {
+            ...await this.progressPropHelper(total, meta, totalTaskCount),
+            ...await this.progressPropHelper(complete, meta, completedTaskCount),
+            ...await this.progressPropHelper(incomplete, meta, incompleteTaskCount)
+        }
+
+        await this.updateMultipleInFile(props);
+    }
+
+    private async progressPropHelper(progressProps: ProgressProperty[], meta: SuggestData, count: number) {
+        try {
+            if (this.validateStringArray(progressProps.map(prop => prop.name))) {
+                return progressProps.reduce((obj: {[name: string]: string}, el) => {
+                    if (meta[el.name] != null)
+                        obj[el.name] = `${count}`;
+                    return obj;
+                }, {})
+            }
+        }
+        catch(e) {
+            console.log(e)
+        }
+    }
+
+    private async standardMode(toEdit: string): Promise<void> {
+        const autoProp = await this.handleAutoProperties(toEdit);
+        let newValue;
+
+        if (autoProp)
+            newValue = autoProp;
+        else
+            newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${toEdit}`);
+
+        if (newValue) {
+            await this.updateFile(toEdit, newValue);
+        }
+    }
+
+    private async multiValueMode(choice: string, meta: SuggestData): Promise<Boolean> {
+        const settings: MetaEditSettings = this.plugin.settings;
+        const file: TFile = this.app.workspace.getActiveFile();
+        const choiceIsYaml: Boolean = !!this.parser.parseFrontmatter(file)[choice];
+        let newValue: string;
+
+        if (settings.EditMode.mode == EditMode.SomeMulti && !settings.EditMode.properties.includes(choice)) {
+            await this.standardMode(choice);
+            return false;
+        }
+
+        let selectedOption: string, tempValue: string, splitValues: string[];
+        let currentPropValue: string = meta[choice];
+
+        if (currentPropValue !== null)
+            currentPropValue = currentPropValue.toString();
+        else
+            currentPropValue = "";
+
+        if (choiceIsYaml) {
+            splitValues = currentPropValue.split('').filter(c => !c.includes("[]")).join('').split(",");
+        } else {
+            splitValues = currentPropValue.split(",").map(prop => prop.trim());
+        }
+
+        if (splitValues.length == 0 || (splitValues.length == 1 && splitValues[0] == "")) {
+            const options = ["Add new value"];
+            selectedOption = await GenericSuggester.Suggest(this.app, options, [ADD_FIRST_ELEMENT]);
+        }
+        else if (splitValues.length == 1) {
+            const options = [splitValues[0], "Add to end", "Add to beginning"];
+            selectedOption = await GenericSuggester.Suggest(this.app, options, [splitValues[0], ADD_TO_END, ADD_TO_BEGINNING]);
+        } else {
+            const options = ["Add to end", ...splitValues, "Add to beginning"];
+            selectedOption = await GenericSuggester.Suggest(this.app, options, [ADD_TO_END, ...splitValues, ADD_TO_BEGINNING]);
+        }
+
+        if (!selectedOption) return;
+        let selectedIndex;
+
+        const autoProp = await this.handleAutoProperties(choice);
+        if (autoProp) {
+            tempValue = autoProp;
+        } else if (selectedOption.includes("cmd")) {
+            tempValue = await GenericPrompt.Prompt(this.app, "Enter a new value");
+        } else {
+            selectedIndex = splitValues.findIndex(el => el == selectedOption);
+            tempValue = await GenericPrompt.Prompt(this.app, `Change ${selectedOption} to`, selectedOption);
+        }
+
+        if (!tempValue) return;
+        switch(selectedOption) {
+            case ADD_FIRST_ELEMENT:
+                newValue = `${tempValue}`;
+                break;
+            case ADD_TO_BEGINNING:
+                newValue = `${[tempValue, ...splitValues].join(", ")}`;
+                break;
+            case ADD_TO_END:
+                newValue = `${[...splitValues, tempValue].join(", ")}`;
+                break;
+            default:
+                if (selectedIndex)
+                    splitValues[selectedIndex] = tempValue;
+                else
+                    splitValues = [tempValue];
+                newValue = `${splitValues.join(", ")}`;
+                break;
+        }
+
+        if (choiceIsYaml)
+            newValue = `[${newValue}]`;
+
+        if (newValue) {
+            await this.updateFile(choice, newValue);
+            return true;
+        }
+
+        return false;
+    }
+
     private async createNewProperty() {
         let propName = await GenericPrompt.Prompt(this.app, "Enter a property name", "Property");
         if (!propName) return null;
 
         let propValue: string;
-        const autoProp = await this.HandleAutoProperties(propName);
+        const autoProp = await this.handleAutoProperties(propName);
 
         if (autoProp) {
             propValue = autoProp;
@@ -111,7 +263,7 @@ export default class MetaController {
         return {propName, propValue};
     }
 
-    private async HandleAutoProperties(propertyName: string): Promise<string> {
+    private async handleAutoProperties(propertyName: string): Promise<string> {
         const autoProp = this.plugin.settings.AutoProperties.properties.find(a => a.name === propertyName);
 
         if (this.plugin.settings.AutoProperties.enabled && autoProp) {
@@ -122,115 +274,7 @@ export default class MetaController {
         return null;
     }
 
-    async editMetaElement(toEdit: string, meta: SuggestData) {
-        const mode: EditMode = this.plugin.settings.EditMode.mode;
-
-        if (mode === EditMode.AllMulti || mode === EditMode.SomeMulti)
-            await this.multiValueMode(toEdit, meta);
-        else
-            await this.standardMode(toEdit);
-    }
-
-    async standardMode(toEdit: string) {
-        const autoProp = await this.HandleAutoProperties(toEdit);
-        let newValue;
-
-        if (autoProp)
-            newValue = autoProp;
-        else
-            newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${toEdit}`);
-
-        if (newValue) {
-            await this.updateFile(toEdit, newValue);
-        }
-    }
-
-    async multiValueMode(choice: string, meta: SuggestData) {
-        const settings = this.plugin.settings;
-        const file = this.app.workspace.getActiveFile();
-        const choiceIsYaml = !!this.parser.parseFrontmatter(file)[choice];
-        let newValue;
-
-        try {
-            if (settings.EditMode.mode == EditMode.SomeMulti && !settings.EditMode.properties.includes(choice)) {
-                await this.standardMode(choice);
-                return false;
-            }
-
-            let selected: string, tempValue: string, splitValues: string[];
-            let metaString: string = meta[choice];
-
-            if (metaString !== null)
-                metaString = metaString.toString();
-            else
-                metaString = "";
-
-            if (choiceIsYaml) {
-                splitValues = metaString.split('').filter(c => !c.includes("[]")).join().split(",");
-            } else {
-                splitValues = metaString.split(",").map(prop => prop.trim());
-            }
-
-            if (splitValues.length == 0 || (splitValues.length == 1 && splitValues[0] == "")) {
-                const options = ["Add new value"];
-                selected = await GenericSuggester.Suggest(this.app, options, ["cmd:addfirst"]);
-            }
-            else if (splitValues.length == 1) {
-                const options = [splitValues[0], "Add to end", "Add to beginning"];
-                selected = await GenericSuggester.Suggest(this.app, options, [splitValues[0], "cmd:end", "cmd:beg"]);
-            } else {
-                const options = ["Add to end", ...splitValues, "Add to beginning"];
-                selected = await GenericSuggester.Suggest(this.app, options, ["cmd:end", ...splitValues, "cmd:beg"]);
-            }
-
-            if (!selected) return;
-            let selectedIndex;
-
-            const autoProp = await this.HandleAutoProperties(choice);
-            if (autoProp) {
-                tempValue = autoProp;
-            } else if (selected.includes("cmd")) {
-                tempValue = await GenericPrompt.Prompt(this.app, "Enter a new value");
-            } else {
-                selectedIndex = splitValues.findIndex(el => el == selected);
-                tempValue = await GenericPrompt.Prompt(this.app, `Change ${selected} to`, selected);
-            }
-
-            if (!tempValue) return;
-            switch(selected) {
-                case "cmd:addfirst":
-                    newValue = `${tempValue}`;
-                    break;
-                case "cmd:beg":
-                    newValue = `${[tempValue, ...splitValues].join(", ")}`;
-                    break;
-                case "cmd:end":
-                    newValue = `${[...splitValues, tempValue].join(", ")}`;
-                    break;
-                default:
-                    if (selectedIndex)
-                        splitValues[selectedIndex] = tempValue;
-                    else
-                        splitValues = [tempValue];
-                    newValue = `${splitValues.join(", ")}`;
-                    break;
-            }
-
-            if (choiceIsYaml)
-                newValue = `[${newValue}]`;
-        }
-        catch(e) {
-            console.log("MetaEdit: Error with Multi-Value Mode. Check settings.", e);
-            return false;
-        }
-
-        if (!!newValue) {
-            await this.updateFile(choice, newValue);
-            return true;
-        }
-
-        return false;
-    }
+    private validateStringArray = (array: string[]) => array && (array.length >= 1 && array[0] != "");
 
     private async updateFile(choice: string, newValue: string) {
         const file = this.app.workspace.getActiveFile();

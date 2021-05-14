@@ -50,11 +50,10 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
             await this.controller.addDataviewField();
             return;
         }
-        /*
         if (item == "Update Progress Properties") {
-            await handleProgressProps(meta);
+            await this.controller.handleProgressProps(this.data);
             return;
-        }*/
+        }
         if (item) {
             await this.controller.editMetaElement(item, this.data);
             return;
