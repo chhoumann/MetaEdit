@@ -72,9 +72,10 @@ export default class MetaEdit extends Plugin {
                         updateTime: Date.now(),
                     };
 
-                    this.cleanCache();
                     await this.controller.handleProgressProps(data, file);
                 }
+
+                this.cleanCache();
             }
         }, 4000, false);
 
