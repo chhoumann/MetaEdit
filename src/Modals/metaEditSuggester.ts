@@ -46,10 +46,10 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
     async onChooseItem(item: string, evt: MouseEvent | KeyboardEvent): Promise<void> {
         switch (item) {
             case "New YAML property":
-                await this.controller.addYamlProp();
+                await this.controller.addYamlProp(this.file);
                 break;
             case "New dataview field":
-                await this.controller.addDataviewField();
+                await this.controller.addDataviewField(this.file);
                 break;
             default:
                 await this.controller.editMetaElement(item, this.data, this.file);

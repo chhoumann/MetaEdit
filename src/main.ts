@@ -15,7 +15,7 @@ export default class MetaEdit extends Plugin {
                 const fileContent = await this.app.vault.read(file);
 
                 if (!this.updatedFileCache[file.name] || fileContent !== this.updatedFileCache[file.name].content) {
-                    const data = await this.controller.get(file);
+                    const data = await this.controller.getPropertiesInFile(file);
                     if (!data) return;
 
                     this.updatedFileCache[file.name] = {
@@ -53,7 +53,7 @@ export default class MetaEdit extends Plugin {
             callback: async () => {
                 const file = await this.getCurrentFile();
                 if (!file) return;
-                const data = await this.controller.get(file);
+                const data = await this.controller.getPropertiesInFile(file);
                 if (!data) return;
 
                 const suggester: MEMainSuggester = new MEMainSuggester(this.app, this, data, file, this.controller);

@@ -21,18 +21,17 @@ export default class MetaController {
         this.plugin = plugin;
     }
 
-    public async get(file: TFile) {
+    public async getPropertiesInFile(file: TFile) {
         const yaml = this.parser.parseFrontmatter(file);
         const inlineFields = await this.parser.parseInlineFields(file);
 
         return {...yaml, ...inlineFields};
     }
 
-    public async addYamlProp() {
-        const file: TFile = this.app.workspace.getActiveFile();
-        const content: string = await this.app.vault.read(file);
+    public async addYamlProp(file: TFile) {
+        const fileContent: string = await this.app.vault.read(file);
         const frontmatter: FrontMatterCache = this.app.metadataCache.getFileCache(file).frontmatter;
-        const isYamlEmpty: boolean = (frontmatter === undefined && !content.match(/^-{3}\s*\n*\r*-{3}/));
+        const isYamlEmpty: boolean = (frontmatter === undefined && !fileContent.match(/^-{3}\s*\n*\r*-{3}/));
 
         let newProp = await this.createNewProperty();
         if (!newProp) return;
@@ -45,7 +44,7 @@ export default class MetaController {
             propValue = `[${propValue}]`;
         }
 
-        let splitContent = content.split("\n");
+        let splitContent = fileContent.split("\n");
         if (isYamlEmpty) {
             splitContent.unshift("---");
             splitContent.unshift(`${propName}: ${propValue}`);
@@ -59,13 +58,11 @@ export default class MetaController {
         await this.app.vault.modify(file, newFileContent);
     }
 
-    public async addDataviewField() {
+    public async addDataviewField(file: TFile) {
         let newProp = await this.createNewProperty();
         if (!newProp) return;
 
         const {propName, propValue} = newProp;
-
-        const file:TFile = this.app.workspace.getActiveFile();
 
         let content: string = await this.app.vault.read(file);
         let lines = content.split("\n").reduce((obj: {[key: string]: string}, line: string, idx: number) => {
@@ -262,9 +259,9 @@ export default class MetaController {
 
     private async updatePropertyInFile(property: string, newValue: string, file: TFile) {
         const choiceIsYaml = !!this.parser.parseFrontmatter(file)[property];
-        let content = await this.app.vault.read(file);
+        const fileContent = await this.app.vault.read(file);
 
-        let newFileContent = content.split("\n").map(line => {
+        const newFileContent = fileContent.split("\n").map(line => {
             const regexp = new RegExp(`^\s*${property}:`);
             if (line.match(regexp)) {
                 if (choiceIsYaml)
@@ -280,13 +277,16 @@ export default class MetaController {
     }
 
     private async updateMultipleInFile(props: {[key: string]: string}, file: TFile) {
-        let content = await this.app.vault.read(file);
+        const fileContent = await this.app.vault.read(file);
 
-        let newFileContent = content.split("\n").map(line => {
+        const newFileContent = fileContent.split("\n").map(line => {
             Object.keys(props).forEach((prop: string) => {
                 const regexp = new RegExp(`^\s*${prop}:`);
+
                 if (line.match(regexp)) {
-                    if (!!this.parser.parseFrontmatter(file)[prop])
+                    const isYamlProp = !!this.parser.parseFrontmatter(file)[prop];
+
+                    if (isYamlProp)
                         line = `${prop}: ${props[prop]}`;
                     else
                         line = `${prop}:: ${props[prop]}`;
