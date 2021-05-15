@@ -107,30 +107,19 @@ export default class MetaController {
 
     public async handleProgressProps(meta: SuggestData, file: TFile) {
         try {
-            const progressProps = this.plugin.settings.ProgressProperties;
-            if (!progressProps.enabled) return;
+            const {enabled, properties} = this.plugin.settings.ProgressProperties;
+            if (!enabled) return;
 
-            const listItems = this.app.metadataCache.getFileCache(file).listItems;
+            const tasks = this.app.metadataCache.getFileCache(file)?.listItems?.filter(li => li.task);
+            let total: number = 0, complete: number = 0, incomplete: number = 0;
 
-            if (!listItems || listItems.length == 0) return;
-            const tasks = listItems.filter(i => i.task);
-
-            const totalTaskCount = tasks.length;
-            if (!totalTaskCount) return;
-
-            const completedTaskCount = tasks.filter(i => i.task != " ").length;
-            const incompleteTaskCount = totalTaskCount - completedTaskCount;
-
-            const total = progressProps.properties.filter(p => p.type === ProgressPropertyOptions.TaskTotal);
-            const complete = progressProps.properties.filter(p => p.type === ProgressPropertyOptions.TaskComplete);
-            const incomplete = progressProps.properties.filter(p => p.type === ProgressPropertyOptions.TaskIncomplete);
-
-            const props = {
-                ...await this.progressPropHelper(total, meta, totalTaskCount),
-                ...await this.progressPropHelper(complete, meta, completedTaskCount),
-                ...await this.progressPropHelper(incomplete, meta, incompleteTaskCount)
+            if (tasks) {
+                total = tasks.length;
+                complete = tasks.filter(i => i.task != " ").length;
+                incomplete = total - complete;
             }
 
+            const props = await this.progressPropHelper(properties, meta, {total, complete, incomplete});
             await this.updateMultipleInFile(props, file);
         }
         catch (e) {
@@ -138,19 +127,24 @@ export default class MetaController {
         }
     }
 
-    private async progressPropHelper(progressProps: ProgressProperty[], meta: SuggestData, count: number) {
-        try {
-            if (this.validateStringArray(progressProps.map(prop => prop.name))) {
-                return progressProps.reduce((obj: {[name: string]: string}, el) => {
-                    if (meta[el.name] != null)
-                        obj[el.name] = `${count}`;
-                    return obj;
-                }, {})
+    private async progressPropHelper(progressProps: ProgressProperty[], meta: SuggestData, counts: {total: number, complete: number, incomplete: number}) {
+        return progressProps.reduce((obj: {[name: string]: string}, el) => {
+            if (meta[el.name] != null) {
+                switch (el.type) {
+                    case ProgressPropertyOptions.TaskComplete:
+                        obj[el.name] = `${counts.complete}`;
+                        break;
+                    case ProgressPropertyOptions.TaskIncomplete:
+                        obj[el.name] = `${counts.incomplete}`;
+                        break;
+                    case ProgressPropertyOptions.TaskTotal:
+                        obj[el.name] = `${counts.total}`;
+                        break;
+                    default: break;
+                }
             }
-        }
-        catch(e) {
-            console.log(e)
-        }
+            return obj;
+        }, {})
     }
 
     private async standardMode(toEdit: string): Promise<void> {
