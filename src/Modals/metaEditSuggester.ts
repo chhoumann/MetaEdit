@@ -50,10 +50,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
             await this.controller.addDataviewField();
             return;
         }
-        if (item == "Update Progress Properties") {
-            //await this.controller.handleProgressProps(this.data);
-            return;
-        }
+
         if (item) {
             await this.controller.editMetaElement(item, this.data);
             return;
@@ -61,15 +58,10 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
     }
 
     private getMetaOptions(): void {
-        const settings = this.plugin.settings;
-
         this.options = {
             newYaml: "New YAML property",
             newDataView: "New Dataview field"
         }
-
-        if (settings.ProgressProperties.enabled)
-            this.options["progressProps"] = "Update Progress Properties";
     }
 
     private removeIgnored(): void {

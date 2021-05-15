@@ -9,7 +9,7 @@ export default class MetaEdit extends Plugin {
     public settings: MetaEditSettings;
     private controller: MetaController;
     private prevModFileContent: string;
-    private modifyCallback: (file: TFile) => void;
+    private modifyCallback: (file: TFile) => void = (file: TAbstractFile) => this.onModifyUpdateProgressProperties(file);
 
     async onload() {
         this.controller = new MetaController(this.app, this);
@@ -40,12 +40,22 @@ export default class MetaEdit extends Plugin {
             }
         });
 
-        if (this.settings.ProgressProperties.enabled) {
-            this.modifyCallback = (file: TAbstractFile) => this.onModifyUpdateProgressProperties(file)
-            this.app.vault.on("modify", this.modifyCallback);
-        }
+        this.toggleOnFileModifyUpdateProgressProperties(this.settings.ProgressProperties.enabled);
 
         this.addSettingTab(new MetaEditSettingsTab(this.app, this));
+    }
+
+    onunload() {
+        console.log('Unloading MetaEdit');
+        this.toggleOnFileModifyUpdateProgressProperties(false);
+    }
+
+    public toggleOnFileModifyUpdateProgressProperties(enable: boolean) {
+        if (enable) {
+            this.app.vault.on("modify", this.modifyCallback);
+        } else if (this.modifyCallback && !enable) {
+            this.app.vault.off("modify", this.modifyCallback);
+        }
     }
 
     private onModifyUpdateProgressProperties =
@@ -54,7 +64,6 @@ export default class MetaEdit extends Plugin {
                 const fileContent = await this.app.vault.read(file);
 
                 if (fileContent !== this.prevModFileContent) {
-                    console.log("Hello", file.name)
                     const data = await this.controller.get(file);
                     if (!data) return;
 
@@ -64,13 +73,6 @@ export default class MetaEdit extends Plugin {
                 }
             }
         }, 4000, false);
-
-    onunload() {
-        console.log('Unloading MetaEdit');
-        if (this.modifyCallback) {
-            this.app.vault.off("modify", this.modifyCallback);
-        }
-    }
 
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
