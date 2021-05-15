@@ -8,6 +8,15 @@
 - Progress Properties that automatically update properties/fields
   - Works with total task, completed task, and incomplete task counts. Mark a task as completed (from anywhere), and the file will be updated with the new count.
 
+### Installation
+This plugin has not yet been added to the community plugin browser in Obsidian.
+
+#### Manual Installation
+1. Go to [Releases](https://github.com/chhoumann/MetaEdit/releases) and download the ZIP file from the latest release.
+2. This ZIP file should be extracted in your Obsidian plugins folder. If you don't know where that is, you can go to `Community Plugins` inside Obsidian. There is a folder icon on the right of `Installed Plugins`. Click that and it opens your plugins folder.
+3. Extract the contents of the ZIP file there.
+4. Proceed to Setup
+
 
 ---
 ### Dev Info
