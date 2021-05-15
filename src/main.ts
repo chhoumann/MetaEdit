@@ -8,7 +8,7 @@ import {DEFAULT_SETTINGS} from "./Settings/defaultSettings";
 export default class MetaEdit extends Plugin {
     public settings: MetaEditSettings;
     private controller: MetaController;
-    private prevModFileContent: string;
+    private updatedFileCache: { [fileName: string]: {content: string, updateTime: number} } = {};
     private modifyCallback: (file: TFile) => void = (file: TAbstractFile) => this.onModifyUpdateProgressProperties(file);
 
     async onload() {
@@ -63,16 +63,30 @@ export default class MetaEdit extends Plugin {
             if (file instanceof TFile) {
                 const fileContent = await this.app.vault.read(file);
 
-                if (fileContent !== this.prevModFileContent) {
+                if (!this.updatedFileCache[file.name] || fileContent !== this.updatedFileCache[file.name].content) {
                     const data = await this.controller.get(file);
                     if (!data) return;
 
-                    this.prevModFileContent = fileContent;
+                    this.updatedFileCache[file.name] = {
+                        content: fileContent,
+                        updateTime: Date.now(),
+                    };
 
+                    this.cleanCache();
                     await this.controller.handleProgressProps(data, file);
                 }
             }
         }, 4000, false);
+
+    private cleanCache() {
+        const five_minutes = 18000;
+
+        for (let cacheItem in this.updatedFileCache) {
+            if (this.updatedFileCache[cacheItem].updateTime < Date.now() - five_minutes) {
+                delete this.updatedFileCache[cacheItem];
+            }
+        }
+    }
 
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
