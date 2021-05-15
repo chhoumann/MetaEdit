@@ -51,10 +51,12 @@ export default class MetaEdit extends Plugin {
             id: 'metaEditRun',
             name: 'Run MetaEdit',
             callback: async () => {
-                const data = await this.controller.getForCurrentFile();
+                const file = await this.getCurrentFile();
+                if (!file) return;
+                const data = await this.controller.get(file);
                 if (!data) return;
 
-                const suggester: MEMainSuggester = new MEMainSuggester(this.app, this, data, this.controller);
+                const suggester: MEMainSuggester = new MEMainSuggester(this.app, this, data, file, this.controller);
                 suggester.open();
             }
         });
@@ -67,6 +69,16 @@ export default class MetaEdit extends Plugin {
     onunload() {
         console.log('Unloading MetaEdit');
         this.toggleOnFileModifyUpdateProgressProperties(false);
+    }
+
+    public async getCurrentFile() {
+        try {
+            return this.app.workspace.getActiveFile();
+        }
+        catch (e) {
+            this.logError("could not get current file content.");
+            return null;
+        }
     }
 
     public toggleOnFileModifyUpdateProgressProperties(enable: boolean) {

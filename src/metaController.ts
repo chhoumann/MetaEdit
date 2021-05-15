@@ -21,17 +21,6 @@ export default class MetaController {
         this.plugin = plugin;
     }
 
-    public async getForCurrentFile() {
-        try {
-            const currentFile = this.app.workspace.getActiveFile();
-            return await this.get(currentFile);
-        }
-        catch (e) {
-            this.plugin.logError("could not get current file content.");
-            return null;
-        }
-    }
-
     public async get(file: TFile) {
         const yaml = this.parser.parseFrontmatter(file);
         const inlineFields = await this.parser.parseInlineFields(file);
@@ -40,10 +29,10 @@ export default class MetaController {
     }
 
     public async addYamlProp() {
-        let file: TFile = this.app.workspace.getActiveFile();
-        let content: string = await this.app.vault.read(file);
-        let frontmatter: FrontMatterCache = this.app.metadataCache.getFileCache(file).frontmatter;
-        let isYamlEmpty: boolean = (frontmatter === undefined && !content.match(/^-{3}\s*\n*\r*-{3}/));
+        const file: TFile = this.app.workspace.getActiveFile();
+        const content: string = await this.app.vault.read(file);
+        const frontmatter: FrontMatterCache = this.app.metadataCache.getFileCache(file).frontmatter;
+        const isYamlEmpty: boolean = (frontmatter === undefined && !content.match(/^-{3}\s*\n*\r*-{3}/));
 
         let newProp = await this.createNewProperty();
         if (!newProp) return;
@@ -96,13 +85,13 @@ export default class MetaController {
         await this.app.vault.modify(file, newFileContent);
     }
 
-    public async editMetaElement(toEdit: string, meta: SuggestData) {
+    public async editMetaElement(toEdit: string, meta: SuggestData, file: TFile) {
         const mode: EditMode = this.plugin.settings.EditMode.mode;
 
         if (mode === EditMode.AllMulti || mode === EditMode.SomeMulti)
-            await this.multiValueMode(toEdit, meta);
+            await this.multiValueMode(toEdit, meta, file);
         else
-            await this.standardMode(toEdit);
+            await this.standardMode(toEdit, file);
     }
 
     public async handleProgressProps(meta: SuggestData, file: TFile) {
@@ -147,7 +136,7 @@ export default class MetaController {
         }, {})
     }
 
-    private async standardMode(toEdit: string): Promise<void> {
+    private async standardMode(toEdit: string, file: TFile): Promise<void> {
         const autoProp = await this.handleAutoProperties(toEdit);
         let newValue;
 
@@ -157,18 +146,17 @@ export default class MetaController {
             newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${toEdit}`);
 
         if (newValue) {
-            await this.updateFile(toEdit, newValue);
+            await this.updatePropertyInFile(toEdit, newValue, file);
         }
     }
 
-    private async multiValueMode(choice: string, meta: SuggestData): Promise<Boolean> {
+    private async multiValueMode(choice: string, meta: SuggestData, file: TFile): Promise<Boolean> {
         const settings: MetaEditSettings = this.plugin.settings;
-        const file: TFile = this.app.workspace.getActiveFile();
         const choiceIsYaml: Boolean = !!this.parser.parseFrontmatter(file)[choice];
         let newValue: string;
 
         if (settings.EditMode.mode == EditMode.SomeMulti && !settings.EditMode.properties.includes(choice)) {
-            await this.standardMode(choice);
+            await this.standardMode(choice, file);
             return false;
         }
 
@@ -235,7 +223,7 @@ export default class MetaController {
             newValue = `[${newValue}]`;
 
         if (newValue) {
-            await this.updateFile(choice, newValue);
+            await this.updatePropertyInFile(choice, newValue, file);
             return true;
         }
 
@@ -272,20 +260,17 @@ export default class MetaController {
         return null;
     }
 
-    private validateStringArray = (array: string[]) => array && (array.length >= 1 && array[0] != "");
-
-    private async updateFile(choice: string, newValue: string) {
-        const file = this.app.workspace.getActiveFile();
-        const choiceIsYaml = !!this.parser.parseFrontmatter(file)[choice];
+    private async updatePropertyInFile(property: string, newValue: string, file: TFile) {
+        const choiceIsYaml = !!this.parser.parseFrontmatter(file)[property];
         let content = await this.app.vault.read(file);
 
         let newFileContent = content.split("\n").map(line => {
-            const regexp = new RegExp(`^\s*${choice}:`);
+            const regexp = new RegExp(`^\s*${property}:`);
             if (line.match(regexp)) {
                 if (choiceIsYaml)
-                    line = `${choice}: ${newValue}`;
+                    line = `${property}: ${newValue}`;
                 else
-                    line = `${choice}:: ${newValue}`;
+                    line = `${property}:: ${newValue}`;
             }
 
             return line;
