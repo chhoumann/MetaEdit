@@ -8,8 +8,27 @@ import {DEFAULT_SETTINGS} from "./Settings/defaultSettings";
 export default class MetaEdit extends Plugin {
     public settings: MetaEditSettings;
     private controller: MetaController;
-    private updatedFileCache: { [fileName: string]: {content: string, updateTime: number} } = {};
-    private modifyCallback: (file: TFile) => void = (file: TAbstractFile) => this.onModifyUpdateProgressProperties(file);
+    private updatedFileCache: { [fileName: string]: { content: string, updateTime: number } } = {};
+    private onModifyUpdateProgressProperties =
+        debounce(async (file: TAbstractFile) => {
+            if (file instanceof TFile) {
+                const fileContent = await this.app.vault.read(file);
+
+                if (!this.updatedFileCache[file.name] || fileContent !== this.updatedFileCache[file.name].content) {
+                    const data = await this.controller.get(file);
+                    if (!data) return;
+
+                    this.updatedFileCache[file.name] = {
+                        content: fileContent,
+                        updateTime: Date.now(),
+                    };
+
+                    await this.controller.handleProgressProps(data, file);
+                }
+
+                this.cleanCache();
+            }
+        }, 4000, false);
 
     async onload() {
         this.controller = new MetaController(this.app, this);
@@ -58,26 +77,19 @@ export default class MetaEdit extends Plugin {
         }
     }
 
-    private onModifyUpdateProgressProperties =
-        debounce(async (file: TAbstractFile) => {
-            if (file instanceof TFile) {
-                const fileContent = await this.app.vault.read(file);
+    async loadSettings() {
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    }
 
-                if (!this.updatedFileCache[file.name] || fileContent !== this.updatedFileCache[file.name].content) {
-                    const data = await this.controller.get(file);
-                    if (!data) return;
+    async saveSettings() {
+        await this.saveData(this.settings);
+    }
 
-                    this.updatedFileCache[file.name] = {
-                        content: fileContent,
-                        updateTime: Date.now(),
-                    };
+    public logError(error: string) {
+        new Notice(`MetaEdit: ${error}`);
+    }
 
-                    await this.controller.handleProgressProps(data, file);
-                }
-
-                this.cleanCache();
-            }
-        }, 4000, false);
+    private modifyCallback: (file: TFile) => void = (file: TAbstractFile) => this.onModifyUpdateProgressProperties(file);
 
     private cleanCache() {
         const five_minutes = 18000;
@@ -87,17 +99,6 @@ export default class MetaEdit extends Plugin {
                 delete this.updatedFileCache[cacheItem];
             }
         }
-    }
-
-    async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-    }
-
-    async saveSettings() {
-        await this.saveData(this.settings);
-    }
-    public logError(error: string) {
-        new Notice(`MetaEdit: ${error}`);
     }
 }
 
