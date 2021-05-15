@@ -48,7 +48,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
             case "New YAML property":
                 await this.controller.addYamlProp(this.file);
                 break;
-            case "New dataview field":
+            case "New Dataview field":
                 await this.controller.addDataviewField(this.file);
                 break;
             default:
