@@ -1,5 +1,7 @@
 ## MetaEdit for Obsidian
 
+![v554FnTthq](https://user-images.githubusercontent.com/29108628/118363633-9933de80-b595-11eb-9603-31a3be0e0ccc.gif)
+
 ## Features
 - Add or update Yaml properties and Dataview fields easily
 - Ignore properties to hide them from the menu
