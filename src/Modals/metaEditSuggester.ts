@@ -72,10 +72,4 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
                 delete this.data[prop];
         })
     }
-
-    selectSuggestion(value: FuzzyMatch<string>, evt: MouseEvent | KeyboardEvent) {
-        console.log(`select ${value.item}`);
-        console.log(evt.srcElement)
-        super.selectSuggestion(value, evt);
-    }
 }
