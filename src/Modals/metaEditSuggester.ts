@@ -25,6 +25,10 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
             newYaml, newDataView
         }
 
+        this.setInstructions([
+            {command: "❌", purpose: "Delete property"},
+            {command: "🔃", purpose: "Transform to YAML/Dataview"}
+        ])
         this.removeIgnored();
     }
 
@@ -33,6 +37,9 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
 
         if (Object.values(this.options).find(v => v === item.item)) {
             el.style.fontWeight = "bold";
+        } else {
+            this.createButton(el, item, "❌", this.deleteItem(item));
+            this.createButton(el, item, "🔃", this.toDataview(item))
         }
     }
 
@@ -61,6 +68,33 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
         }
 
         await this.controller.editMetaElement(item, this.data, this.file);
+    }
+
+    private deleteItem(item: FuzzyMatch<string>) {
+        return async (evt: MouseEvent) => {
+            evt.stopPropagation();
+            console.log(`Clicked delete for ${item.item}`)
+            await this.controller.deleteProperty(item.item, this.file);
+            this.close();
+        };
+    }
+
+    private toDataview(item: FuzzyMatch<string>) {
+        return async (evt: MouseEvent) => {
+            evt.stopPropagation();
+            const content: string = this.data[item.item];
+            await this.controller.deleteProperty(item.item, this.file);
+            await this.controller.addDataviewField(item.item, content, this.file);
+            this.close();
+        }
+    }
+
+    private createButton(el: HTMLElement, item: FuzzyMatch<string>, content: string, callback: (evt: MouseEvent) => void) {
+        const itemButton = el.createEl("button");
+        itemButton.textContent = content;
+        itemButton.classList.add("not-a-button");
+        itemButton.style.float = "right";
+        itemButton.addEventListener("click", callback);
     }
 
     private removeIgnored(): void {

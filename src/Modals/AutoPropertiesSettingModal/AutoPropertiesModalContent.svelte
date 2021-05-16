@@ -99,14 +99,4 @@
         margin-right: 5px;
         font-size: 15px;
     }
-
-    .not-a-button {
-        background: none;
-        color: inherit;
-        border: none;
-        padding: 0;
-        font: inherit;
-        cursor: pointer;
-        outline: inherit;
-    }
 </style>

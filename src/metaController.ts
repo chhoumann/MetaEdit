@@ -122,6 +122,19 @@ export default class MetaController {
         return {propName, propValue};
     }
 
+    public async deleteProperty(property: string, file: TFile): Promise<void> {
+        const fileContent = await this.app.vault.read(file);
+        const splitContent = fileContent.split("\n");
+        const regexp = new RegExp(`^\s*${property}:`);
+
+        const idx = splitContent.findIndex(s => s.match(regexp));
+        const newFileContent = splitContent.filter((v, i) => {
+            if (i != idx) return true;
+        }).join("\n");
+
+        await this.app.vault.modify(file, newFileContent);
+    }
+
     private async progressPropHelper(progressProps: ProgressProperty[], meta: SuggestData, counts: {total: number, complete: number, incomplete: number}) {
         return progressProps.reduce((obj: {[name: string]: string}, el) => {
             if (meta[el.name] != null) {
