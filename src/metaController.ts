@@ -4,11 +4,11 @@ import type MetaEdit from "./main";
 import GenericPrompt from "./Modals/GenericPrompt/GenericPrompt";
 import {EditMode} from "./Types/editMode";
 import GenericSuggester from "./Modals/GenericSuggester/GenericSuggester";
-import type {SuggestData} from "./Modals/metaEditSuggester";
 import type {MetaEditSettings} from "./Settings/metaEditSettings";
 import {ADD_FIRST_ELEMENT, ADD_TO_BEGINNING, ADD_TO_END} from "./constants";
 import type {ProgressProperty} from "./Types/progressProperty";
 import {ProgressPropertyOptions} from "./Types/progressPropertyOptions";
+import type {SuggestData} from "./Types/suggestData";
 
 export default class MetaController {
     private parser: MetaEditParser;

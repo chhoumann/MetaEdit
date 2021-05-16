@@ -1,11 +1,8 @@
 import {App, FuzzyMatch, FuzzySuggestModal, TFile} from "obsidian";
 import type MetaEdit from "../main";
 import type MetaController from "../metaController";
+import type {SuggestData} from "../Types/suggestData";
 
-export type SuggestData = {[key: string]: string};
-export enum MetaType {
-    YAML, Dataview
-}
 const newYaml: string = "New YAML property";
 const newDataView: string = "New Dataview field";
 
@@ -14,7 +11,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
     private readonly file: TFile;
     private plugin: MetaEdit;
     private readonly data: SuggestData;
-    private options: SuggestData;
+    private readonly options: SuggestData;
     private controller: MetaController;
 
     constructor(app: App, plugin: MetaEdit, data: SuggestData, file: TFile, controller: MetaController) {
@@ -24,8 +21,10 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
         this.plugin = plugin;
         this.data = data;
         this.controller = controller;
+        this.options = {
+            newYaml, newDataView
+        }
 
-        this.getMetaOptions();
         this.removeIgnored();
     }
 
@@ -62,13 +61,6 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
         }
 
         await this.controller.editMetaElement(item, this.data, this.file);
-    }
-
-    private getMetaOptions(): void {
-        this.options = {
-            newYaml,
-            newDataView
-        }
     }
 
     private removeIgnored(): void {
