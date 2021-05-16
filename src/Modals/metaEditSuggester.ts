@@ -3,6 +3,11 @@ import type MetaEdit from "../main";
 import type MetaController from "../metaController";
 
 export type SuggestData = {[key: string]: string};
+export enum MetaType {
+    YAML, Dataview
+}
+const newYaml: string = "New YAML property";
+const newDataView: string = "New Dataview field";
 
 export default class MetaEditSuggester extends FuzzySuggestModal<string> {
     public app: App;
@@ -44,23 +49,25 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
     }
 
     async onChooseItem(item: string, evt: MouseEvent | KeyboardEvent): Promise<void> {
-        switch (item) {
-            case "New YAML property":
-                await this.controller.addYamlProp(this.file);
-                break;
-            case "New Dataview field":
-                await this.controller.addDataviewField(this.file);
-                break;
-            default:
-                await this.controller.editMetaElement(item, this.data, this.file);
-                break;
+        if (item === newYaml) {
+            const {propName, propValue} = await this.controller.createNewProperty();
+            await this.controller.addYamlProp(propName, propValue, this.file);
+            return;
         }
+
+        if (item === newDataView) {
+            const {propName, propValue} = await this.controller.createNewProperty();
+            await this.controller.addDataviewField(propName, propValue, this.file);
+            return;
+        }
+
+        await this.controller.editMetaElement(item, this.data, this.file);
     }
 
     private getMetaOptions(): void {
         this.options = {
-            newYaml: "New YAML property",
-            newDataView: "New Dataview field"
+            newYaml,
+            newDataView
         }
     }
 
@@ -72,5 +79,11 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
             if (data.contains(prop))
                 delete this.data[prop];
         })
+    }
+
+    selectSuggestion(value: FuzzyMatch<string>, evt: MouseEvent | KeyboardEvent) {
+        console.log(`select ${value.item}`);
+        console.log(evt.srcElement)
+        super.selectSuggestion(value, evt);
     }
 }

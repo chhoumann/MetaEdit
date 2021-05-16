@@ -28,15 +28,10 @@ export default class MetaController {
         return {...yaml, ...inlineFields};
     }
 
-    public async addYamlProp(file: TFile) {
+    public async addYamlProp(propName: string, propValue: string, file: TFile) {
         const fileContent: string = await this.app.vault.read(file);
         const frontmatter: FrontMatterCache = this.app.metadataCache.getFileCache(file).frontmatter;
         const isYamlEmpty: boolean = (frontmatter === undefined && !fileContent.match(/^-{3}\s*\n*\r*-{3}/));
-
-        let newProp = await this.createNewProperty();
-        if (!newProp) return;
-
-        let {propName, propValue} = newProp;
 
         const settings = this.plugin.settings;
         if (settings.EditMode.mode === EditMode.AllMulti ||
@@ -58,14 +53,9 @@ export default class MetaController {
         await this.app.vault.modify(file, newFileContent);
     }
 
-    public async addDataviewField(file: TFile) {
-        let newProp = await this.createNewProperty();
-        if (!newProp) return;
-
-        const {propName, propValue} = newProp;
-
-        let content: string = await this.app.vault.read(file);
-        let lines = content.split("\n").reduce((obj: {[key: string]: string}, line: string, idx: number) => {
+    public async addDataviewField(propName: string, propValue: string, file: TFile) {
+        const fileContent: string = await this.app.vault.read(file);
+        let lines = fileContent.split("\n").reduce((obj: {[key: string]: string}, line: string, idx: number) => {
             obj[idx] = !!line ? line : "";
             return obj;
         }, {});
@@ -73,7 +63,7 @@ export default class MetaController {
         let appendAfter: string = await GenericSuggester.Suggest(this.app, Object.values(lines), Object.keys(lines));
         if (!appendAfter) return;
 
-        let splitContent: string[] = content.split("\n");
+        let splitContent: string[] = fileContent.split("\n");
         if (typeof appendAfter === "number" || parseInt(appendAfter)) {
             splitContent.splice(parseInt(appendAfter), 0, `${propName}:: ${propValue}`);
         }
@@ -111,6 +101,25 @@ export default class MetaController {
         catch (e) {
             this.plugin.logError(e);
         }
+    }
+
+    public async createNewProperty() {
+        let propName = await GenericPrompt.Prompt(this.app, "Enter a property name", "Property");
+        if (!propName) return null;
+
+        let propValue: string;
+        const autoProp = await this.handleAutoProperties(propName);
+
+        if (autoProp) {
+            propValue = autoProp;
+        } else {
+            propValue = await GenericPrompt.Prompt(this.app, "Enter a property value", "Value");
+            propValue = propValue.trim()
+        }
+
+        if (!propValue) return null;
+
+        return {propName, propValue};
     }
 
     private async progressPropHelper(progressProps: ProgressProperty[], meta: SuggestData, counts: {total: number, complete: number, incomplete: number}) {
@@ -225,25 +234,6 @@ export default class MetaController {
         }
 
         return false;
-    }
-
-    private async createNewProperty() {
-        let propName = await GenericPrompt.Prompt(this.app, "Enter a property name", "Property");
-        if (!propName) return null;
-
-        let propValue: string;
-        const autoProp = await this.handleAutoProperties(propName);
-
-        if (autoProp) {
-            propValue = autoProp;
-        } else {
-            propValue = await GenericPrompt.Prompt(this.app, "Enter a property value", "Value");
-            propValue = propValue.trim()
-        }
-
-        if (!propValue) return null;
-
-        return {propName, propValue};
     }
 
     private async handleAutoProperties(propertyName: string): Promise<string> {
