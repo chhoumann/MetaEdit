@@ -22,7 +22,7 @@ export default class MetaController {
     }
 
     public async getPropertiesInFile(file: TFile) {
-        const yaml = this.parser.parseFrontmatter(file);
+        const yaml = await this.parser.parseFrontmatter(file);
         const inlineFields = await this.parser.parseInlineFields(file);
 
         return {...yaml, ...inlineFields};
@@ -135,8 +135,8 @@ export default class MetaController {
         await this.app.vault.modify(file, newFileContent);
     }
 
-    public propertyIsYaml(property: string, file: TFile): boolean {
-        return !!this.parser.parseFrontmatter(file)[property];
+    public async propertyIsYaml(property: string, file: TFile): Promise<boolean> {
+        return !!(await this.parser.parseFrontmatter(file))[property];
     }
 
     private async progressPropHelper(progressProps: ProgressProperty[], meta: SuggestData, counts: {total: number, complete: number, incomplete: number}) {
@@ -175,7 +175,7 @@ export default class MetaController {
 
     private async multiValueMode(property: string, meta: SuggestData, file: TFile): Promise<Boolean> {
         const settings: MetaEditSettings = this.plugin.settings;
-        const propertyIsYaml: Boolean = this.propertyIsYaml(property, file);
+        const propertyIsYaml: Boolean = await this.propertyIsYaml(property, file);
         let newValue: string;
 
 
@@ -288,11 +288,11 @@ export default class MetaController {
         const fileContent = await this.app.vault.read(file);
 
         const newFileContent = fileContent.split("\n").map(line => {
-            Object.keys(props).forEach((prop: string) => {
+            Object.keys(props).forEach(async (prop: string) => {
                 const regexp = new RegExp(`^\s*${prop}:`);
 
                 if (line.match(regexp)) {
-                    const isYamlProp = !!this.parser.parseFrontmatter(file)[prop];
+                    const isYamlProp = !!(await this.parser.parseFrontmatter(file))[prop];
 
                     if (isYamlProp)
                         line = `${prop}: ${props[prop]}`;
