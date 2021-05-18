@@ -11,6 +11,7 @@
   - Works with total task, completed task, and incomplete task counts. Mark a task as completed (from anywhere), and the file will be updated with the new count.
 - Transform properties between YAML and Dataview
 - Delete properties easily
+- Auto update properties in files linked to from Kanban boards on lane change
 
 ### Installation
 This plugin has not yet been added to the community plugin browser in Obsidian.
