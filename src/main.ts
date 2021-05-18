@@ -10,12 +10,15 @@ export default class MetaEdit extends Plugin {
     private controller: MetaController;
     private updatedFileCache: { [fileName: string]: { content: string, updateTime: number } } = {};
     private onModifyCallback = debounce(async (file: TAbstractFile) => {
-        console.log("call")
        if (file instanceof TFile) {
-           if (this.settings.ProgressProperties.enabled)
-               await this.updateProgressProperties(file);
-           if (this.settings.KanbanHelper.enabled)
-               await this.kanbanHelper(file);
+           await this.onModifyProxy(file, async (file) => {
+               if (this.settings.ProgressProperties.enabled) {
+                   await this.updateProgressProperties(file);
+               }
+               if (this.settings.KanbanHelper.enabled) {
+                   await this.kanbanHelper(file);
+               }
+           })
        }
     }, 4000, false);
 
@@ -105,12 +108,10 @@ export default class MetaEdit extends Plugin {
     }
 
     private async updateProgressProperties(file: TFile) {
-        await this.onModifyProxy(file, async (file) => {
-            const data = await this.controller.getPropertiesInFile(file);
-            if (!data) return;
+        const data = await this.controller.getPropertiesInFile(file);
+        if (!data) return;
 
-            await this.controller.handleProgressProps(data, file);
-        });
+        await this.controller.handleProgressProps(data, file);
     }
 
     private async onModifyProxy(file: TFile, callback: (file: TFile, fileContent: string) => void) {
@@ -122,7 +123,7 @@ export default class MetaEdit extends Plugin {
                 updateTime: Date.now(),
             };
 
-            callback(file, fileContent);
+            await callback(file, fileContent);
         }
 
         this.cleanCache();
@@ -139,30 +140,29 @@ export default class MetaEdit extends Plugin {
     }
 
     private async kanbanHelper(file: TFile) {
-        await this.onModifyProxy(file, async (file, fileContent) => {
-            const boards = this.settings.KanbanHelper.boards;
-            const board = boards.find(board => board.boardName === file.basename);
-            const fileCache = this.app.metadataCache.getFileCache(file);
-            if (board && fileCache) {
-                const {links} = fileCache;
+        const fileContent = await this.app.vault.read(file);
+        const boards = this.settings.KanbanHelper.boards;
+        const board = boards.find(board => board.boardName === file.basename);
+        const fileCache = this.app.metadataCache.getFileCache(file);
+        if (board && fileCache) {
+            const {links} = fileCache;
 
-                if (links) {
-                    for (const link of links) {
-                        const linkFile: TAbstractFile = this.app.vault.getAbstractFileByPath(`${link.link}.md`);
+            if (links) {
+                for (const link of links) {
+                    const linkFile: TAbstractFile = this.app.vault.getAbstractFileByPath(`${link.link}.md`);
 
-                        if (linkFile instanceof TFile) {
-                            const heading = this.getTaskHeading(link.link, fileContent);
-                            if (!heading) {
-                                this.logError("could not open linked file (KanbanHelper)");
-                                return;
-                            }
-
-                            await this.controller.updatePropertyInFile(board.property, heading, linkFile);
+                    if (linkFile instanceof TFile) {
+                        const heading = this.getTaskHeading(link.link, fileContent);
+                        if (!heading) {
+                            this.logError("could not open linked file (KanbanHelper)");
+                            return;
                         }
+
+                        await this.controller.updatePropertyInFile(board.property, heading, linkFile);
                     }
                 }
             }
-        });
+        }
     }
 
     private getTaskHeading(taskName: string, fileContent: string): string | null {

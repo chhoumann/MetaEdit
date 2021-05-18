@@ -285,25 +285,23 @@ export default class MetaController {
     }
 
     private async updateMultipleInFile(props: {[key: string]: string}, file: TFile) {
-        const fileContent = await this.app.vault.read(file);
+        const fileContent = (await this.app.vault.read(file)).split("\n");
 
-        const newFileContent = fileContent.split("\n").map(line => {
-            Object.keys(props).forEach(async (prop: string) => {
-                const regexp = new RegExp(`^\s*${prop}:`);
-
-                if (line.match(regexp)) {
-                    const isYamlProp = !!(await this.parser.parseFrontmatter(file))[prop];
+        for (const prop of Object.keys(props)) {
+            const regexp = new RegExp(`^\s*${prop}:`);
+            for (let i = 0; i < fileContent.length; i++) {
+                if (fileContent[i].match(regexp)) {
+                    const isYamlProp = await this.propertyIsYaml(prop, file);
 
                     if (isYamlProp)
-                        line = `${prop}: ${props[prop]}`;
+                        fileContent[i] = `${prop}: ${props[prop]}`;
                     else
-                        line = `${prop}:: ${props[prop]}`;
+                        fileContent[i] = `${prop}:: ${props[prop]}`;
                 }
-            })
-
-            return line;
-        }).join("\n");
-
+            }
+        }
+        const newFileContent = fileContent.join("\n");
+        
         await this.app.vault.modify(file, newFileContent);
     }
 }
