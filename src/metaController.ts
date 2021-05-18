@@ -4,11 +4,11 @@ import type MetaEdit from "./main";
 import GenericPrompt from "./Modals/GenericPrompt/GenericPrompt";
 import {EditMode} from "./Types/editMode";
 import GenericSuggester from "./Modals/GenericSuggester/GenericSuggester";
-import type {SuggestData} from "./Modals/metaEditSuggester";
 import type {MetaEditSettings} from "./Settings/metaEditSettings";
 import {ADD_FIRST_ELEMENT, ADD_TO_BEGINNING, ADD_TO_END} from "./constants";
 import type {ProgressProperty} from "./Types/progressProperty";
 import {ProgressPropertyOptions} from "./Types/progressPropertyOptions";
+import type {SuggestData} from "./Types/suggestData";
 
 export default class MetaController {
     private parser: MetaEditParser;
@@ -28,15 +28,10 @@ export default class MetaController {
         return {...yaml, ...inlineFields};
     }
 
-    public async addYamlProp(file: TFile) {
+    public async addYamlProp(propName: string, propValue: string, file: TFile) {
         const fileContent: string = await this.app.vault.read(file);
         const frontmatter: FrontMatterCache = this.app.metadataCache.getFileCache(file).frontmatter;
         const isYamlEmpty: boolean = (frontmatter === undefined && !fileContent.match(/^-{3}\s*\n*\r*-{3}/));
-
-        let newProp = await this.createNewProperty();
-        if (!newProp) return;
-
-        let {propName, propValue} = newProp;
 
         const settings = this.plugin.settings;
         if (settings.EditMode.mode === EditMode.AllMulti ||
@@ -58,14 +53,9 @@ export default class MetaController {
         await this.app.vault.modify(file, newFileContent);
     }
 
-    public async addDataviewField(file: TFile) {
-        let newProp = await this.createNewProperty();
-        if (!newProp) return;
-
-        const {propName, propValue} = newProp;
-
-        let content: string = await this.app.vault.read(file);
-        let lines = content.split("\n").reduce((obj: {[key: string]: string}, line: string, idx: number) => {
+    public async addDataviewField(propName: string, propValue: string, file: TFile) {
+        const fileContent: string = await this.app.vault.read(file);
+        let lines = fileContent.split("\n").reduce((obj: {[key: string]: string}, line: string, idx: number) => {
             obj[idx] = !!line ? line : "";
             return obj;
         }, {});
@@ -73,7 +63,7 @@ export default class MetaController {
         let appendAfter: string = await GenericSuggester.Suggest(this.app, Object.values(lines), Object.keys(lines));
         if (!appendAfter) return;
 
-        let splitContent: string[] = content.split("\n");
+        let splitContent: string[] = fileContent.split("\n");
         if (typeof appendAfter === "number" || parseInt(appendAfter)) {
             splitContent.splice(parseInt(appendAfter), 0, `${propName}:: ${propValue}`);
         }
@@ -113,6 +103,42 @@ export default class MetaController {
         }
     }
 
+    public async createNewProperty() {
+        let propName = await GenericPrompt.Prompt(this.app, "Enter a property name", "Property");
+        if (!propName) return null;
+
+        let propValue: string;
+        const autoProp = await this.handleAutoProperties(propName);
+
+        if (autoProp) {
+            propValue = autoProp;
+        } else {
+            propValue = await GenericPrompt.Prompt(this.app, "Enter a property value", "Value");
+            propValue = propValue.trim()
+        }
+
+        if (!propValue) return null;
+
+        return {propName, propValue};
+    }
+
+    public async deleteProperty(property: string, file: TFile): Promise<void> {
+        const fileContent = await this.app.vault.read(file);
+        const splitContent = fileContent.split("\n");
+        const regexp = new RegExp(`^\s*${property}:`);
+
+        const idx = splitContent.findIndex(s => s.match(regexp));
+        const newFileContent = splitContent.filter((v, i) => {
+            if (i != idx) return true;
+        }).join("\n");
+
+        await this.app.vault.modify(file, newFileContent);
+    }
+
+    public propertyIsYaml(property: string, file: TFile): boolean {
+        return !!this.parser.parseFrontmatter(file)[property];
+    }
+
     private async progressPropHelper(progressProps: ProgressProperty[], meta: SuggestData, counts: {total: number, complete: number, incomplete: number}) {
         return progressProps.reduce((obj: {[name: string]: string}, el) => {
             if (meta[el.name] != null) {
@@ -147,25 +173,25 @@ export default class MetaController {
         }
     }
 
-    private async multiValueMode(choice: string, meta: SuggestData, file: TFile): Promise<Boolean> {
+    private async multiValueMode(property: string, meta: SuggestData, file: TFile): Promise<Boolean> {
         const settings: MetaEditSettings = this.plugin.settings;
-        const choiceIsYaml: Boolean = !!this.parser.parseFrontmatter(file)[choice];
+        const propertyIsYaml: Boolean = this.propertyIsYaml(property, file);
         let newValue: string;
 
-        if (settings.EditMode.mode == EditMode.SomeMulti && !settings.EditMode.properties.includes(choice)) {
-            await this.standardMode(choice, file);
+        if (settings.EditMode.mode == EditMode.SomeMulti && !settings.EditMode.properties.includes(property)) {
+            await this.standardMode(property, file);
             return false;
         }
 
         let selectedOption: string, tempValue: string, splitValues: string[];
-        let currentPropValue: string = meta[choice];
+        let currentPropValue: string = meta[property];
 
         if (currentPropValue !== null)
             currentPropValue = currentPropValue.toString();
         else
             currentPropValue = "";
 
-        if (choiceIsYaml) {
+        if (propertyIsYaml) {
             splitValues = currentPropValue.split('').filter(c => !c.includes("[]")).join('').split(",");
         } else {
             splitValues = currentPropValue.split(",").map(prop => prop.trim());
@@ -186,7 +212,7 @@ export default class MetaController {
         if (!selectedOption) return;
         let selectedIndex;
 
-        const autoProp = await this.handleAutoProperties(choice);
+        const autoProp = await this.handleAutoProperties(property);
         if (autoProp) {
             tempValue = autoProp;
         } else if (selectedOption.includes("cmd")) {
@@ -216,34 +242,15 @@ export default class MetaController {
                 break;
         }
 
-        if (choiceIsYaml)
+        if (propertyIsYaml)
             newValue = `[${newValue}]`;
 
         if (newValue) {
-            await this.updatePropertyInFile(choice, newValue, file);
+            await this.updatePropertyInFile(property, newValue, file);
             return true;
         }
 
         return false;
-    }
-
-    private async createNewProperty() {
-        let propName = await GenericPrompt.Prompt(this.app, "Enter a property name", "Property");
-        if (!propName) return null;
-
-        let propValue: string;
-        const autoProp = await this.handleAutoProperties(propName);
-
-        if (autoProp) {
-            propValue = autoProp;
-        } else {
-            propValue = await GenericPrompt.Prompt(this.app, "Enter a property value", "Value");
-            propValue = propValue.trim()
-        }
-
-        if (!propValue) return null;
-
-        return {propName, propValue};
     }
 
     private async handleAutoProperties(propertyName: string): Promise<string> {
@@ -258,13 +265,13 @@ export default class MetaController {
     }
 
     private async updatePropertyInFile(property: string, newValue: string, file: TFile) {
-        const choiceIsYaml = !!this.parser.parseFrontmatter(file)[property];
+        const propertyIsYaml = this.propertyIsYaml(property, file);
         const fileContent = await this.app.vault.read(file);
 
         const newFileContent = fileContent.split("\n").map(line => {
             const regexp = new RegExp(`^\s*${property}:`);
             if (line.match(regexp)) {
-                if (choiceIsYaml)
+                if (propertyIsYaml)
                     line = `${property}: ${newValue}`;
                 else
                     line = `${property}:: ${newValue}`;

@@ -51,7 +51,7 @@ export default class MetaEdit extends Plugin {
             id: 'metaEditRun',
             name: 'Run MetaEdit',
             callback: async () => {
-                const file = await this.getCurrentFile();
+                const file: TFile = this.getCurrentFile();
                 if (!file) return;
                 const data = await this.controller.getPropertiesInFile(file);
                 if (!data) return;
@@ -71,7 +71,7 @@ export default class MetaEdit extends Plugin {
         this.toggleOnFileModifyUpdateProgressProperties(false);
     }
 
-    public async getCurrentFile() {
+    public getCurrentFile() {
         try {
             return this.app.workspace.getActiveFile();
         }

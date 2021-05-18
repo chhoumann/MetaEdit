@@ -1,15 +1,17 @@
 import {App, FuzzyMatch, FuzzySuggestModal, TFile} from "obsidian";
 import type MetaEdit from "../main";
 import type MetaController from "../metaController";
+import type {SuggestData} from "../Types/suggestData";
 
-export type SuggestData = {[key: string]: string};
+const newYaml: string = "New YAML property";
+const newDataView: string = "New Dataview field";
 
 export default class MetaEditSuggester extends FuzzySuggestModal<string> {
     public app: App;
     private readonly file: TFile;
     private plugin: MetaEdit;
     private readonly data: SuggestData;
-    private options: SuggestData;
+    private readonly options: SuggestData;
     private controller: MetaController;
 
     constructor(app: App, plugin: MetaEdit, data: SuggestData, file: TFile, controller: MetaController) {
@@ -19,8 +21,14 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
         this.plugin = plugin;
         this.data = data;
         this.controller = controller;
+        this.options = {
+            newYaml, newDataView
+        }
 
-        this.getMetaOptions();
+        this.setInstructions([
+            {command: "❌", purpose: "Delete property"},
+            {command: "🔃", purpose: "Transform to YAML/Dataview"}
+        ])
         this.removeIgnored();
     }
 
@@ -29,6 +37,9 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
 
         if (Object.values(this.options).find(v => v === item.item)) {
             el.style.fontWeight = "bold";
+        } else {
+            this.createButton(el, item, "❌", this.deleteItem(item));
+            this.createButton(el, item, "🔃", this.transformProperty(item))
         }
     }
 
@@ -44,24 +55,63 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
     }
 
     async onChooseItem(item: string, evt: MouseEvent | KeyboardEvent): Promise<void> {
-        switch (item) {
-            case "New YAML property":
-                await this.controller.addYamlProp(this.file);
-                break;
-            case "New Dataview field":
-                await this.controller.addDataviewField(this.file);
-                break;
-            default:
-                await this.controller.editMetaElement(item, this.data, this.file);
-                break;
+        if (item === newYaml) {
+            const {propName, propValue} = await this.controller.createNewProperty();
+            await this.controller.addYamlProp(propName, propValue, this.file);
+            return;
+        }
+
+        if (item === newDataView) {
+            const {propName, propValue} = await this.controller.createNewProperty();
+            await this.controller.addDataviewField(propName, propValue, this.file);
+            return;
+        }
+
+        await this.controller.editMetaElement(item, this.data, this.file);
+    }
+
+    private deleteItem(item: FuzzyMatch<string>) {
+        return async (evt: MouseEvent) => {
+            evt.stopPropagation();
+            console.log(`Clicked delete for ${item.item}`)
+            await this.controller.deleteProperty(item.item, this.file);
+            this.close();
+        };
+    }
+
+    private transformProperty(item: FuzzyMatch<string>) {
+        return async (evt: MouseEvent | KeyboardEvent) => {
+            evt.stopPropagation();
+
+            if (this.controller.propertyIsYaml(item.item, this.file)) {
+                await this.toDataview(item);
+            } else {
+                await this.toYaml(item);
+            }
+
+            this.close();
         }
     }
 
-    private getMetaOptions(): void {
-        this.options = {
-            newYaml: "New YAML property",
-            newDataView: "New Dataview field"
-        }
+    private async toYaml(item: FuzzyMatch<string>) {
+        const content: string = this.data[item.item];
+        await this.controller.deleteProperty(item.item, this.file);
+        await this.controller.addYamlProp(item.item, content, this.file);
+    }
+
+    private async toDataview(item: FuzzyMatch<string>) {
+            const content: string = this.data[item.item];
+            await this.controller.deleteProperty(item.item, this.file);
+            await this.controller.addDataviewField(item.item, content, this.file);
+    }
+
+    private createButton(el: HTMLElement, item: FuzzyMatch<string>, content: string, callback: (evt: MouseEvent) => void) {
+        const itemButton = el.createEl("button");
+        itemButton.textContent = content;
+        itemButton.classList.add("not-a-button");
+        itemButton.style.float = "right";
+        itemButton.style.marginRight = "4px";
+        itemButton.addEventListener("click", callback);
     }
 
     private removeIgnored(): void {
