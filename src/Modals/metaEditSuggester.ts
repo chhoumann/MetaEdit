@@ -39,7 +39,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
             el.style.fontWeight = "bold";
         } else {
             this.createButton(el, item, "❌", this.deleteItem(item));
-            this.createButton(el, item, "🔃", this.toDataview(item))
+            this.createButton(el, item, "🔃", this.transformProperty(item))
         }
     }
 
@@ -79,14 +79,30 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
         };
     }
 
-    private toDataview(item: FuzzyMatch<string>) {
-        return async (evt: MouseEvent) => {
+    private transformProperty(item: FuzzyMatch<string>) {
+        return async (evt: MouseEvent | KeyboardEvent) => {
             evt.stopPropagation();
+
+            if (this.controller.propertyIsYaml(item.item, this.file)) {
+                await this.toDataview(item);
+            } else {
+                await this.toYaml(item);
+            }
+
+            this.close();
+        }
+    }
+
+    private async toYaml(item: FuzzyMatch<string>) {
+        const content: string = this.data[item.item];
+        await this.controller.deleteProperty(item.item, this.file);
+        await this.controller.addYamlProp(item.item, content, this.file);
+    }
+
+    private async toDataview(item: FuzzyMatch<string>) {
             const content: string = this.data[item.item];
             await this.controller.deleteProperty(item.item, this.file);
             await this.controller.addDataviewField(item.item, content, this.file);
-            this.close();
-        }
     }
 
     private createButton(el: HTMLElement, item: FuzzyMatch<string>, content: string, callback: (evt: MouseEvent) => void) {

@@ -135,6 +135,10 @@ export default class MetaController {
         await this.app.vault.modify(file, newFileContent);
     }
 
+    public propertyIsYaml(property: string, file: TFile): boolean {
+        return !!this.parser.parseFrontmatter(file)[property];
+    }
+
     private async progressPropHelper(progressProps: ProgressProperty[], meta: SuggestData, counts: {total: number, complete: number, incomplete: number}) {
         return progressProps.reduce((obj: {[name: string]: string}, el) => {
             if (meta[el.name] != null) {
@@ -169,25 +173,25 @@ export default class MetaController {
         }
     }
 
-    private async multiValueMode(choice: string, meta: SuggestData, file: TFile): Promise<Boolean> {
+    private async multiValueMode(property: string, meta: SuggestData, file: TFile): Promise<Boolean> {
         const settings: MetaEditSettings = this.plugin.settings;
-        const choiceIsYaml: Boolean = !!this.parser.parseFrontmatter(file)[choice];
+        const propertyIsYaml: Boolean = this.propertyIsYaml(property, file);
         let newValue: string;
 
-        if (settings.EditMode.mode == EditMode.SomeMulti && !settings.EditMode.properties.includes(choice)) {
-            await this.standardMode(choice, file);
+        if (settings.EditMode.mode == EditMode.SomeMulti && !settings.EditMode.properties.includes(property)) {
+            await this.standardMode(property, file);
             return false;
         }
 
         let selectedOption: string, tempValue: string, splitValues: string[];
-        let currentPropValue: string = meta[choice];
+        let currentPropValue: string = meta[property];
 
         if (currentPropValue !== null)
             currentPropValue = currentPropValue.toString();
         else
             currentPropValue = "";
 
-        if (choiceIsYaml) {
+        if (propertyIsYaml) {
             splitValues = currentPropValue.split('').filter(c => !c.includes("[]")).join('').split(",");
         } else {
             splitValues = currentPropValue.split(",").map(prop => prop.trim());
@@ -208,7 +212,7 @@ export default class MetaController {
         if (!selectedOption) return;
         let selectedIndex;
 
-        const autoProp = await this.handleAutoProperties(choice);
+        const autoProp = await this.handleAutoProperties(property);
         if (autoProp) {
             tempValue = autoProp;
         } else if (selectedOption.includes("cmd")) {
@@ -238,11 +242,11 @@ export default class MetaController {
                 break;
         }
 
-        if (choiceIsYaml)
+        if (propertyIsYaml)
             newValue = `[${newValue}]`;
 
         if (newValue) {
-            await this.updatePropertyInFile(choice, newValue, file);
+            await this.updatePropertyInFile(property, newValue, file);
             return true;
         }
 
@@ -261,13 +265,13 @@ export default class MetaController {
     }
 
     private async updatePropertyInFile(property: string, newValue: string, file: TFile) {
-        const choiceIsYaml = !!this.parser.parseFrontmatter(file)[property];
+        const propertyIsYaml = this.propertyIsYaml(property, file);
         const fileContent = await this.app.vault.read(file);
 
         const newFileContent = fileContent.split("\n").map(line => {
             const regexp = new RegExp(`^\s*${property}:`);
             if (line.match(regexp)) {
-                if (choiceIsYaml)
+                if (propertyIsYaml)
                     line = `${property}: ${newValue}`;
                 else
                     line = `${property}:: ${newValue}`;
