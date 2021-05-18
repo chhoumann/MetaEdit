@@ -9,7 +9,9 @@ export default class MetaEditParser {
     }
 
     public async parseFrontmatter(file: TFile): Promise<{ [key: string]: any }> {
-        const {position: {start, end}} = this.app.metadataCache.getFileCache(file).frontmatter;
+        const frontmatter = this.app.metadataCache.getFileCache(file).frontmatter;
+        if (!frontmatter) return {};
+        const {position: {start, end}} = frontmatter;
         const filecontent = await this.app.vault.read(file);
 
         return parseYaml(filecontent.split("\n").slice(start.line, end.line).join("\n"));
