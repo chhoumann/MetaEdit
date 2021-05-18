@@ -301,7 +301,7 @@ export default class MetaController {
             }
         }
         const newFileContent = fileContent.join("\n");
-        
+
         await this.app.vault.modify(file, newFileContent);
     }
 }
