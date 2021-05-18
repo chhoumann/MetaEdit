@@ -44,8 +44,6 @@ export default class MetaEdit extends Plugin {
                 const data = await this.controller.getPropertiesInFile(file);
                 if (!data) return;
 
-                const fileContent = await this.app.vault.read(file);
-
                 const suggester: MEMainSuggester = new MEMainSuggester(this.app, this, data, file, this.controller);
                 suggester.open();
             }
