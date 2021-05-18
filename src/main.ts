@@ -1,4 +1,4 @@
-import {debounce, EventRef, Notice, Plugin, TAbstractFile, TFile} from 'obsidian';
+import {debounce, Notice, Plugin, TAbstractFile, TFile} from 'obsidian';
 import {MetaEditSettingsTab} from "./Settings/metaEditSettingsTab";
 import MEMainSuggester from "./Modals/metaEditSuggester";
 import MetaController from "./metaController";
@@ -9,26 +9,18 @@ export default class MetaEdit extends Plugin {
     public settings: MetaEditSettings;
     private controller: MetaController;
     private updatedFileCache: { [fileName: string]: { content: string, updateTime: number } } = {};
-    private onModifyUpdateProgressProperties =
-        debounce(async (file: TAbstractFile) => {
-            if (file instanceof TFile) {
-                const fileContent = await this.app.vault.read(file);
-
-                if (!this.updatedFileCache[file.name] || fileContent !== this.updatedFileCache[file.name].content) {
-                    const data = await this.controller.getPropertiesInFile(file);
-                    if (!data) return;
-
-                    this.updatedFileCache[file.name] = {
-                        content: fileContent,
-                        updateTime: Date.now(),
-                    };
-
-                    await this.controller.handleProgressProps(data, file);
-                }
-
-                this.cleanCache();
-            }
-        }, 4000, false);
+    private onModifyCallback = debounce(async (file: TAbstractFile) => {
+       if (file instanceof TFile) {
+           await this.onModifyProxy(file, async (file) => {
+               if (this.settings.ProgressProperties.enabled) {
+                   await this.updateProgressProperties(file);
+               }
+               if (this.settings.KanbanHelper.enabled) {
+                   await this.kanbanHelper(file);
+               }
+           })
+       }
+    }, 4000, false);
 
     async onload() {
         this.controller = new MetaController(this.app, this);
@@ -61,14 +53,14 @@ export default class MetaEdit extends Plugin {
             }
         });
 
-        this.toggleOnFileModifyUpdateProgressProperties(this.settings.ProgressProperties.enabled);
+        this.onModifyCallbackToggle(true);
 
         this.addSettingTab(new MetaEditSettingsTab(this.app, this));
     }
 
     onunload() {
         console.log('Unloading MetaEdit');
-        this.toggleOnFileModifyUpdateProgressProperties(false);
+        this.onModifyCallbackToggle(false);
     }
 
     public getCurrentFile() {
@@ -81,11 +73,11 @@ export default class MetaEdit extends Plugin {
         }
     }
 
-    public toggleOnFileModifyUpdateProgressProperties(enable: boolean) {
+    public onModifyCallbackToggle(enable: boolean) {
         if (enable) {
-            this.app.vault.on("modify", this.modifyCallback);
-        } else if (this.modifyCallback && !enable) {
-            this.app.vault.off("modify", this.modifyCallback);
+            this.app.vault.on("modify", this.onModifyCallback);
+        } else if (this.onModifyCallback && !enable) {
+            this.app.vault.off("modify", this.onModifyCallback);
         }
     }
 
@@ -101,7 +93,41 @@ export default class MetaEdit extends Plugin {
         new Notice(`MetaEdit: ${error}`);
     }
 
-    private modifyCallback: (file: TFile) => void = (file: TAbstractFile) => this.onModifyUpdateProgressProperties(file);
+    public getFilesWithProperty(property: string): TFile[] {
+        const markdownFiles = this.app.vault.getMarkdownFiles();
+        let files: TFile[] = [];
+
+        markdownFiles.forEach(file => {
+            const fileFrontmatter = this.app.metadataCache.getFileCache(file).frontmatter;
+            if (fileFrontmatter && fileFrontmatter[property]) {
+                files.push(file);
+            }
+        });
+
+        return files;
+    }
+
+    private async updateProgressProperties(file: TFile) {
+        const data = await this.controller.getPropertiesInFile(file);
+        if (!data) return;
+
+        await this.controller.handleProgressProps(data, file);
+    }
+
+    private async onModifyProxy(file: TFile, callback: (file: TFile, fileContent: string) => void) {
+        const fileContent = await this.app.vault.read(file);
+
+        if (!this.updatedFileCache[file.name] || fileContent !== this.updatedFileCache[file.name].content) {
+            this.updatedFileCache[file.name] = {
+                content: fileContent,
+                updateTime: Date.now(),
+            };
+
+            await callback(file, fileContent);
+        }
+
+        this.cleanCache();
+    }
 
     private cleanCache() {
         const five_minutes = 18000;
@@ -111,6 +137,53 @@ export default class MetaEdit extends Plugin {
                 delete this.updatedFileCache[cacheItem];
             }
         }
+    }
+
+    private async kanbanHelper(file: TFile) {
+        const fileContent = await this.app.vault.read(file);
+        const boards = this.settings.KanbanHelper.boards;
+        const board = boards.find(board => board.boardName === file.basename);
+        const fileCache = this.app.metadataCache.getFileCache(file);
+        if (board && fileCache) {
+            const {links} = fileCache;
+
+            if (links) {
+                for (const link of links) {
+                    const linkFile: TAbstractFile = this.app.vault.getAbstractFileByPath(`${link.link}.md`);
+
+                    if (linkFile instanceof TFile) {
+                        const heading = this.getTaskHeading(link.link, fileContent);
+                        if (!heading) {
+                            this.logError("could not open linked file (KanbanHelper)");
+                            return;
+                        }
+
+                        await this.controller.updatePropertyInFile(board.property, heading, linkFile);
+                    }
+                }
+            }
+        }
+    }
+
+    private getTaskHeading(taskName: string, fileContent: string): string | null {
+        const MARKDOWN_HEADING = new RegExp(/#+\s+(.+)/);
+        const TASK_REGEX = new RegExp(/(\s*)-\s*\[([ Xx\.]?)\]\s*(.+)/, "i");
+
+        let lastHeading: string = "";
+        const splitContent = fileContent.split("\n");
+        for (const line of splitContent) {
+            const heading = MARKDOWN_HEADING.exec(line);
+            if (heading) {
+                lastHeading = heading[1];
+            }
+
+            const taskMatch = TASK_REGEX.exec(line);
+            if (taskMatch && taskMatch[3] === `[[${taskName}]]`) {
+                return lastHeading;
+            }
+        }
+
+        return null;
     }
 }
 

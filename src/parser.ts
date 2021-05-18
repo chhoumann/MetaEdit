@@ -1,4 +1,5 @@
 import type {App, TFile} from "obsidian";
+import {parseYaml} from "obsidian";
 
 export default class MetaEditParser {
     private app: App;
@@ -7,9 +8,13 @@ export default class MetaEditParser {
         this.app = app;
     }
 
-    public parseFrontmatter(file: TFile): {[key: string]: any} {
-        const {position, ...rest} = this.app.metadataCache.getFileCache(file).frontmatter;
-        return rest;
+    public async parseFrontmatter(file: TFile): Promise<{ [key: string]: any }> {
+        const frontmatter = this.app.metadataCache.getFileCache(file).frontmatter;
+        if (!frontmatter) return {};
+        const {position: {start, end}} = frontmatter;
+        const filecontent = await this.app.vault.read(file);
+
+        return parseYaml(filecontent.split("\n").slice(start.line, end.line).join("\n"));
     }
 
     public async parseInlineFields(file: TFile): Promise<{ [key: string]: string}> {

@@ -17,5 +17,9 @@ export const DEFAULT_SETTINGS: MetaEditSettings = Object.freeze({
     EditMode: {
         mode: EditMode.AllSingle,
         properties: [],
+    },
+    KanbanHelper: {
+        enabled: false,
+        boards: []
     }
 });

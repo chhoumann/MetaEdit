@@ -3,10 +3,12 @@ import type MetaEdit from "../main";
 import {EditMode} from "../Types/editMode";
 import ProgressPropertiesModalContent from "../Modals/ProgressPropertiesSettingModal/ProgressPropertiesModalContent.svelte";
 import AutoPropertiesModalContent from "../Modals/AutoPropertiesSettingModal/AutoPropertiesModalContent.svelte";
+import KanbanHelperSettingContent from "../Modals/KanbanHelperSetting/KanbanHelperSettingContent.svelte";
 import SingleValueTableEditorContent
     from "../Modals/shared/SingleValueTableEditorContent.svelte";
 import type {ProgressProperty} from "../Types/progressProperty";
 import type {AutoProperty} from "../Types/autoProperty";
+import type {KanbanProperty} from "../Types/kanbanProperty";
 
 function toggleHidden(div: HTMLDivElement, hidden: boolean) {
     if (div && !hidden) {
@@ -38,7 +40,8 @@ export class MetaEditSettingsTab extends PluginSettingTab {
         this.addProgressPropertiesSetting(containerEl);
         this.addAutoPropertiesSetting(containerEl);
         this.addIgnorePropertiesSetting(containerEl);
-        this.addEditModeSettings(containerEl);
+        this.addEditModeSetting(containerEl);
+        this.addKanbanHelperSetting(containerEl);
     }
 
     private addProgressPropertiesSetting(containerEl: HTMLElement) {
@@ -54,7 +57,6 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                         if (value === this.plugin.settings.ProgressProperties.enabled) return;
 
                         this.plugin.settings.ProgressProperties.enabled = value;
-                        this.plugin.toggleOnFileModifyUpdateProgressProperties(value);
 
                         await this.plugin.saveSettings();
                     });
@@ -155,7 +157,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
         }
     }
 
-    private addEditModeSettings(containerEl: HTMLElement) {
+    private addEditModeSetting(containerEl: HTMLElement) {
         let modal: any, div: HTMLDivElement, hidden: boolean = true;
         const setting = new Setting(containerEl)
             .setName("Edit Mode")
@@ -205,5 +207,45 @@ export class MetaEditSettingsTab extends PluginSettingTab {
     hide(): any {
         this.svelteElements.forEach(el => el.$destroy());
         return super.hide();
+    }
+
+    private addKanbanHelperSetting(containerEl: HTMLElement) {
+        let modal: ProgressPropertiesModalContent, div: HTMLDivElement, hidden: boolean = true;
+        const setting = new Setting(containerEl)
+            .setName("Kanban Board Helper")
+            .setDesc("Update properties in links in kanban boards automatically when a card is moved to a new lane.")
+            .addToggle(toggle => {
+                toggle
+                    .setTooltip("Toggle Kanban Helepr")
+                    .setValue(this.plugin.settings.KanbanHelper.enabled)
+                    .onChange(async value => {
+                        if (value === this.plugin.settings.KanbanHelper.enabled) return;
+
+                        this.plugin.settings.KanbanHelper.enabled = value;
+
+                        await this.plugin.saveSettings();
+                    });
+            })
+            .addExtraButton(button => button.onClick(() => hidden = toggleHidden(div, hidden)))
+
+        div = setting.settingEl.createDiv();
+        setting.settingEl.style.display = "block";
+        div.style.display = "none";
+
+        modal = new KanbanHelperSettingContent({
+            target: div,
+            props: {
+                kanbanProperties: this.plugin.settings.KanbanHelper.boards,
+                boards: this.plugin.getFilesWithProperty("kanban-plugin"),
+                app: this.app,
+                save: async (kanbanProperties: KanbanProperty[]) => {
+                    this.plugin.settings.KanbanHelper.boards = kanbanProperties;
+                    console.log(this.plugin.settings.KanbanHelper.boards);
+                    await this.plugin.saveSettings();
+                }
+            },
+        });
+
+        this.svelteElements.push(modal);
     }
 }

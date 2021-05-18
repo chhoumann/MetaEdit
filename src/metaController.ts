@@ -22,7 +22,7 @@ export default class MetaController {
     }
 
     public async getPropertiesInFile(file: TFile) {
-        const yaml = this.parser.parseFrontmatter(file);
+        const yaml = await this.parser.parseFrontmatter(file);
         const inlineFields = await this.parser.parseInlineFields(file);
 
         return {...yaml, ...inlineFields};
@@ -135,8 +135,8 @@ export default class MetaController {
         await this.app.vault.modify(file, newFileContent);
     }
 
-    public propertyIsYaml(property: string, file: TFile): boolean {
-        return !!this.parser.parseFrontmatter(file)[property];
+    public async propertyIsYaml(property: string, file: TFile): Promise<boolean> {
+        return !!(await this.parser.parseFrontmatter(file))[property];
     }
 
     private async progressPropHelper(progressProps: ProgressProperty[], meta: SuggestData, counts: {total: number, complete: number, incomplete: number}) {
@@ -175,8 +175,9 @@ export default class MetaController {
 
     private async multiValueMode(property: string, meta: SuggestData, file: TFile): Promise<Boolean> {
         const settings: MetaEditSettings = this.plugin.settings;
-        const propertyIsYaml: Boolean = this.propertyIsYaml(property, file);
+        const propertyIsYaml: Boolean = await this.propertyIsYaml(property, file);
         let newValue: string;
+
 
         if (settings.EditMode.mode == EditMode.SomeMulti && !settings.EditMode.properties.includes(property)) {
             await this.standardMode(property, file);
@@ -264,7 +265,7 @@ export default class MetaController {
         return null;
     }
 
-    private async updatePropertyInFile(property: string, newValue: string, file: TFile) {
+    public async updatePropertyInFile(property: string, newValue: string, file: TFile) {
         const propertyIsYaml = this.propertyIsYaml(property, file);
         const fileContent = await this.app.vault.read(file);
 
@@ -284,24 +285,22 @@ export default class MetaController {
     }
 
     private async updateMultipleInFile(props: {[key: string]: string}, file: TFile) {
-        const fileContent = await this.app.vault.read(file);
+        const fileContent = (await this.app.vault.read(file)).split("\n");
 
-        const newFileContent = fileContent.split("\n").map(line => {
-            Object.keys(props).forEach((prop: string) => {
-                const regexp = new RegExp(`^\s*${prop}:`);
-
-                if (line.match(regexp)) {
-                    const isYamlProp = !!this.parser.parseFrontmatter(file)[prop];
+        for (const prop of Object.keys(props)) {
+            const regexp = new RegExp(`^\s*${prop}:`);
+            for (let i = 0; i < fileContent.length; i++) {
+                if (fileContent[i].match(regexp)) {
+                    const isYamlProp = await this.propertyIsYaml(prop, file);
 
                     if (isYamlProp)
-                        line = `${prop}: ${props[prop]}`;
+                        fileContent[i] = `${prop}: ${props[prop]}`;
                     else
-                        line = `${prop}:: ${props[prop]}`;
+                        fileContent[i] = `${prop}:: ${props[prop]}`;
                 }
-            })
-
-            return line;
-        }).join("\n");
+            }
+        }
+        const newFileContent = fileContent.join("\n");
 
         await this.app.vault.modify(file, newFileContent);
     }
