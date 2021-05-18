@@ -1,4 +1,4 @@
-import {debounce, Notice, parseYaml, Plugin, TAbstractFile, TFile} from 'obsidian';
+import {debounce, Notice, Plugin, TAbstractFile, TFile} from 'obsidian';
 import {MetaEditSettingsTab} from "./Settings/metaEditSettingsTab";
 import MEMainSuggester from "./Modals/metaEditSuggester";
 import MetaController from "./metaController";
@@ -10,6 +10,7 @@ export default class MetaEdit extends Plugin {
     private controller: MetaController;
     private updatedFileCache: { [fileName: string]: { content: string, updateTime: number } } = {};
     private onModifyCallback = debounce(async (file: TAbstractFile) => {
+        console.log("call")
        if (file instanceof TFile) {
            if (this.settings.ProgressProperties.enabled)
                await this.updateProgressProperties(file);
