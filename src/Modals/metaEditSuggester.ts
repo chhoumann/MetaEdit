@@ -110,6 +110,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
         itemButton.textContent = content;
         itemButton.classList.add("not-a-button");
         itemButton.style.float = "right";
+        itemButton.style.marginRight = "4px";
         itemButton.addEventListener("click", callback);
     }
 
