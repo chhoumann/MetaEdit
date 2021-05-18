@@ -178,6 +178,7 @@ export default class MetaController {
         const propertyIsYaml: Boolean = this.propertyIsYaml(property, file);
         let newValue: string;
 
+
         if (settings.EditMode.mode == EditMode.SomeMulti && !settings.EditMode.properties.includes(property)) {
             await this.standardMode(property, file);
             return false;
@@ -264,7 +265,7 @@ export default class MetaController {
         return null;
     }
 
-    private async updatePropertyInFile(property: string, newValue: string, file: TFile) {
+    public async updatePropertyInFile(property: string, newValue: string, file: TFile) {
         const propertyIsYaml = this.propertyIsYaml(property, file);
         const fileContent = await this.app.vault.read(file);
 
