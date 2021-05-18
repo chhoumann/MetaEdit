@@ -37,6 +37,11 @@ export default class GenericPrompt extends Modal {
 
     onOpen() {
         super.onOpen();
+
+        const modalPrompt: HTMLElement = document.querySelector('.metaEditPrompt');
+        const modalInput: any = modalPrompt.querySelector('.metaEditPromptInput');
+        modalInput.focus();
+        modalInput.select();
     }
 
     onClose() {

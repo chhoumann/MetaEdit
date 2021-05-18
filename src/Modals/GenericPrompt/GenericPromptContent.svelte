@@ -20,7 +20,7 @@
     }
 </script>
 
-<div>
+<div class="metaEditPrompt">
     <h1 style="text-align: center">{header}</h1>
-    <input bind:this={inputEl} autofocus style="width: 100%;" on:keydown={submit} type="text" placeholder={placeholder} bind:value={value}>
+    <input class="metaEditPromptInput" bind:this={inputEl} autofocus style="width: 100%;" on:keydown={submit} type="text" placeholder={placeholder} bind:value={value}>
 </div>
