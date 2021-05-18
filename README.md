@@ -9,6 +9,8 @@
 - Multi-Value Mode that allows you to detect and vectorize/create arrays from your values
 - Progress Properties that automatically update properties/fields
   - Works with total task, completed task, and incomplete task counts. Mark a task as completed (from anywhere), and the file will be updated with the new count.
+- Transform properties between YAML and Dataview
+- Delete properties easily
 
 ### Installation
 This plugin has not yet been added to the community plugin browser in Obsidian.
