@@ -76,10 +76,29 @@ export default class MetaController {
     public async editMetaElement(property: Property, meta: Property[], file: TFile): Promise<void> {
         const mode: EditMode = this.plugin.settings.EditMode.mode;
 
-        if (mode === EditMode.AllMulti || mode === EditMode.SomeMulti)
+        if (property.type === MetaType.Tag)
+            await this.editTag(property, file);
+        else if (mode === EditMode.AllMulti || mode === EditMode.SomeMulti)
             await this.multiValueMode(property, file);
         else
             await this.standardMode(property, file);
+    }
+
+    private async editTag(property: Property, file: TFile) {
+        const splitTag: string[] = property.key.split("/");
+        const allButLast: string = splitTag.slice(0, splitTag.length - 1).join("/");
+        
+        const autoProp = await this.handleAutoProperties(allButLast);
+        let newValue;
+
+        if (autoProp)
+            newValue = autoProp;
+        else
+            newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`);
+
+        if (newValue) {
+            await this.updatePropertyInFile(property, newValue, file);
+        }
     }
 
     public async handleProgressProps(meta: Property[], file: TFile): Promise<void> {
@@ -165,7 +184,7 @@ export default class MetaController {
         if (autoProp)
             newValue = autoProp;
         else
-            newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property}`);
+            newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`);
 
         if (newValue) {
             await this.updatePropertyInFile(property, newValue, file);
@@ -267,12 +286,10 @@ export default class MetaController {
         const fileContent = await this.app.vault.read(file);
 
         const newFileContent = fileContent.split("\n").map(line => {
-            const regexp = new RegExp(`^\s*${property.key}:`);
+            const regexp = new RegExp(`^\s*${property.key}`);
+
             if (line.match(regexp)) {
-                if (property.type === MetaType.YAML)
-                    line = `${property.key}: ${newValue}`;
-                else
-                    line = `${property.key}:: ${newValue}`;
+                return this.updatePropertyLine(property, newValue);
             }
 
             return line;
@@ -281,19 +298,45 @@ export default class MetaController {
         await this.app.vault.modify(file, newFileContent);
     }
 
+    private updatePropertyLine(property: Partial<Property>, newValue: string) {
+        let newLine: string;
+
+        switch (property.type) {
+            case MetaType.Dataview:
+                newLine = `${property.key}:: ${newValue}`;
+                break;
+            case MetaType.YAML:
+                newLine = `${property.key}: ${newValue}`;
+                break;
+            case MetaType.Tag:
+                const splitTag: string[] = property.key.split("/");
+                if (splitTag.length === 1)
+                    newLine = `${splitTag[0]}/${newValue}`;
+                else if (splitTag.length > 1) {
+                    const allButLast: string = splitTag.slice(0, splitTag.length - 1).join("/");
+                    newLine = `${allButLast}/${newValue}`;
+                } else
+                    newLine = property.key;
+                break;
+            default:
+                break;
+        }
+
+        return newLine;
+    }
+
     private async updateMultipleInFile(properties: Property[], file: TFile): Promise<void> {
-        const fileContent = (await this.app.vault.read(file)).split("\n");
+        let fileContent = (await this.app.vault.read(file)).split("\n");
 
         for (const prop of properties) {
-            const regexp = new RegExp(`^\s*${prop.key}:`);
-            for (let i = 0; i < fileContent.length; i++) {
-                if (fileContent[i].match(regexp)) {
-                    if (prop.type === MetaType.YAML)
-                        fileContent[i] = `${prop.key}: ${prop.content}`;
-                    else
-                        fileContent[i] = `${prop.key}:: ${prop.content}`;
+            const regexp = new RegExp(`^\s*${prop.key}`);
+            fileContent = fileContent.map(line => {
+                if (line.match(regexp)) {
+                    return this.updatePropertyLine(prop, prop.content)
                 }
-            }
+
+                return line;
+            });
         }
         const newFileContent = fileContent.join("\n");
 
