@@ -21,14 +21,14 @@ export default class MetaController {
         this.plugin = plugin;
     }
 
-    public async getPropertiesInFile(file: TFile) {
+    public async getPropertiesInFile(file: TFile): Promise<{}> {
         const yaml = await this.parser.parseFrontmatter(file);
         const inlineFields = await this.parser.parseInlineFields(file);
 
         return {...yaml, ...inlineFields};
     }
 
-    public async addYamlProp(propName: string, propValue: string, file: TFile) {
+    public async addYamlProp(propName: string, propValue: string, file: TFile): Promise<void> {
         const fileContent: string = await this.app.vault.read(file);
         const frontmatter: FrontMatterCache = this.app.metadataCache.getFileCache(file).frontmatter;
         const isYamlEmpty: boolean = (frontmatter === undefined && !fileContent.match(/^-{3}\s*\n*\r*-{3}/));
@@ -53,7 +53,7 @@ export default class MetaController {
         await this.app.vault.modify(file, newFileContent);
     }
 
-    public async addDataviewField(propName: string, propValue: string, file: TFile) {
+    public async addDataviewField(propName: string, propValue: string, file: TFile): Promise<void> {
         const fileContent: string = await this.app.vault.read(file);
         let lines = fileContent.split("\n").reduce((obj: {[key: string]: string}, line: string, idx: number) => {
             obj[idx] = !!line ? line : "";
@@ -72,7 +72,7 @@ export default class MetaController {
         await this.app.vault.modify(file, newFileContent);
     }
 
-    public async editMetaElement(toEdit: string, meta: SuggestData, file: TFile) {
+    public async editMetaElement(toEdit: string, meta: SuggestData, file: TFile): Promise<void> {
         const mode: EditMode = this.plugin.settings.EditMode.mode;
 
         if (mode === EditMode.AllMulti || mode === EditMode.SomeMulti)
@@ -81,7 +81,7 @@ export default class MetaController {
             await this.standardMode(toEdit, file);
     }
 
-    public async handleProgressProps(meta: SuggestData, file: TFile) {
+    public async handleProgressProps(meta: SuggestData, file: TFile): Promise<void> {
         try {
             const {enabled, properties} = this.plugin.settings.ProgressProperties;
             if (!enabled) return;
@@ -265,7 +265,7 @@ export default class MetaController {
         return null;
     }
 
-    public async updatePropertyInFile(property: string, newValue: string, file: TFile) {
+    public async updatePropertyInFile(property: string, newValue: string, file: TFile): Promise<void> {
         const propertyIsYaml = await this.propertyIsYaml(property, file);
         const fileContent = await this.app.vault.read(file);
 
@@ -284,7 +284,7 @@ export default class MetaController {
         await this.app.vault.modify(file, newFileContent);
     }
 
-    private async updateMultipleInFile(props: {[key: string]: string}, file: TFile) {
+    private async updateMultipleInFile(props: {[key: string]: string}, file: TFile): Promise<void> {
         const fileContent = (await this.app.vault.read(file)).split("\n");
 
         for (const prop of Object.keys(props)) {
