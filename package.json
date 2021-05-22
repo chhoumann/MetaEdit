@@ -2,7 +2,7 @@
   "name": "metaedit",
   "version": "1.4.1",
   "description": "MetaEdit helps you manage your metadata.",
-  "main": "dist/main.js",
+  "main": "main.js",
   "scripts": {
     "dev": "rollup --config rollup.config.js -w",
     "build": "rollup --config rollup.config.js --environment BUILD:production",

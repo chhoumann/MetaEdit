@@ -6,7 +6,7 @@ import autoPreprocess from "svelte-preprocess";
 export default {
   input: 'src/main.ts',
   output: {
-    dir: './dist',
+    dir: '.',
     format: 'cjs',
     exports: 'default',
   },
