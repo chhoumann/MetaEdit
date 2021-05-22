@@ -87,7 +87,7 @@ export default class MetaController {
     private async editTag(property: Property, file: TFile) {
         const splitTag: string[] = property.key.split("/");
         const allButLast: string = splitTag.slice(0, splitTag.length - 1).join("/");
-        
+
         const autoProp = await this.handleAutoProperties(allButLast);
         let newValue;
 
