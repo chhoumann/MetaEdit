@@ -13,6 +13,7 @@
 - Delete properties easily
 - Auto update properties in files linked to from Kanban boards on lane change
 - Edit metadata through a filemenu
+- Edit last value in tags - works with [Obsidian Tracker](https://github.com/pyrochlore/obsidian-tracker), too.
 
 ### Installation
 This plugin has not yet been added to the community plugin browser in Obsidian.
