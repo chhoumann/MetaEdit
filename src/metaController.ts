@@ -14,11 +14,15 @@ export default class MetaController {
     private parser: MetaEditParser;
     private readonly app: App;
     private plugin: MetaEdit;
+    private readonly hasTrackerPlugin: boolean = false;
+    private useTrackerPlugin: boolean = false;
 
     constructor(app: App, plugin: MetaEdit) {
         this.app = app;
         this.parser = new MetaEditParser(app);
         this.plugin = plugin;
+        // @ts-ignore
+        this.hasTrackerPlugin = !!this.app.plugins.plugins["obsidian-tracker"];
     }
 
     public async getPropertiesInFile(file: TFile): Promise<Property[]> {
@@ -87,14 +91,26 @@ export default class MetaController {
     private async editTag(property: Property, file: TFile) {
         const splitTag: string[] = property.key.split("/");
         const allButLast: string = splitTag.slice(0, splitTag.length - 1).join("/");
+        const trackerPluginMethod = "Use Tracker", metaEditMethod = "Use MetaEdit", choices = [trackerPluginMethod, metaEditMethod];
+        let newValue: string;
+        let method: string = metaEditMethod;
 
-        const autoProp = await this.handleAutoProperties(allButLast);
-        let newValue;
+        if (this.hasTrackerPlugin)
+            method = await GenericSuggester.Suggest(this.app, choices, choices);
 
-        if (autoProp)
-            newValue = autoProp;
-        else
-            newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`);
+        if (!method) return;
+
+        if (method === trackerPluginMethod) {
+            newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`)
+            this.useTrackerPlugin = true;
+        } else if (method === metaEditMethod) {
+            const autoProp = await this.handleAutoProperties(allButLast);
+
+            if (autoProp)
+                newValue = autoProp;
+            else
+                newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`);
+        }
 
         if (newValue) {
             await this.updatePropertyInFile(property, newValue, file);
@@ -309,14 +325,18 @@ export default class MetaController {
                 newLine = `${property.key}: ${newValue}`;
                 break;
             case MetaType.Tag:
-                const splitTag: string[] = property.key.split("/");
-                if (splitTag.length === 1)
-                    newLine = `${splitTag[0]}/${newValue}`;
-                else if (splitTag.length > 1) {
-                    const allButLast: string = splitTag.slice(0, splitTag.length - 1).join("/");
-                    newLine = `${allButLast}/${newValue}`;
-                } else
-                    newLine = property.key;
+                if (this.useTrackerPlugin) {
+                    newLine = `${property.key}:${newValue}`;
+                } else {
+                    const splitTag: string[] = property.key.split("/");
+                    if (splitTag.length === 1)
+                        newLine = `${splitTag[0]}/${newValue}`;
+                    else if (splitTag.length > 1) {
+                        const allButLast: string = splitTag.slice(0, splitTag.length - 1).join("/");
+                        newLine = `${allButLast}/${newValue}`;
+                    } else
+                        newLine = property.key;
+                }
                 break;
             default:
                 break;
