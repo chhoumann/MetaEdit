@@ -34,7 +34,7 @@ export default class MetaEditParser {
         let metaYaml: Property[] = [];
 
         for (const key in parsedYaml) {
-            metaYaml.push({key, content: parsedYaml[key].toString(), type: MetaType.YAML});
+            metaYaml.push({key, content: parsedYaml[key]?.toString(), type: MetaType.YAML});
         }
 
         return metaYaml;
