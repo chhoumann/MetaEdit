@@ -1,3 +1,3 @@
 export enum MetaType {
-    YAML, Dataview
+    YAML, Dataview, Tag, Option
 }

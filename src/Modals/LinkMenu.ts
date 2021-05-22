@@ -11,6 +11,7 @@ export class LinkMenu {
     registerEvent(): void {
         this.plugin.registerEvent(
             this.plugin.app.workspace.on('file-menu', (menu, file, source) => {
+                console.log(source);
                 if (source === "link-context-menu" && file instanceof TFile) {
                     this.targetFile = file;
                     this.addOptions(menu);

@@ -1,4 +1,4 @@
-import MetaEditParser from "./parser";
+import MetaEditParser, {Property} from "./parser";
 import type {App, FrontMatterCache, TFile} from "obsidian";
 import type MetaEdit from "./main";
 import GenericPrompt from "./Modals/GenericPrompt/GenericPrompt";
@@ -8,7 +8,7 @@ import type {MetaEditSettings} from "./Settings/metaEditSettings";
 import {ADD_FIRST_ELEMENT, ADD_TO_BEGINNING, ADD_TO_END} from "./constants";
 import type {ProgressProperty} from "./Types/progressProperty";
 import {ProgressPropertyOptions} from "./Types/progressPropertyOptions";
-import type {SuggestData} from "./Types/suggestData";
+import {MetaType} from "./Types/metaType";
 
 export default class MetaController {
     private parser: MetaEditParser;
@@ -21,11 +21,12 @@ export default class MetaController {
         this.plugin = plugin;
     }
 
-    public async getPropertiesInFile(file: TFile): Promise<{}> {
+    public async getPropertiesInFile(file: TFile): Promise<Property[]> {
         const yaml = await this.parser.parseFrontmatter(file);
         const inlineFields = await this.parser.parseInlineFields(file);
+        const tags = await this.parser.getTagsForFile(file);
 
-        return {...yaml, ...inlineFields};
+        return [...tags, ...yaml, ...inlineFields];
     }
 
     public async addYamlProp(propName: string, propValue: string, file: TFile): Promise<void> {
@@ -72,16 +73,16 @@ export default class MetaController {
         await this.app.vault.modify(file, newFileContent);
     }
 
-    public async editMetaElement(toEdit: string, meta: SuggestData, file: TFile): Promise<void> {
+    public async editMetaElement(property: Property, meta: Property[], file: TFile): Promise<void> {
         const mode: EditMode = this.plugin.settings.EditMode.mode;
 
         if (mode === EditMode.AllMulti || mode === EditMode.SomeMulti)
-            await this.multiValueMode(toEdit, meta, file);
+            await this.multiValueMode(property, file);
         else
-            await this.standardMode(toEdit, file);
+            await this.standardMode(property, file);
     }
 
-    public async handleProgressProps(meta: SuggestData, file: TFile): Promise<void> {
+    public async handleProgressProps(meta: Property[], file: TFile): Promise<void> {
         try {
             const {enabled, properties} = this.plugin.settings.ProgressProperties;
             if (!enabled) return;
@@ -122,10 +123,10 @@ export default class MetaController {
         return {propName, propValue};
     }
 
-    public async deleteProperty(property: string, file: TFile): Promise<void> {
+    public async deleteProperty(property: Property, file: TFile): Promise<void> {
         const fileContent = await this.app.vault.read(file);
         const splitContent = fileContent.split("\n");
-        const regexp = new RegExp(`^\s*${property}:`);
+        const regexp = new RegExp(`^\s*${property.key}:`);
 
         const idx = splitContent.findIndex(s => s.match(regexp));
         const newFileContent = splitContent.filter((v, i) => {
@@ -135,64 +136,61 @@ export default class MetaController {
         await this.app.vault.modify(file, newFileContent);
     }
 
-    public async propertyIsYaml(property: string, file: TFile): Promise<boolean> {
-        return !!(await this.parser.parseFrontmatter(file))[property];
-    }
-
-    private async progressPropHelper(progressProps: ProgressProperty[], meta: SuggestData, counts: {total: number, complete: number, incomplete: number}) {
-        return progressProps.reduce((obj: {[name: string]: string}, el) => {
-            if (meta[el.name] != null) {
+    private async progressPropHelper(progressProps: ProgressProperty[], meta: Property[], counts: {total: number, complete: number, incomplete: number}) {
+        return progressProps.reduce((obj: Property[], el) => {
+            const property = meta.find(prop => prop.key === el.name);
+            if (property) {
                 switch (el.type) {
                     case ProgressPropertyOptions.TaskComplete:
-                        obj[el.name] = `${counts.complete}`;
+                        obj.push({...property, content: counts.complete.toString()});
                         break;
                     case ProgressPropertyOptions.TaskIncomplete:
-                        obj[el.name] = `${counts.incomplete}`;
+                        obj.push({...property, content: counts.incomplete.toString()});
                         break;
                     case ProgressPropertyOptions.TaskTotal:
-                        obj[el.name] = `${counts.total}`;
+                        obj.push({...property, content: counts.total.toString()});
                         break;
                     default: break;
                 }
             }
+
             return obj;
-        }, {})
+        }, [])
     }
 
-    private async standardMode(toEdit: string, file: TFile): Promise<void> {
-        const autoProp = await this.handleAutoProperties(toEdit);
+    private async standardMode(property: Property, file: TFile): Promise<void> {
+        const autoProp = await this.handleAutoProperties(property.key);
         let newValue;
 
         if (autoProp)
             newValue = autoProp;
         else
-            newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${toEdit}`);
+            newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property}`);
 
         if (newValue) {
-            await this.updatePropertyInFile(toEdit, newValue, file);
+            await this.updatePropertyInFile(property, newValue, file);
         }
     }
 
-    private async multiValueMode(property: string, meta: SuggestData, file: TFile): Promise<Boolean> {
+    private async multiValueMode(property: Property, file: TFile): Promise<Boolean> {
         const settings: MetaEditSettings = this.plugin.settings;
-        const propertyIsYaml: Boolean = await this.propertyIsYaml(property, file);
         let newValue: string;
 
 
-        if (settings.EditMode.mode == EditMode.SomeMulti && !settings.EditMode.properties.includes(property)) {
+        if (settings.EditMode.mode == EditMode.SomeMulti && !settings.EditMode.properties.includes(property.key)) {
             await this.standardMode(property, file);
             return false;
         }
 
         let selectedOption: string, tempValue: string, splitValues: string[];
-        let currentPropValue: string = meta[property];
+        let currentPropValue: string = property.content;
 
         if (currentPropValue !== null)
             currentPropValue = currentPropValue.toString();
         else
             currentPropValue = "";
 
-        if (propertyIsYaml) {
+        if (property.type === MetaType.YAML) {
             splitValues = currentPropValue.split('').filter(c => !c.includes("[]")).join('').split(",");
         } else {
             splitValues = currentPropValue.split(",").map(prop => prop.trim());
@@ -213,7 +211,7 @@ export default class MetaController {
         if (!selectedOption) return;
         let selectedIndex;
 
-        const autoProp = await this.handleAutoProperties(property);
+        const autoProp = await this.handleAutoProperties(property.key);
         if (autoProp) {
             tempValue = autoProp;
         } else if (selectedOption.includes("cmd")) {
@@ -243,7 +241,7 @@ export default class MetaController {
                 break;
         }
 
-        if (propertyIsYaml)
+        if (property.type === MetaType.YAML)
             newValue = `[${newValue}]`;
 
         if (newValue) {
@@ -265,17 +263,16 @@ export default class MetaController {
         return null;
     }
 
-    public async updatePropertyInFile(property: string, newValue: string, file: TFile): Promise<void> {
-        const propertyIsYaml = await this.propertyIsYaml(property, file);
+    public async updatePropertyInFile(property: Partial<Property>, newValue: string, file: TFile): Promise<void> {
         const fileContent = await this.app.vault.read(file);
 
         const newFileContent = fileContent.split("\n").map(line => {
-            const regexp = new RegExp(`^\s*${property}:`);
+            const regexp = new RegExp(`^\s*${property.key}:`);
             if (line.match(regexp)) {
-                if (propertyIsYaml)
-                    line = `${property}: ${newValue}`;
+                if (property.type === MetaType.YAML)
+                    line = `${property.key}: ${newValue}`;
                 else
-                    line = `${property}:: ${newValue}`;
+                    line = `${property.key}:: ${newValue}`;
             }
 
             return line;
@@ -284,19 +281,17 @@ export default class MetaController {
         await this.app.vault.modify(file, newFileContent);
     }
 
-    private async updateMultipleInFile(props: {[key: string]: string}, file: TFile): Promise<void> {
+    private async updateMultipleInFile(properties: Property[], file: TFile): Promise<void> {
         const fileContent = (await this.app.vault.read(file)).split("\n");
 
-        for (const prop of Object.keys(props)) {
-            const regexp = new RegExp(`^\s*${prop}:`);
+        for (const prop of properties) {
+            const regexp = new RegExp(`^\s*${prop.key}:`);
             for (let i = 0; i < fileContent.length; i++) {
                 if (fileContent[i].match(regexp)) {
-                    const isYamlProp = await this.propertyIsYaml(prop, file);
-
-                    if (isYamlProp)
-                        fileContent[i] = `${prop}: ${props[prop]}`;
+                    if (prop.type === MetaType.YAML)
+                        fileContent[i] = `${prop.key}: ${prop.content}`;
                     else
-                        fileContent[i] = `${prop}:: ${props[prop]}`;
+                        fileContent[i] = `${prop.key}:: ${prop.content}`;
                 }
             }
         }

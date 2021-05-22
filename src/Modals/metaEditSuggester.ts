@@ -1,61 +1,56 @@
 import {App, FuzzyMatch, FuzzySuggestModal, TFile} from "obsidian";
 import type MetaEdit from "../main";
 import type MetaController from "../metaController";
-import type {SuggestData} from "../Types/suggestData";
+import type {Property} from "../parser";
+import {MAIN_SUGGESTER_OPTIONS, newDataView, newYaml} from "../constants";
+import {MetaType} from "../Types/metaType";
+import {concat} from "svelte-preprocess/dist/modules/utils";
 
-const newYaml: string = "New YAML property";
-const newDataView: string = "New Dataview field";
-
-export default class MetaEditSuggester extends FuzzySuggestModal<string> {
+export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     public app: App;
     private readonly file: TFile;
     private plugin: MetaEdit;
-    private readonly data: SuggestData;
-    private readonly options: SuggestData;
+    private readonly data: Property[];
+    private readonly options: Property[];
     private controller: MetaController;
 
-    constructor(app: App, plugin: MetaEdit, data: SuggestData, file: TFile, controller: MetaController) {
+    constructor(app: App, plugin: MetaEdit, data: Property[], file: TFile, controller: MetaController) {
         super(app);
         this.file = file;
         this.app = app;
         this.plugin = plugin;
-        this.data = data;
+        this.data = this.removeIgnored(data);
         this.controller = controller;
-        this.options = {
-            newYaml, newDataView
-        }
+        this.options = MAIN_SUGGESTER_OPTIONS;
+
 
         this.setInstructions([
             {command: "❌", purpose: "Delete property"},
             {command: "🔃", purpose: "Transform to YAML/Dataview"}
         ])
-        this.removeIgnored();
     }
 
-    renderSuggestion(item: FuzzyMatch<string>, el: HTMLElement) {
+    renderSuggestion(item: FuzzyMatch<Property>, el: HTMLElement) {
         super.renderSuggestion(item, el);
 
         if (Object.values(this.options).find(v => v === item.item)) {
             el.style.fontWeight = "bold";
         } else {
-            this.createButton(el, item, "❌", this.deleteItem(item));
-            this.createButton(el, item, "🔃", this.transformProperty(item))
+            this.createButton(el,"❌", this.deleteItem(item));
+            this.createButton(el, "🔃", this.transformProperty(item))
         }
     }
 
-    getItemText(item: string): string {
-        return item;
+    getItemText(item: Property): string {
+        return item.key;
     }
 
-    getItems(): string[] {
-        const dataKeys = Object.keys(this.data);
-        const optionKeys = Object.values(this.options);
-
-        return [...optionKeys, ...dataKeys];
+    getItems(): Property[] {
+        return concat(this.options, this.data);
     }
 
-    async onChooseItem(item: string, evt: MouseEvent | KeyboardEvent): Promise<void> {
-        if (item === newYaml) {
+    async onChooseItem(item: Property, evt: MouseEvent | KeyboardEvent): Promise<void> {
+        if (item.content === newYaml) {
             const newProperty = await this.controller.createNewProperty();
             if (!newProperty) return null;
 
@@ -64,7 +59,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
             return;
         }
 
-        if (item === newDataView) {
+        if (item.content === newDataView) {
             const newProperty = await this.controller.createNewProperty();
             if (!newProperty) return null;
 
@@ -76,7 +71,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
         await this.controller.editMetaElement(item, this.data, this.file);
     }
 
-    private deleteItem(item: FuzzyMatch<string>) {
+    private deleteItem(item: FuzzyMatch<Property>) {
         return async (evt: MouseEvent) => {
             evt.stopPropagation();
             console.log(`Clicked delete for ${item.item}`)
@@ -85,33 +80,31 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
         };
     }
 
-    private transformProperty(item: FuzzyMatch<string>) {
+    private transformProperty(item: FuzzyMatch<Property>) {
         return async (evt: MouseEvent | KeyboardEvent) => {
             evt.stopPropagation();
-
-            if (this.controller.propertyIsYaml(item.item, this.file)) {
-                await this.toDataview(item);
+            const {item: property} = item;
+            if (property.type === MetaType.YAML) {
+                await this.toDataview(property);
             } else {
-                await this.toYaml(item);
+                await this.toYaml(property);
             }
 
             this.close();
         }
     }
 
-    private async toYaml(item: FuzzyMatch<string>) {
-        const content: string = this.data[item.item];
-        await this.controller.deleteProperty(item.item, this.file);
-        await this.controller.addYamlProp(item.item, content, this.file);
+    private async toYaml(property: Property) {
+        await this.controller.deleteProperty(property, this.file);
+        await this.controller.addYamlProp(property.key, property.content, this.file);
     }
 
-    private async toDataview(item: FuzzyMatch<string>) {
-            const content: string = this.data[item.item];
-            await this.controller.deleteProperty(item.item, this.file);
-            await this.controller.addDataviewField(item.item, content, this.file);
+    private async toDataview(property: Property) {
+        await this.controller.deleteProperty(property, this.file);
+        await this.controller.addDataviewField(property.key, property.content, this.file);
     }
 
-    private createButton(el: HTMLElement, item: FuzzyMatch<string>, content: string, callback: (evt: MouseEvent) => void) {
+    private createButton(el: HTMLElement, content: string, callback: (evt: MouseEvent) => void) {
         const itemButton = el.createEl("button");
         itemButton.textContent = content;
         itemButton.classList.add("not-a-button");
@@ -120,13 +113,15 @@ export default class MetaEditSuggester extends FuzzySuggestModal<string> {
         itemButton.addEventListener("click", callback);
     }
 
-    private removeIgnored(): void {
+    private removeIgnored(data: Property[]): Property[] {
         const ignored = this.plugin.settings.IgnoredProperties.properties;
-        const data = Object.keys(this.data);
+        let purged: Property[] = [];
 
-        ignored.forEach(prop => {
-            if (data.contains(prop))
-                delete this.data[prop];
-        })
+        for (let item in data) {
+            if (!ignored.contains(data[item].key))
+                purged.push(data[item]);
+        }
+
+        return purged;
     }
 }
