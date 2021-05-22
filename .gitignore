@@ -1,3 +1,5 @@
+.env
+
 # Intellij
 *.iml
 .idea
@@ -7,7 +9,7 @@ node_modules
 package-lock.json
 
 # build
-main.js
+dist/main.js
 *.js.map
 
 # obsidian
