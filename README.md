@@ -12,6 +12,7 @@
 - Transform properties between YAML and Dataview
 - Delete properties easily
 - Auto update properties in files linked to from Kanban boards on lane change
+- Edit metadata through a filemenu
 
 ### Installation
 This plugin has not yet been added to the community plugin browser in Obsidian.
