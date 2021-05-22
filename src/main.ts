@@ -5,6 +5,7 @@ import MetaController from "./metaController";
 import type {MetaEditSettings} from "./Settings/metaEditSettings";
 import {DEFAULT_SETTINGS} from "./Settings/defaultSettings";
 import {LinkMenu} from "./Modals/LinkMenu";
+import type {Property} from "./parser";
 
 export default class MetaEdit extends Plugin {
     public settings: MetaEditSettings;
@@ -46,6 +47,7 @@ export default class MetaEdit extends Plugin {
             callback: async () => {
                 const file: TFile = this.getCurrentFile();
                 if (!file) return;
+
                 await this.runMetaEditForFile(file);
             }
         });
@@ -57,7 +59,7 @@ export default class MetaEdit extends Plugin {
     }
 
     public async runMetaEditForFile(file: TFile) {
-        const data = await this.controller.getPropertiesInFile(file);
+        const data: Property[] = await this.controller.getPropertiesInFile(file);
         if (!data) return;
 
         const suggester: MEMainSuggester = new MEMainSuggester(this.app, this, data, file, this.controller);
@@ -164,7 +166,7 @@ export default class MetaEdit extends Plugin {
                             return;
                         }
 
-                        await this.controller.updatePropertyInFile(board.property, heading, linkFile);
+                        await this.controller.updatePropertyInFile({key: board.property}, heading, linkFile);
                     }
                 }
             }
