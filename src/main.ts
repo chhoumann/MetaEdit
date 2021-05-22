@@ -1,9 +1,10 @@
-import {debounce, Notice, Plugin, TAbstractFile, TFile} from 'obsidian';
+import {debounce, Notice, Plugin, TAbstractFile, TFile, TFolder} from 'obsidian';
 import {MetaEditSettingsTab} from "./Settings/metaEditSettingsTab";
 import MEMainSuggester from "./Modals/metaEditSuggester";
 import MetaController from "./metaController";
 import type {MetaEditSettings} from "./Settings/metaEditSettings";
 import {DEFAULT_SETTINGS} from "./Settings/defaultSettings";
+import {LinkMenu} from "./Modals/LinkMenu";
 
 export default class MetaEdit extends Plugin {
     public settings: MetaEditSettings;
@@ -45,17 +46,22 @@ export default class MetaEdit extends Plugin {
             callback: async () => {
                 const file: TFile = this.getCurrentFile();
                 if (!file) return;
-                const data = await this.controller.getPropertiesInFile(file);
-                if (!data) return;
-
-                const suggester: MEMainSuggester = new MEMainSuggester(this.app, this, data, file, this.controller);
-                suggester.open();
+                await this.runMetaEditForFile(file);
             }
         });
 
         this.onModifyCallbackToggle(true);
 
         this.addSettingTab(new MetaEditSettingsTab(this.app, this));
+        new LinkMenu(this);
+    }
+
+    public async runMetaEditForFile(file: TFile) {
+        const data = await this.controller.getPropertiesInFile(file);
+        if (!data) return;
+
+        const suggester: MEMainSuggester = new MEMainSuggester(this.app, this, data, file, this.controller);
+        suggester.open();
     }
 
     onunload() {
