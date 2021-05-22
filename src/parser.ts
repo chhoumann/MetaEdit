@@ -9,7 +9,7 @@ export default class MetaEditParser {
     }
 
     public async parseFrontmatter(file: TFile): Promise<{ [key: string]: any }> {
-        const frontmatter = this.app.metadataCache.getFileCache(file).frontmatter;
+        const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
         if (!frontmatter) return {};
         const {position: {start, end}} = frontmatter;
         const filecontent = await this.app.vault.read(file);

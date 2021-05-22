@@ -266,7 +266,7 @@ export default class MetaController {
     }
 
     public async updatePropertyInFile(property: string, newValue: string, file: TFile) {
-        const propertyIsYaml = this.propertyIsYaml(property, file);
+        const propertyIsYaml = await this.propertyIsYaml(property, file);
         const fileContent = await this.app.vault.read(file);
 
         const newFileContent = fileContent.split("\n").map(line => {
