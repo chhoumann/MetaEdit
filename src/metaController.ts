@@ -321,7 +321,6 @@ export default class MetaController {
 
     private updatePropertyLine(property: Partial<Property>, newValue: string) {
         let newLine: string;
-
         switch (property.type) {
             case MetaType.Dataview:
                 newLine = `${property.key}:: ${newValue}`;
@@ -344,6 +343,7 @@ export default class MetaController {
                 }
                 break;
             default:
+                newLine = property.key;
                 break;
         }
 
