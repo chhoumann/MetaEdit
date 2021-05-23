@@ -287,7 +287,7 @@ export default class MetaController {
         return false;
     }
 
-    private async handleAutoProperties(propertyName: string): Promise<string> {
+    public async handleAutoProperties(propertyName: string): Promise<string> {
         const autoProp = this.plugin.settings.AutoProperties.properties.find(a => a.name === propertyName);
 
         if (this.plugin.settings.AutoProperties.enabled && autoProp) {

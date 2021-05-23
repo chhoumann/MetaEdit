@@ -1,4 +1,4 @@
-import {debounce, Notice, Plugin, TAbstractFile, TFile, TFolder} from 'obsidian';
+import {debounce, Notice, Plugin, TAbstractFile, TFile} from 'obsidian';
 import {MetaEditSettingsTab} from "./Settings/metaEditSettingsTab";
 import MEMainSuggester from "./Modals/metaEditSuggester";
 import MetaController from "./metaController";
@@ -6,10 +6,13 @@ import type {MetaEditSettings} from "./Settings/metaEditSettings";
 import {DEFAULT_SETTINGS} from "./Settings/defaultSettings";
 import {LinkMenu} from "./Modals/LinkMenu";
 import type {Property} from "./parser";
+import type {IMetaEditApi} from "./IMetaEditApi";
+import {MetaEditApi} from "./MetaEditApi";
 
 export default class MetaEdit extends Plugin {
     public settings: MetaEditSettings;
     public linkMenu: LinkMenu;
+    public api: IMetaEditApi;
     private controller: MetaController;
     private updatedFileCache: { [fileName: string]: { content: string, updateTime: number } } = {};
     private onModifyCallback = debounce(async (file: TAbstractFile) => {
@@ -61,6 +64,8 @@ export default class MetaEdit extends Plugin {
         if (this.settings.UIElements.enabled) {
             this.linkMenu.registerEvent();
         }
+
+        this.api = new MetaEditApi(this).make();
     }
 
     public async runMetaEditForFile(file: TFile) {
