@@ -33,7 +33,8 @@ const {autoprop} = this.app.plugins.plugins["MetaEdit"].api;
 ```
 
 ### Demo
-![aB8wa5vim2](https://user-images.githubusercontent.com/29108628/119262712-77150e80-bbdc-11eb-85ff-bb94d8b30809.gif)
+![3EfcPLYkj6](https://user-images.githubusercontent.com/29108628/119262986-85175f00-bbdd-11eb-8073-424fe9ec93c2.gif)
+
 
 ### `autoprop(propertyName: string)`
 Takes a string containing a property name. Looks for the property in user settings and will open a suggester with possible values for that property.
