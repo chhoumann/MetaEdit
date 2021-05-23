@@ -302,9 +302,7 @@ export default class MetaController {
         const fileContent = await this.app.vault.read(file);
 
         const newFileContent = fileContent.split("\n").map(line => {
-            const regexp = new RegExp(`^\s*${property.key}`);
-
-            if (line.match(regexp)) {
+            if (this.lineMatch(property, line)) {
                 return this.updatePropertyLine(property, newValue);
             }
 
@@ -312,6 +310,13 @@ export default class MetaController {
         }).join("\n");
 
         await this.app.vault.modify(file, newFileContent);
+    }
+
+    private lineMatch(property: Partial<Property>, line: string) {
+        const propertyRegex = new RegExp(`^\s*${property.key}:`);
+        const tagRegex = new RegExp(`^\s*#${property.key}`);
+
+        return line.match(propertyRegex) || line.match(tagRegex);
     }
 
     private updatePropertyLine(property: Partial<Property>, newValue: string) {
@@ -349,9 +354,9 @@ export default class MetaController {
         let fileContent = (await this.app.vault.read(file)).split("\n");
 
         for (const prop of properties) {
-            const regexp = new RegExp(`^\s*${prop.key}`);
             fileContent = fileContent.map(line => {
-                if (line.match(regexp)) {
+
+                if (this.lineMatch(prop, line)) {
                     return this.updatePropertyLine(prop, prop.content)
                 }
 
