@@ -24,4 +24,7 @@ export interface MetaEditSettings {
         enabled: boolean,
         boards: KanbanProperty[]
     }
+    UIElements: {
+        enabled: boolean
+    }
 }
