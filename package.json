@@ -1,6 +1,6 @@
 {
   "name": "metaedit",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "description": "MetaEdit helps you manage your metadata.",
   "main": "main.js",
   "scripts": {
