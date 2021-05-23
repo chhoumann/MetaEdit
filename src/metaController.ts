@@ -302,9 +302,10 @@ export default class MetaController {
         const fileContent = await this.app.vault.read(file);
 
         const newFileContent = fileContent.split("\n").map(line => {
-            const regexp = new RegExp(`^\s*${property.key}`);
+            const propertyRegex = new RegExp(`^\s*${property.key}:`);
+            const tagRegex = new RegExp(`^\s*#${property.key}`);
 
-            if (line.match(regexp)) {
+            if (line.match(propertyRegex) || line.match(tagRegex)) {
                 return this.updatePropertyLine(property, newValue);
             }
 
@@ -350,8 +351,11 @@ export default class MetaController {
 
         for (const prop of properties) {
             const regexp = new RegExp(`^\s*${prop.key}`);
+            const tagRegex = new RegExp(`^\s*#${prop.key}`);
+            
             fileContent = fileContent.map(line => {
-                if (line.match(regexp)) {
+
+                if (line.match(regexp) || line.match(tagRegex)) {
                     return this.updatePropertyLine(prop, prop.content)
                 }
 
