@@ -21,5 +21,8 @@ export const DEFAULT_SETTINGS: MetaEditSettings = Object.freeze({
     KanbanHelper: {
         enabled: false,
         boards: []
+    },
+    UIElements: {
+        enabled: true
     }
 });

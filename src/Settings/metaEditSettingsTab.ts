@@ -42,6 +42,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
         this.addIgnorePropertiesSetting(containerEl);
         this.addEditModeSetting(containerEl);
         this.addKanbanHelperSetting(containerEl);
+        this.addUIElementsSetting(containerEl);
     }
 
     private addProgressPropertiesSetting(containerEl: HTMLElement) {
@@ -216,7 +217,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
             .setDesc("Update properties in links in kanban boards automatically when a card is moved to a new lane.")
             .addToggle(toggle => {
                 toggle
-                    .setTooltip("Toggle Kanban Helepr")
+                    .setTooltip("Toggle Kanban Helper")
                     .setValue(this.plugin.settings.KanbanHelper.enabled)
                     .onChange(async value => {
                         if (value === this.plugin.settings.KanbanHelper.enabled) return;
@@ -247,5 +248,24 @@ export class MetaEditSettingsTab extends PluginSettingTab {
         });
 
         this.svelteElements.push(modal);
+    }
+
+    private addUIElementsSetting(containerEl: HTMLElement) {
+        new Setting(containerEl)
+            .setName("UI Elements")
+            .setDesc("Toggle UI elements: the 'Edit Meta' right-click menu option.")
+            .addToggle(toggle => {
+                toggle
+                    .setTooltip("Toggle UI elements")
+                    .setValue(this.plugin.settings.UIElements.enabled)
+                    .onChange(async value => {
+                        if (value === this.plugin.settings.UIElements.enabled) return;
+
+                        this.plugin.settings.UIElements.enabled = value;
+                        value ? this.plugin.linkMenu.registerEvent() : this.plugin.linkMenu.unregisterEvent();
+
+                        await this.plugin.saveSettings();
+                    });
+            })
     }
 }

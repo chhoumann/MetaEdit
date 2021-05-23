@@ -9,6 +9,7 @@ import type {Property} from "./parser";
 
 export default class MetaEdit extends Plugin {
     public settings: MetaEditSettings;
+    public linkMenu: LinkMenu;
     private controller: MetaController;
     private updatedFileCache: { [fileName: string]: { content: string, updateTime: number } } = {};
     private onModifyCallback = debounce(async (file: TAbstractFile) => {
@@ -55,7 +56,11 @@ export default class MetaEdit extends Plugin {
         this.onModifyCallbackToggle(true);
 
         this.addSettingTab(new MetaEditSettingsTab(this.app, this));
-        new LinkMenu(this);
+        this.linkMenu = new LinkMenu(this);
+
+        if (this.settings.UIElements.enabled) {
+            this.linkMenu.registerEvent();
+        }
     }
 
     public async runMetaEditForFile(file: TFile) {
@@ -69,6 +74,7 @@ export default class MetaEdit extends Plugin {
     onunload() {
         console.log('Unloading MetaEdit');
         this.onModifyCallbackToggle(false);
+        this.linkMenu.unregisterEvent();
     }
 
     public getCurrentFile() {
