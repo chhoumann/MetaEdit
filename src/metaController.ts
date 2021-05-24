@@ -314,7 +314,7 @@ export default class MetaController {
 
     private lineMatch(property: Partial<Property>, line: string) {
         const propertyRegex = new RegExp(`^\s*${property.key}:`);
-        const tagRegex = new RegExp(`^\s*#${property.key}`);
+        const tagRegex = new RegExp(`^\s*${property.key}`);
 
         return line.match(propertyRegex) || line.match(tagRegex);
     }
