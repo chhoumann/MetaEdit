@@ -17,12 +17,12 @@ export default class MetaEdit extends Plugin {
     private updatedFileCache: { [fileName: string]: { content: string, updateTime: number } } = {};
     private onModifyCallback = debounce(async (file: TAbstractFile) => {
        if (file instanceof TFile) {
-           await this.onModifyProxy(file, async (file) => {
+           await this.onModifyProxy(file, async (pFile, fileContent) => {
                if (this.settings.ProgressProperties.enabled) {
-                   await this.updateProgressProperties(file);
+                   await this.updateProgressProperties(pFile);
                }
                if (this.settings.KanbanHelper.enabled) {
-                   await this.kanbanHelper(file);
+                   await this.kanbanHelper(pFile, fileContent);
                }
            })
        }
@@ -82,9 +82,15 @@ export default class MetaEdit extends Plugin {
         this.linkMenu.unregisterEvent();
     }
 
-    public getCurrentFile() {
+    public getCurrentFile(): TFile {
         try {
-            return this.app.workspace.getActiveFile();
+            const currentFile = this.app.workspace.getActiveFile();
+
+            if (currentFile.extension === "md")
+                return currentFile;
+
+            this.logError("file is not a markdown file.");
+            return null;
         }
         catch (e) {
             this.logError("could not get current file content.");
@@ -117,9 +123,14 @@ export default class MetaEdit extends Plugin {
         let files: TFile[] = [];
 
         markdownFiles.forEach(file => {
-            const fileFrontmatter = this.app.metadataCache.getFileCache(file).frontmatter;
-            if (fileFrontmatter && fileFrontmatter[property]) {
-                files.push(file);
+            const fileCache = this.app.metadataCache.getFileCache(file);
+
+            if (fileCache) {
+                const fileFrontmatter = fileCache.frontmatter;
+
+                if (fileFrontmatter && fileFrontmatter[property]) {
+                    files.push(file);
+                }
             }
         });
 
@@ -158,11 +169,12 @@ export default class MetaEdit extends Plugin {
         }
     }
 
-    private async kanbanHelper(file: TFile) {
-        const fileContent = await this.app.vault.read(file);
+    private async kanbanHelper(file: TFile, fileContent: string) {
+        //const fileContent = await this.app.vault.read(file);
         const boards = this.settings.KanbanHelper.boards;
         const board = boards.find(board => board.boardName === file.basename);
         const fileCache = this.app.metadataCache.getFileCache(file);
+
         if (board && fileCache) {
             const {links} = fileCache;
 
@@ -177,7 +189,12 @@ export default class MetaEdit extends Plugin {
                             return;
                         }
 
-                        await this.controller.updatePropertyInFile({key: board.property}, heading, linkFile);
+                        const fileProperties: Property[] = await this.controller.getPropertiesInFile(linkFile);
+                        if (!fileProperties) return;
+                        const targetProperty = fileProperties.find(prop => prop.key === board.property);
+                        if (!targetProperty) return;
+
+                        await this.controller.updatePropertyInFile(targetProperty, heading, linkFile);
                     }
                 }
             }

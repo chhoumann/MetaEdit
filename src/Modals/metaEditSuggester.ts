@@ -74,7 +74,6 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     private deleteItem(item: FuzzyMatch<Property>) {
         return async (evt: MouseEvent) => {
             evt.stopPropagation();
-            console.log(`Clicked delete for ${item.item}`)
             await this.controller.deleteProperty(item.item, this.file);
             this.close();
         };
