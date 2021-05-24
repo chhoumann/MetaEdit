@@ -13,7 +13,7 @@
     let inputEl: HTMLInputElement;
 
     onMount(() => {
-        if (suggestValues.length > 0)
+        if (suggestValues && suggestValues.length > 0)
             suggester = new GenericTextSuggester(app, inputEl, suggestValues);
 
         inputEl.select();
