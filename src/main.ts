@@ -34,16 +34,16 @@ export default class MetaEdit extends Plugin {
 
         await this.loadSettings();
 
-        if (process.env.BUILD !== 'production') {
-            this.addCommand({
-                id: 'reloadMetaEdit',
-                name: 'Reload MetaEdit (dev)',
-                callback: () => { // @ts-ignore - for this.app.plugins
-                    const id: string = this.manifest.id, plugins = this.app.plugins;
-                    plugins.disablePlugin(id).then(() => plugins.enablePlugin(id));
-                },
-            });
-        }
+        /*START.DEVCMD*/
+        this.addCommand({
+            id: 'reloadMetaEdit',
+            name: 'Reload MetaEdit (dev)',
+            callback: () => { // @ts-ignore - for this.app.plugins
+                const id: string = this.manifest.id, plugins = this.app.plugins;
+                plugins.disablePlugin(id).then(() => plugins.enablePlugin(id));
+            },
+        });
+        /*END.DEVCMD*/
 
         this.addCommand({
             id: 'metaEditRun',
