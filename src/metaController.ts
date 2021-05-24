@@ -139,8 +139,8 @@ export default class MetaController {
         }
     }
 
-    public async createNewProperty() {
-        let propName = await GenericPrompt.Prompt(this.app, "Enter a property name", "Property");
+    public async createNewProperty(suggestValues?: string[]) {
+        let propName = await GenericPrompt.Prompt(this.app, "Enter a property name", "Property", "", suggestValues);
         if (!propName) return null;
 
         let propValue: string;

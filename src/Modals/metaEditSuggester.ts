@@ -5,6 +5,7 @@ import type {Property} from "../parser";
 import {MAIN_SUGGESTER_OPTIONS, newDataView, newYaml} from "../constants";
 import {MetaType} from "../Types/metaType";
 import {concat} from "svelte-preprocess/dist/modules/utils";
+import type {AutoProperty} from "../Types/autoProperty";
 
 export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     public app: App;
@@ -13,6 +14,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     private readonly data: Property[];
     private readonly options: Property[];
     private controller: MetaController;
+    private suggestValues: string[];
 
     constructor(app: App, plugin: MetaEdit, data: Property[], file: TFile, controller: MetaController) {
         super(app);
@@ -23,6 +25,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
         this.controller = controller;
         this.options = MAIN_SUGGESTER_OPTIONS;
 
+        this.setSuggestValues();
 
         this.setInstructions([
             {command: "❌", purpose: "Delete property"},
@@ -51,7 +54,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
 
     async onChooseItem(item: Property, evt: MouseEvent | KeyboardEvent): Promise<void> {
         if (item.content === newYaml) {
-            const newProperty = await this.controller.createNewProperty();
+            const newProperty = await this.controller.createNewProperty(this.suggestValues);
             if (!newProperty) return null;
 
             const {propName, propValue} = newProperty;
@@ -60,7 +63,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
         }
 
         if (item.content === newDataView) {
-            const newProperty = await this.controller.createNewProperty();
+            const newProperty = await this.controller.createNewProperty(this.suggestValues);
             if (!newProperty) return null;
 
             const {propName, propValue} = newProperty;
@@ -122,5 +125,17 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
         }
 
         return purged;
+    }
+
+    private setSuggestValues() {
+        const autoProps = this.plugin.settings.AutoProperties.properties;
+
+        this.suggestValues = autoProps.reduce((arr: string[], val: AutoProperty) => {
+            if (!this.data.find(prop => val.name === prop.key || val.name.startsWith('#'))) {
+                arr.push(val.name);
+            }
+
+            return arr;
+        }, []);
     }
 }

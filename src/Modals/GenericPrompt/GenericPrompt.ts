@@ -7,20 +7,22 @@ export default class GenericPrompt extends Modal {
     private input: string;
     public waitForClose: Promise<string>;
 
-    public static Prompt(app: App, header: string, placeholder?: string, value?: string): Promise<string> {
-        const newPromptModal = new GenericPrompt(app, header, placeholder, value);
+    public static Prompt(app: App, header: string, placeholder?: string, value?: string, suggestValues?: string[]): Promise<string> {
+        const newPromptModal = new GenericPrompt(app, header, placeholder, value, suggestValues);
         return newPromptModal.waitForClose;
     }
 
-    private constructor(app: App, header: string, placeholder?: string, value?: string) {
+    private constructor(app: App, header: string, placeholder?: string, value?: string, suggestValues?: string[]) {
         super(app);
 
         this.modalContent = new GenericPromptContent({
             target: this.contentEl,
             props: {
+                app,
                 header,
                 placeholder,
                 value,
+                suggestValues,
                 onSubmit: (input: string) => {
                     this.input = input;
                     this.close();
