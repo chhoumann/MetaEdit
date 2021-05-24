@@ -4,6 +4,7 @@ import commonjs from '@rollup/plugin-commonjs';
 import svelte from "rollup-plugin-svelte";
 import autoPreprocess from "svelte-preprocess";
 import stripCode from "rollup-plugin-strip-code";
+
 export default {
   input: 'src/main.ts',
   output: {
@@ -20,9 +21,9 @@ export default {
       emitCss: false,
       preprocess: autoPreprocess(),
     }),
-    stripCode({
+    process.env["BUILD"] ? stripCode({
       start_comment: 'START.DEVCMD',
       end_comment: 'END.DEVCMD'
-    })
+    }) : null
   ]
 };
