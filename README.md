@@ -95,7 +95,7 @@ dv.table(["Name", "Status", "Project", "Due Date", ""], dv.pages("#tasks")
 Requires [Dataview](https://github.com/blacksmithgu/obsidian-dataview).
 ````
 ```dataviewjs
-const {update} = this.app.plugins.plugins["MetaEdit"].api;
+const {update} = this.app.plugins.plugins["metaedit"].api;
 const buttonMaker = (pn, pv, fpath) => {
     const btn = this.container.createEl('button', {"text": "Done!"});
     const file = this.app.vault.getAbstractFileByPath(fpath)
