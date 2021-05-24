@@ -1,9 +1,0 @@
-{
-  "plugins": [
-    ["obsidian", { "dir": "./dist", "zip": true }]
-  ],
-  "owner": "chhoumann",
-  "repo": "MetaEdit",
-  "name": "Christian B. B. Houmann",
-  "email": "christian@bagerbach.com"
-}

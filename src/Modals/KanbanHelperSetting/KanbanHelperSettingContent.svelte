@@ -3,7 +3,6 @@
     import {KanbanHelperSettingSuggester} from "./KanbanHelperSettingSuggester";
     import type {App, TFile} from "obsidian";
     import {onMount} from "svelte";
-    import type {Property} from "../../parser";
 
     export let save: (kanbanProperties: KanbanProperty[]) => void;
     export let kanbanProperties: KanbanProperty[] = [];

@@ -241,7 +241,6 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                 app: this.app,
                 save: async (kanbanProperties: KanbanProperty[]) => {
                     this.plugin.settings.KanbanHelper.boards = kanbanProperties;
-                    console.log(this.plugin.settings.KanbanHelper.boards);
                     await this.plugin.saveSettings();
                 }
             },
