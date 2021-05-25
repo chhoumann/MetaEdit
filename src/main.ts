@@ -8,28 +8,34 @@ import {LinkMenu} from "./Modals/LinkMenu";
 import type {Property} from "./parser";
 import type {IMetaEditApi} from "./IMetaEditApi";
 import {MetaEditApi} from "./MetaEditApi";
+import {UniqueQueue} from "./uniqueQueue";
+import {UpdatedFileCache} from "./updatedFileCache";
 
 export default class MetaEdit extends Plugin {
     public settings: MetaEditSettings;
     public linkMenu: LinkMenu;
     public api: IMetaEditApi;
     private controller: MetaController;
-    private updatedFileCache: { [fileName: string]: { content: string, updateTime: number } } = {};
-    private onModifyCallback = debounce(async (file: TAbstractFile) => {
-       if (file instanceof TFile) {
-           await this.onModifyProxy(file, async (pFile, fileContent) => {
-               if (this.settings.ProgressProperties.enabled) {
-                   await this.updateProgressProperties(pFile);
-               }
-               if (this.settings.KanbanHelper.enabled) {
-                   await this.kanbanHelper(pFile, fileContent);
-               }
-           })
-       }
-    }, 4000, false);
+    private updateFileQueue: UniqueQueue<TFile>;
+    private updatedFileCache: UpdatedFileCache;
+    private update = debounce(async () => {
+        while (!this.updateFileQueue.isEmpty()) {
+            const file = this.updateFileQueue.dequeue();
+
+            if (this.settings.ProgressProperties.enabled) {
+                await this.updateProgressProperties(file);
+            }
+            if (this.settings.KanbanHelper.enabled) {
+                await this.kanbanHelper(file);
+            }
+        }
+    }, 5000, true);
 
     async onload() {
         this.controller = new MetaController(this.app, this);
+        this.updateFileQueue = new UniqueQueue<TFile>();
+        this.updatedFileCache = new UpdatedFileCache();
+
         console.log('Loading MetaEdit');
 
         await this.loadSettings();
@@ -83,19 +89,22 @@ export default class MetaEdit extends Plugin {
     }
 
     public getCurrentFile(): TFile {
-        try {
-            const currentFile = this.app.workspace.getActiveFile();
+        const currentFile = this.abstractFileToMarkdownTFile(this.app.workspace.getActiveFile());
 
-            if (currentFile.extension === "md")
-                return currentFile;
-
-            this.logError("file is not a markdown file.");
-            return null;
-        }
-        catch (e) {
+        if (!currentFile) {
             this.logError("could not get current file content.");
             return null;
         }
+
+        return currentFile;
+    }
+
+    public abstractFileToMarkdownTFile(file: TAbstractFile): TFile {
+        if (file instanceof TFile && file.extension === "md")
+            return file;
+
+        this.logError("file is not a markdown file.");
+        return null;
     }
 
     public onModifyCallbackToggle(enable: boolean) {
@@ -137,6 +146,20 @@ export default class MetaEdit extends Plugin {
         return files;
     }
 
+    private onModifyCallback = async (file: TAbstractFile) => await this.onModify(file);
+
+    private async onModify(file: TAbstractFile) {
+        const outfile: TFile = this.abstractFileToMarkdownTFile(file);
+        if (!outfile) return;
+
+        const fileContent = await this.app.vault.cachedRead(outfile);
+        if (!this.updatedFileCache.set(file.path, fileContent)) return;
+
+        if (this.updateFileQueue.enqueue(outfile)) {
+            await this.update();
+        }
+    }
+
     private async updateProgressProperties(file: TFile) {
         const data = await this.controller.getPropertiesInFile(file);
         if (!data) return;
@@ -144,32 +167,8 @@ export default class MetaEdit extends Plugin {
         await this.controller.handleProgressProps(data, file);
     }
 
-    private async onModifyProxy(file: TFile, callback: (file: TFile, fileContent: string) => void) {
+    private async kanbanHelper(file: TFile) {
         const fileContent = await this.app.vault.read(file);
-
-        if (!this.updatedFileCache[file.name] || fileContent !== this.updatedFileCache[file.name].content) {
-            this.updatedFileCache[file.name] = {
-                content: fileContent,
-                updateTime: Date.now(),
-            };
-
-            await callback(file, fileContent);
-        }
-
-        this.cleanCache();
-    }
-
-    private cleanCache() {
-        const five_minutes = 18000;
-
-        for (let cacheItem in this.updatedFileCache) {
-            if (this.updatedFileCache[cacheItem].updateTime < Date.now() - five_minutes) {
-                delete this.updatedFileCache[cacheItem];
-            }
-        }
-    }
-
-    private async kanbanHelper(file: TFile, fileContent: string) {
         const boards = this.settings.KanbanHelper.boards;
         const board = boards.find(board => board.boardName === file.basename);
         const fileCache = this.app.metadataCache.getFileCache(file);
