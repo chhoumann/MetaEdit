@@ -8,7 +8,7 @@ on:
       - '*' # Push events to matching any tag format, i.e. 1.0, 20.15.10
 
 env:
-  PLUGIN_NAME: MetaEdit
+  PLUGIN_NAME: metaedit # plugin id
 
 jobs:
   build:
