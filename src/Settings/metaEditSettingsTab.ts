@@ -89,7 +89,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
             .setDesc("Quick switch for values you know the value of.")
             .addToggle(toggle => {
                 toggle
-                    .setTooltip("Toggle Progress Properties")
+                    .setTooltip("Toggle Auto Properties")
                     .setValue(this.plugin.settings.AutoProperties.enabled)
                     .onChange(async value => {
                         if (value === this.plugin.settings.AutoProperties.enabled) return;
@@ -126,7 +126,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
             .setDesc("Hide these properties from the menu.")
             .addToggle(toggle => {
                 toggle
-                    .setTooltip("Toggle Progress Properties")
+                    .setTooltip("Toggle Ignored Properties")
                     .setValue(this.plugin.settings.IgnoredProperties.enabled)
                     .onChange(async value => {
                         if (value === this.plugin.settings.IgnoredProperties.enabled) return;

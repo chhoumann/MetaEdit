@@ -123,13 +123,12 @@ export default class MetaController {
             if (!enabled) return;
 
             const tasks = this.app.metadataCache.getFileCache(file)?.listItems?.filter(li => li.task);
+            if (!tasks) return;
             let total: number = 0, complete: number = 0, incomplete: number = 0;
 
-            if (tasks) {
-                total = tasks.length;
-                complete = tasks.filter(i => i.task != " ").length;
-                incomplete = total - complete;
-            }
+            total = tasks.length;
+            complete = tasks.filter(i => i.task != " ").length;
+            incomplete = total - complete;
 
             const props = await this.progressPropHelper(properties, meta, {total, complete, incomplete});
             await this.updateMultipleInFile(props, file);
@@ -139,8 +138,8 @@ export default class MetaController {
         }
     }
 
-    public async createNewProperty() {
-        let propName = await GenericPrompt.Prompt(this.app, "Enter a property name", "Property");
+    public async createNewProperty(suggestValues?: string[]) {
+        let propName = await GenericPrompt.Prompt(this.app, "Enter a property name", "Property", "", suggestValues);
         if (!propName) return null;
 
         let propValue: string;
