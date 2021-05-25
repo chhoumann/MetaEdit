@@ -129,7 +129,7 @@ export default class MetaController {
                 total = tasks.length;
                 complete = tasks.filter(i => i.task != " ").length;
                 incomplete = total - complete;
-            }
+            } else return;
 
             const props = await this.progressPropHelper(properties, meta, {total, complete, incomplete});
             await this.updateMultipleInFile(props, file);
