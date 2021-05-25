@@ -168,7 +168,7 @@ export default class MetaEdit extends Plugin {
     }
 
     private async kanbanHelper(file: TFile) {
-        const fileContent = await this.app.vault.read(file);
+        const fileContent = await this.app.vault.cachedRead(file);
         const boards = this.settings.KanbanHelper.boards;
         const board = boards.find(board => board.boardName === file.basename);
         const fileCache = this.app.metadataCache.getFileCache(file);
