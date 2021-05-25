@@ -26,7 +26,7 @@ export default class MetaEditParser {
         const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
         if (!frontmatter) return [];
         const {position: {start, end}} = frontmatter;
-        const filecontent = await this.app.vault.read(file);
+        const filecontent = await this.app.vault.cachedRead(file);
 
         const yamlContent: string = filecontent.split("\n").slice(start.line, end.line).join("\n");
         const parsedYaml = parseYaml(yamlContent);
@@ -41,7 +41,7 @@ export default class MetaEditParser {
     }
 
     public async parseInlineFields(file: TFile): Promise<Property[]> {
-        const content = await this.app.vault.read(file);
+        const content = await this.app.vault.cachedRead(file);
 
         return content.split("\n").reduce((obj: Property[], str: string) => {
             let parts = str.split("::");
