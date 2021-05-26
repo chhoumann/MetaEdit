@@ -311,11 +311,15 @@ export default class MetaController {
         await this.app.vault.modify(file, newFileContent);
     }
 
-    private lineMatch(property: Partial<Property>, line: string) {
-        const propertyRegex = new RegExp(`^\s*${property.key}:`);
+    private lineMatch(property: Partial<Property>, line: string): boolean {
+        const propertyRegex = new RegExp(`^\s*${property.key}\:{1,2}`);
         const tagRegex = new RegExp(`^\s*${property.key}`);
 
-        return line.match(propertyRegex) || line.match(tagRegex);
+        if (property.key.contains('#')) {
+            return tagRegex.test(line);
+        }
+
+        return propertyRegex.test(line);
     }
 
     private updatePropertyLine(property: Partial<Property>, newValue: string) {
