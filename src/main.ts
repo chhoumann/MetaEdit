@@ -10,6 +10,7 @@ import type {IMetaEditApi} from "./IMetaEditApi";
 import {MetaEditApi} from "./MetaEditApi";
 import {UniqueQueue} from "./uniqueQueue";
 import {UpdatedFileCache} from "./updatedFileCache";
+import {AutoPropertyMenu} from "./Modals/autoPropertyMenu";
 
 export default class MetaEdit extends Plugin {
     public settings: MetaEditSettings;
@@ -102,8 +103,7 @@ export default class MetaEdit extends Plugin {
     public abstractFileToMarkdownTFile(file: TAbstractFile): TFile {
         if (file instanceof TFile && file.extension === "md")
             return file;
-
-        this.logError("file is not a markdown file.");
+        
         return null;
     }
 
