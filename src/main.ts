@@ -10,7 +10,6 @@ import type {IMetaEditApi} from "./IMetaEditApi";
 import {MetaEditApi} from "./MetaEditApi";
 import {UniqueQueue} from "./uniqueQueue";
 import {UpdatedFileCache} from "./updatedFileCache";
-import {AutoPropertyMenu} from "./Modals/autoPropertyMenu";
 
 export default class MetaEdit extends Plugin {
     public settings: MetaEditSettings;
