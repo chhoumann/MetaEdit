@@ -6,7 +6,7 @@ export class UniqueQueue<T> {
     }
 
     public enqueue(item: T): boolean {
-        if (this.elements.contains(item)) {
+        if (this.elements.find(i => i === item)) {
             return false;
         }
 
@@ -24,5 +24,9 @@ export class UniqueQueue<T> {
 
     public isEmpty(): boolean {
         return this.elements.length === 0;
+    }
+
+    public length(): number {
+        return this.elements.length;
     }
 }

@@ -102,8 +102,7 @@ export default class MetaEdit extends Plugin {
     public abstractFileToMarkdownTFile(file: TAbstractFile): TFile {
         if (file instanceof TFile && file.extension === "md")
             return file;
-
-        this.logError("file is not a markdown file.");
+        
         return null;
     }
 
