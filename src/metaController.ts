@@ -34,7 +34,7 @@ export default class MetaController {
     }
 
     public async addYamlProp(propName: string, propValue: string, file: TFile): Promise<void> {
-        const fileContent: string = await this.app.vault.cachedRead(file);
+        const fileContent: string = await this.app.vault.read(file);
         const frontmatter: FrontMatterCache = this.app.metadataCache.getFileCache(file).frontmatter;
         const isYamlEmpty: boolean = (frontmatter === undefined && !fileContent.match(/^-{3}\s*\n*\r*-{3}/));
 
@@ -59,7 +59,7 @@ export default class MetaController {
     }
 
     public async addDataviewField(propName: string, propValue: string, file: TFile): Promise<void> {
-        const fileContent: string = await this.app.vault.cachedRead(file);
+        const fileContent: string = await this.app.vault.read(file);
         let lines = fileContent.split("\n").reduce((obj: {[key: string]: string}, line: string, idx: number) => {
             obj[idx] = !!line ? line : "";
             return obj;
@@ -158,7 +158,7 @@ export default class MetaController {
     }
 
     public async deleteProperty(property: Property, file: TFile): Promise<void> {
-        const fileContent = await this.app.vault.cachedRead(file);
+        const fileContent = await this.app.vault.read(file);
         const splitContent = fileContent.split("\n");
         const regexp = new RegExp(`^\s*${property.key}:`);
 
@@ -298,7 +298,7 @@ export default class MetaController {
     }
 
     public async updatePropertyInFile(property: Partial<Property>, newValue: string, file: TFile): Promise<void> {
-        const fileContent = await this.app.vault.cachedRead(file);
+        const fileContent = await this.app.vault.read(file);
 
         const newFileContent = fileContent.split("\n").map(line => {
             if (this.lineMatch(property, line)) {
@@ -354,7 +354,7 @@ export default class MetaController {
     }
 
     private async updateMultipleInFile(properties: Property[], file: TFile): Promise<void> {
-        let fileContent = (await this.app.vault.cachedRead(file)).split("\n");
+        let fileContent = (await this.app.vault.read(file)).split("\n");
 
         for (const prop of properties) {
             fileContent = fileContent.map(line => {
