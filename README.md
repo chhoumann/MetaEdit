@@ -17,7 +17,7 @@
 - API to use in other plugins and Templater templates.
 
 ## Installation
-This plugin has not yet been added to the community plugin browser in Obsidian.
+This plugin is in the community plugin browser in Obsidian. Search for MetaEdit and you can install it from there.
 
 ### Manual Installation
 1. Go to [Releases](https://github.com/chhoumann/MetaEdit/releases) and download the ZIP file from the latest release.
