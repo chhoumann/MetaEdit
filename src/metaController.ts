@@ -148,13 +148,13 @@ export default class MetaController {
         if (autoProp) {
             propValue = autoProp;
         } else {
-            propValue = await GenericPrompt.Prompt(this.app, "Enter a property value", "Value");
-            propValue = propValue.trim()
+            propValue = await GenericPrompt.Prompt(this.app, "Enter a property value", "Value")
+                .catch(() => null);
         }
 
-        if (!propValue) return null;
+        if (propValue === null) return null;
 
-        return {propName, propValue};
+        return {propName, propValue: propValue.trim()};
     }
 
     public async deleteProperty(property: Property, file: TFile): Promise<void> {

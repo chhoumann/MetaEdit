@@ -1,24 +1,24 @@
 import {App, PluginSettingTab, Setting} from "obsidian";
 import type MetaEdit from "../main";
 import {EditMode} from "../Types/editMode";
-import ProgressPropertiesModalContent from "../Modals/ProgressPropertiesSettingModal/ProgressPropertiesModalContent.svelte";
+import ProgressPropertiesModalContent
+    from "../Modals/ProgressPropertiesSettingModal/ProgressPropertiesModalContent.svelte";
 import AutoPropertiesModalContent from "../Modals/AutoPropertiesSettingModal/AutoPropertiesModalContent.svelte";
 import KanbanHelperSettingContent from "../Modals/KanbanHelperSetting/KanbanHelperSettingContent.svelte";
-import SingleValueTableEditorContent
-    from "../Modals/shared/SingleValueTableEditorContent.svelte";
+import SingleValueTableEditorContent from "../Modals/shared/SingleValueTableEditorContent.svelte";
 import type {ProgressProperty} from "../Types/progressProperty";
 import type {AutoProperty} from "../Types/autoProperty";
 import type {KanbanProperty} from "../Types/kanbanProperty";
 
-function toggleHidden(div: HTMLDivElement, hidden: boolean) {
-    if (div && !hidden) {
-        div.style.display = "none";
+function toggleHiddenEl(el: HTMLElement, bShow: boolean) {
+    if (el && !bShow) {
+        el.style.display = "none";
         return true;
-    } else if (div && hidden) {
-        div.style.display = "block";
+    } else if (el && bShow) {
+        el.style.display = "block";
         return false;
     }
-    return hidden;
+    return bShow;
 }
 
 export class MetaEditSettingsTab extends PluginSettingTab {
@@ -62,7 +62,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
             })
-            .addExtraButton(button => button.onClick(() => hidden = toggleHidden(div, hidden)))
+            .addExtraButton(button => button.onClick(() => hidden = toggleHiddenEl(div, hidden)))
 
         div = setting.settingEl.createDiv();
         setting.settingEl.style.display = "block";
@@ -99,7 +99,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
             })
-            .addExtraButton(b => b.onClick(() => hidden = toggleHidden(div, hidden)));
+            .addExtraButton(b => b.onClick(() => hidden = toggleHiddenEl(div, hidden)));
 
         div = setting.settingEl.createDiv();
         setting.settingEl.style.display = "block";
@@ -136,7 +136,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                         this.display();
                     });
-            }).addExtraButton(b => b.onClick(() => hidden = toggleHidden(div, hidden)))
+            }).addExtraButton(b => b.onClick(() => hidden = toggleHiddenEl(div, hidden)))
 
         if (this.plugin.settings.IgnoredProperties.enabled) {
             div = setting.settingEl.createDiv();
@@ -159,10 +159,17 @@ export class MetaEditSettingsTab extends PluginSettingTab {
     }
 
     private addEditModeSetting(containerEl: HTMLElement) {
-        let modal: any, div: HTMLDivElement, hidden: boolean = true;
+        let modal: any, div: HTMLDivElement, bDivToggle: boolean = true, extraButtonEl, bExtraButtonToggle: boolean = true;
+
+        // For linebreaks
+        const df = new DocumentFragment();
+        df.createEl('p', {text: "Single: property values are just one value. "});
+        df.createEl('p', {text: "Multi: properties are arrays. "})
+        df.createEl('p', {text: "Some Multi: all options are single, except those specified in the settings (click button)."});
+
         const setting = new Setting(containerEl)
             .setName("Edit Mode")
-            .setDesc("Single: property values are just one value. Multi: properties are arrays.")
+            .setDesc(df)
             .addDropdown(dropdown => {
                 dropdown
                     .addOption(EditMode.AllSingle, EditMode.AllSingle)
@@ -173,19 +180,32 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                         switch (value) {
                             case EditMode.AllMulti:
                                 this.plugin.settings.EditMode.mode = EditMode.AllMulti;
+                                bExtraButtonToggle = toggleHiddenEl(extraButtonEl, false);
+                                bDivToggle = toggleHiddenEl(div, false);
                                 break;
                             case EditMode.AllSingle:
                                 this.plugin.settings.EditMode.mode = EditMode.AllSingle;
+                                bExtraButtonToggle = toggleHiddenEl(extraButtonEl, false);
+                                bDivToggle = toggleHiddenEl(div, false);
                                 break;
                             case EditMode.SomeMulti:
                                 this.plugin.settings.EditMode.mode = EditMode.SomeMulti;
+                                bExtraButtonToggle = toggleHiddenEl(extraButtonEl, true);
                                 break;
                         }
 
                         await this.plugin.saveSettings();
                     })
             })
-            .addExtraButton(b => b.onClick(() => hidden = toggleHidden(div, hidden)));
+            .addExtraButton(b => {
+                extraButtonEl = b.extraSettingsEl;
+                b.setTooltip("Configure which properties are Multi.")
+                return b.onClick(() => bDivToggle = toggleHiddenEl(div, bDivToggle));
+            });
+
+        if (this.plugin.settings.EditMode.mode != EditMode.SomeMulti) {
+            bExtraButtonToggle = toggleHiddenEl(extraButtonEl, false);
+        }
 
         div = setting.settingEl.createDiv();
         setting.settingEl.style.display = "block";
@@ -227,7 +247,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
             })
-            .addExtraButton(button => button.onClick(() => hidden = toggleHidden(div, hidden)))
+            .addExtraButton(button => button.onClick(() => hidden = toggleHiddenEl(div, hidden)))
 
         div = setting.settingEl.createDiv();
         setting.settingEl.style.display = "block";
