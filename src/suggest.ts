@@ -139,10 +139,17 @@ export abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
         const inputStr = this.inputEl.value;
         const suggestions = this.getSuggestions(inputStr);
 
+        if (!suggestions) {
+            this.close();
+            return;
+        }
+
         if (suggestions.length > 0) {
             this.suggest.setSuggestions(suggestions);
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             this.open((<any>this.app).dom.appContainerEl, this.inputEl);
+        } else {
+            this.close()
         }
     }
 

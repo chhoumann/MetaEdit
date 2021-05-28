@@ -9,10 +9,14 @@ export class GenericTextSuggester extends TextInputSuggest<string> {
 
     getSuggestions(inputStr: string): string[] {
         const inputLowerCase: string = inputStr.toLowerCase();
-        return this.items.map(item => {
+        const filtered = this.items.filter(item => {
             if (item.toLowerCase().contains(inputLowerCase))
                 return item;
         });
+
+        if (!filtered) this.close();
+        if (filtered?.length === 1) return [inputStr, ...filtered]
+        if (filtered?.length > 1) return filtered;
     }
 
     selectSuggestion(item: string): void {
