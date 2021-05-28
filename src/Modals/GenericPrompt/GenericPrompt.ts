@@ -6,6 +6,8 @@ export default class GenericPrompt extends Modal {
     private resolvePromise: (input: string) => void;
     private input: string;
     public waitForClose: Promise<string>;
+    private rejectPromise: (reason?: any) => void;
+    private didSubmit: boolean = false;
 
     public static Prompt(app: App, header: string, placeholder?: string, value?: string, suggestValues?: string[]): Promise<string> {
         const newPromptModal = new GenericPrompt(app, header, placeholder, value, suggestValues);
@@ -25,13 +27,17 @@ export default class GenericPrompt extends Modal {
                 suggestValues,
                 onSubmit: (input: string) => {
                     this.input = input;
+                    this.didSubmit = true;
                     this.close();
                 }
             }
         });
 
         this.waitForClose = new Promise<string>(
-            (resolve) => (this.resolvePromise = resolve)
+            (resolve, reject) => {
+                this.resolvePromise = resolve;
+                this.rejectPromise = reject;
+            }
         );
 
         this.open();
@@ -49,6 +55,8 @@ export default class GenericPrompt extends Modal {
     onClose() {
         super.onClose();
         this.modalContent.$destroy();
-        this.resolvePromise(this.input);
+
+        if(!this.didSubmit) this.rejectPromise("No input given.");
+        else this.resolvePromise(this.input);
     }
 }
