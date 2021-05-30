@@ -1,8 +1,9 @@
 import type MetaEdit from "../main";
-import {EventRef, Menu, TAbstractFile, TFile} from "obsidian";
+import {EventRef, Menu, TAbstractFile, TFile, TFolder} from "obsidian";
 
 export class LinkMenu {
     private targetFile: TFile;
+    private targetFolder: TFolder;
     private eventRef: EventRef;
 
     constructor(private plugin: MetaEdit) {}
@@ -20,22 +21,38 @@ export class LinkMenu {
     }
 
     private onMenuOpenCallback(menu: Menu, file: TAbstractFile, source: string) {
-        if ((source === "link-context-menu" ||
+        const bCorrectSource: boolean = (source === "link-context-menu" ||
             source === "calendar-context-menu" ||
-            source =="file-explorer-context-menu")
-            && file instanceof TFile)
+            source =="file-explorer-context-menu");
+        if (bCorrectSource)
         {
-            this.targetFile = file;
-            this.addOptions(menu);
+            if (file instanceof TFile && file.extension === "md") {
+                this.targetFile = file;
+                this.addFileOptions(menu);
+            }
+            if (file instanceof TFolder && file.children && file.children.some(f => f instanceof TFile && f.extension === "md")) {
+                this.targetFolder = file;
+                this.addFolderOptions(menu);
+            }
         }
     }
 
-    private addOptions(menu: Menu) {
+    private addFileOptions(menu: Menu) {
         menu.addItem(item => {
             item.setIcon('pencil');
             item.setTitle("Edit Meta");
             item.onClick(async evt => {
-                await this.plugin.runMetaEditForFile(this.targetFile);
+                await this.plugin.runMetaEditForFolder(this.targetFolder);
+            })
+        })
+    }
+
+    private addFolderOptions(menu: Menu) {
+        menu.addItem(item => {
+            item.setIcon('pencil');
+            item.setTitle("Add YAML property to all files in this folder (and subfolders)");
+            item.onClick(async evt => {
+                await this.plugin.runMetaEditForFolder(this.targetFolder);
             })
         })
     }

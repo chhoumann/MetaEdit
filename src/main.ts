@@ -1,4 +1,4 @@
-import {debounce, Notice, Plugin, TAbstractFile, TFile} from 'obsidian';
+import {debounce, Notice, Plugin, TAbstractFile, TFile, TFolder} from 'obsidian';
 import {MetaEditSettingsTab} from "./Settings/metaEditSettingsTab";
 import MEMainSuggester from "./Modals/metaEditSuggester";
 import MetaController from "./metaController";
@@ -10,6 +10,7 @@ import type {IMetaEditApi} from "./IMetaEditApi";
 import {MetaEditApi} from "./MetaEditApi";
 import {UniqueQueue} from "./uniqueQueue";
 import {UpdatedFileCache} from "./updatedFileCache";
+import GenericPrompt from "./Modals/GenericPrompt/GenericPrompt";
 
 export default class MetaEdit extends Plugin {
     public settings: MetaEditSettings;
@@ -72,6 +73,8 @@ export default class MetaEdit extends Plugin {
         }
 
         this.api = new MetaEditApi(this).make();
+
+
     }
 
     public async runMetaEditForFile(file: TFile) {
@@ -217,6 +220,26 @@ export default class MetaEdit extends Plugin {
         }
 
         return null;
+    }
+
+    public async runMetaEditForFolder(targetFolder: TFolder) {
+        const pName = await GenericPrompt.Prompt(this.app, `Add a new property to all files in ${targetFolder.name} (and subfolders)`);
+        if (!pName) return;
+
+        const pVal = await GenericPrompt.Prompt(this.app, "Enter a value");
+        if (!pVal) return;
+
+        const updateFilesInFolder = async (targetFolder: TFolder, propertyName: string, propertyValue: string) => {
+            for (const child of targetFolder.children) {
+                if (child instanceof TFile && child.extension == "md")
+                    await this.controller.addYamlProp(pName, pVal, child);
+
+                if (child instanceof TFolder)
+                    await updateFilesInFolder(child, propertyName, propertyValue);
+            }
+        }
+
+        await updateFilesInFolder(targetFolder, pName, pVal);
     }
 }
 
