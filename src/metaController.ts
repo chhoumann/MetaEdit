@@ -291,7 +291,7 @@ export default class MetaController {
 
         if (this.plugin.settings.AutoProperties.enabled && autoProp) {
             const options = autoProp.choices;
-            return await GenericSuggester.Suggest(this.app, options, options);
+            return await GenericPrompt.Prompt(this.app, `Enter a new value for ${propertyName}`, '', '', options);
         }
 
         return null;
