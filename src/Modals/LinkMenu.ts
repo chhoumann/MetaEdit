@@ -42,7 +42,7 @@ export class LinkMenu {
             item.setIcon('pencil');
             item.setTitle("Edit Meta");
             item.onClick(async evt => {
-                await this.plugin.runMetaEditForFolder(this.targetFolder);
+                await this.plugin.runMetaEditForFile(this.targetFile);
             })
         })
     }
