@@ -9,6 +9,7 @@ import {ADD_FIRST_ELEMENT, ADD_TO_BEGINNING, ADD_TO_END} from "./constants";
 import type {ProgressProperty} from "./Types/progressProperty";
 import {ProgressPropertyOptions} from "./Types/progressPropertyOptions";
 import {MetaType} from "./Types/metaType";
+import {Notice} from "obsidian";
 
 export default class MetaController {
     private parser: MetaEditParser;
@@ -35,8 +36,13 @@ export default class MetaController {
 
     public async addYamlProp(propName: string, propValue: string, file: TFile): Promise<void> {
         const fileContent: string = await this.app.vault.read(file);
-        const frontmatter: FrontMatterCache = this.app.metadataCache.getFileCache(file).frontmatter;
-        const isYamlEmpty: boolean = (frontmatter === undefined && !fileContent.match(/^-{3}\s*\n*\r*-{3}/));
+        const frontmatter: Property[] = await this.parser.parseFrontmatter(file);
+        const isYamlEmpty: boolean = ((!frontmatter || frontmatter.length === 0) && !fileContent.match(/^-{3}\s*\n*\r*-{3}/));
+
+        if (frontmatter.some(value => value.key === propName)) {
+            new Notice(`Frontmatter in file '${file.name}' already has property '${propName}. Will not add.'`);
+            return;
+        }
 
         const settings = this.plugin.settings;
         if (settings.EditMode.mode === EditMode.AllMulti ||
