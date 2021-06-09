@@ -27,6 +27,9 @@ This plugin is in the community plugin browser in Obsidian. Search for MetaEdit 
 
 https://user-images.githubusercontent.com/29108628/119513092-3223e000-bd74-11eb-9060-3e0cae4dbef3.mp4
 
+## Guides
+### Kanban Helper Guide
+https://user-images.githubusercontent.com/29108628/121333246-ebf48200-c918-11eb-889b-23b9a80299b2.mp4
 
 ## API
 You can access the API by using `app.plugins.plugins["metaedit"].api`.
