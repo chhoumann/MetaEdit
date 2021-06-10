@@ -189,7 +189,7 @@ export default class MetaEdit extends Plugin {
                     if (linkFile instanceof TFile) {
                         const headingAttempt1 = this.getTaskHeading(linkFile.path.replace('.md', ''), fileContent);
                         const headingAttempt2 = this.getTaskHeading(link.link, fileContent);
-                        const heading = headingAttempt1 || headingAttempt2;
+                        const heading = headingAttempt1 ?? headingAttempt2;
 
                         if (!heading) {
                             this.logError("could not open linked file (KanbanHelper)");
@@ -221,7 +221,7 @@ export default class MetaEdit extends Plugin {
             }
 
             const taskMatch = TASK_REGEX.exec(line);
-            if (taskMatch && taskMatch[3] === `[[${taskName}]]`) {
+            if (taskMatch && taskMatch[3].includes(`${taskName}`)) {
                 return lastHeading;
             }
         }
