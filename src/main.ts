@@ -180,7 +180,11 @@ export default class MetaEdit extends Plugin {
 
             if (links) {
                 for (const link of links) {
-                    const linkFile: TAbstractFile = this.app.vault.getAbstractFileByPath(`${link.link}.md`);
+                    // Because of how links are formatted, I have to do it this way.
+                    // If there are duplicates (two files with the same name) for a link, the path will be in the link.
+                    // If not, the link won't specify the folder. Therefore, we check all files.
+                    const markdownFiles: TFile[] = this.app.vault.getMarkdownFiles();
+                    const linkFile: TFile = markdownFiles.find(f => f.path.includes(`${link.link}.md`));
 
                     if (linkFile instanceof TFile) {
                         const heading = this.getTaskHeading(link.link, fileContent);
