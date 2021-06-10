@@ -187,7 +187,10 @@ export default class MetaEdit extends Plugin {
                     const linkFile: TFile = markdownFiles.find(f => f.path.includes(`${link.link}.md`));
 
                     if (linkFile instanceof TFile) {
-                        const heading = this.getTaskHeading(link.link, fileContent);
+                        const headingAttempt1 = this.getTaskHeading(linkFile.path.replace('.md', ''), fileContent);
+                        const headingAttempt2 = this.getTaskHeading(link.link, fileContent);
+                        const heading = headingAttempt1 || headingAttempt2;
+
                         if (!heading) {
                             this.logError("could not open linked file (KanbanHelper)");
                             return;
