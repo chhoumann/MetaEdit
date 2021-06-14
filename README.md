@@ -53,6 +53,12 @@ If the file is a string, it should be the file path. Otherwise, a `TFile` is fin
 
 This is an asynchronous function, so you should `await` it.
 
+### `getPropertyValue(propertyName: string, file: TFile | string)`
+Gets the value of the given property in the given file.
+
+If the file is a string, it should be the file path. Otherwise, a `TFile` is fine.
+
+This is an asynchronous function, so you should `await` it.
 
 ### API Examples
 #### New Task template (requires [Templater](https://github.com/SilentVoid13/Templater))
