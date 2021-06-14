@@ -12,6 +12,7 @@ export class MetaEditApi {
         return {
             autoprop: this.getAutopropFunction(),
             update: this.getUpdateFunction(),
+            getPropertyValue: this.getGetPropertyValueFunction(),
         };
     }
 
@@ -48,5 +49,20 @@ export class MetaEditApi {
         }
 
         return targetFile;
+    }
+
+    private getGetPropertyValueFunction(): (propertyName: string, file: (TFile | string)) => Promise<any> {
+        return async (propertyName: string, file: TFile | string) => {
+            const targetFile = this.getFileFromTFileOrPath(file);
+            if (!targetFile) return;
+
+            const controller: MetaController = new MetaController(this.plugin.app, this.plugin);
+            const propsInFile: Property[] = await controller.getPropertiesInFile(targetFile);
+
+            const targetProperty = propsInFile.find(prop => prop.key === propertyName);
+            if (!targetProperty) return;
+
+            return targetProperty.content;
+        }
     }
 }
