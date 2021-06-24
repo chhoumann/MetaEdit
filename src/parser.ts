@@ -2,7 +2,7 @@ import type {App, TFile} from "obsidian";
 import {parseYaml} from "obsidian";
 import {MetaType} from "./Types/metaType";
 
-export type Property = {key: string, content: string, type: MetaType};
+export type Property = {key: string, content: any, type: MetaType};
 
 export default class MetaEditParser {
     private app: App;
@@ -34,7 +34,7 @@ export default class MetaEditParser {
         let metaYaml: Property[] = [];
 
         for (const key in parsedYaml) {
-            metaYaml.push({key, content: parsedYaml[key]?.toString(), type: MetaType.YAML});
+            metaYaml.push({key, content: parsedYaml[key], type: MetaType.YAML});
         }
 
         return metaYaml;

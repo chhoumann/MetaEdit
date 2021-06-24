@@ -13,12 +13,14 @@ export class MetaEditApi {
             autoprop: this.getAutopropFunction(),
             update: this.getUpdateFunction(),
             getPropertyValue: this.getGetPropertyValueFunction(),
+            getFilesWithProperty: this.getGetFilesWithPropertyFunction(),
+            createYamlProperty: this.getCreateYamlPropertyFunction()
         };
     }
 
     private getAutopropFunction() {
         return (propertyName: string) => new MetaController(this.plugin.app, this.plugin).handleAutoProperties(propertyName);
-    }
+     }
 
     private getUpdateFunction(): (propertyName: string, propertyValue: string, file: (TFile | string)) => Promise<undefined | void> {
         return async (propertyName: string, propertyValue: string, file: TFile | string) => {
@@ -63,6 +65,22 @@ export class MetaEditApi {
             if (!targetProperty) return;
 
             return targetProperty.content;
+        }
+    }
+
+    private getGetFilesWithPropertyFunction() {
+        return (propertyName: string): TFile[] => {
+            return this.plugin.getFilesWithProperty(propertyName);
+        }
+    }
+
+    private getCreateYamlPropertyFunction() {
+        return async (propertyName: string, propertyValue: string, file: TFile | string) => {
+            const targetFile = this.getFileFromTFileOrPath(file);
+            if (!targetFile) return;
+
+            const controller: MetaController = new MetaController(this.plugin.app, this.plugin);
+            await controller.addYamlProp(propertyName, propertyValue, targetFile);
         }
     }
 }
