@@ -205,7 +205,7 @@ export default class MetaController {
         if (autoProp)
             newValue = autoProp;
         else
-            newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`, property.content);
+            newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`, property.content, property.content);
 
         if (newValue) {
             await this.updatePropertyInFile(property, newValue, file);
