@@ -11,6 +11,7 @@ import {MetaEditApi} from "./MetaEditApi";
 import {UniqueQueue} from "./uniqueQueue";
 import {UpdatedFileCache} from "./updatedFileCache";
 import GenericPrompt from "./Modals/GenericPrompt/GenericPrompt";
+import {getTaskHeading} from "./utility";
 
 export default class MetaEdit extends Plugin {
     public settings: MetaEditSettings;
@@ -187,8 +188,8 @@ export default class MetaEdit extends Plugin {
                     const linkFile: TFile = markdownFiles.find(f => f.path.includes(`${link.link}.md`));
 
                     if (linkFile instanceof TFile) {
-                        const headingAttempt1 = this.getTaskHeading(linkFile.path.replace('.md', ''), fileContent);
-                        const headingAttempt2 = this.getTaskHeading(link.link, fileContent);
+                        const headingAttempt1 = getTaskHeading(linkFile.path.replace('.md', ''), fileContent);
+                        const headingAttempt2 = getTaskHeading(link.link, fileContent);
                         const heading = headingAttempt1 ?? headingAttempt2;
 
                         if (!heading) {
@@ -206,27 +207,6 @@ export default class MetaEdit extends Plugin {
                 }
             }
         }
-    }
-
-    private getTaskHeading(taskName: string, fileContent: string): string | null {
-        const MARKDOWN_HEADING = new RegExp(/#+\s+(.+)/);
-        const TASK_REGEX = new RegExp(/(\s*)-\s*\[([ Xx\.]?)\]\s*(.+)/, "i");
-
-        let lastHeading: string = "";
-        const splitContent = fileContent.split("\n");
-        for (const line of splitContent) {
-            const heading = MARKDOWN_HEADING.exec(line);
-            if (heading) {
-                lastHeading = heading[1];
-            }
-
-            const taskMatch = TASK_REGEX.exec(line);
-            if (taskMatch && taskMatch[3].includes(`${taskName}`)) {
-                return lastHeading;
-            }
-        }
-
-        return null;
     }
 
     public async runMetaEditForFolder(targetFolder: TFolder) {
