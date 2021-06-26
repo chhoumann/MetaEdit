@@ -104,10 +104,6 @@ export default class MetaEdit extends Plugin {
         await this.saveData(this.settings);
     }
 
-    public logError(error: string) {
-        new Notice(`MetaEdit: ${error}`);
-    }
-
     public getFilesWithProperty(property: string): TFile[] {
         const markdownFiles = this.app.vault.getMarkdownFiles();
         let files: TFile[] = [];
