@@ -1,6 +1,6 @@
-import {Notice, Plugin, TFile, TFolder} from 'obsidian';
+import {Plugin, TFile, TFolder} from 'obsidian';
 import {MetaEditSettingsTab} from "./Settings/metaEditSettingsTab";
-import MEMainSuggester from "./Modals/metaEditSuggester";
+import MetaEditSuggester from "./Modals/metaEditSuggester";
 import MetaController from "./metaController";
 import type {MetaEditSettings} from "./Settings/metaEditSettings";
 import {DEFAULT_SETTINGS} from "./Settings/defaultSettings";
@@ -67,7 +67,7 @@ export default class MetaEdit extends Plugin {
         log.register(new ConsoleErrorLogger())
 			.register(new GuiLogger(this));
 
-        this.automatorManager = new OnFileModifyAutomatorManager(this);
+        this.automatorManager = new OnFileModifyAutomatorManager(this).startAutomators();
         this.toggleAutomators();
     }
 
@@ -87,7 +87,7 @@ export default class MetaEdit extends Plugin {
         const data: Property[] = await this.controller.getPropertiesInFile(file);
         if (!data) return;
 
-        const suggester: MEMainSuggester = new MEMainSuggester(this.app, this, data, file, this.controller);
+        const suggester: MetaEditSuggester = new MetaEditSuggester(this.app, this, data, file, this.controller);
         suggester.open();
     }
 
