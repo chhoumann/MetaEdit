@@ -11,13 +11,18 @@ import {MetaEditApi} from "./MetaEditApi";
 import {UniqueQueue} from "./uniqueQueue";
 import {UpdatedFileCache} from "./updatedFileCache";
 import GenericPrompt from "./Modals/GenericPrompt/GenericPrompt";
-import {getTaskHeading} from "./utility";
+import {abstractFileToMarkdownTFile, getActiveMarkdownFile} from "./utility";
+import {ConsoleErrorLogger} from "./logger/consoleErrorLogger";
+import {GuiLogger} from "./logger/guiLogger";
+import {log} from "./logger/logManager";
+import {KanbanHelper} from "./kanbanHelper";
 
 export default class MetaEdit extends Plugin {
     public settings: MetaEditSettings;
     public linkMenu: LinkMenu;
     public api: IMetaEditApi;
-    private controller: MetaController;
+    public controller: MetaController;
+
     private updateFileQueue: UniqueQueue<TFile>;
     private updatedFileCache: UpdatedFileCache;
     private update = debounce(async () => {
@@ -28,7 +33,7 @@ export default class MetaEdit extends Plugin {
                 await this.updateProgressProperties(file);
             }
             if (this.settings.KanbanHelper.enabled) {
-                await this.kanbanHelper(file);
+                await new KanbanHelper(this).onFileModify(file);
             }
         }
     }, 5000, true);
@@ -57,7 +62,7 @@ export default class MetaEdit extends Plugin {
             id: 'metaEditRun',
             name: 'Run MetaEdit',
             callback: async () => {
-                const file: TFile = this.getCurrentFile();
+                const file: TFile = getActiveMarkdownFile(this.app);
                 if (!file) return;
 
                 await this.runMetaEditForFile(file);
@@ -75,7 +80,8 @@ export default class MetaEdit extends Plugin {
 
         this.api = new MetaEditApi(this).make();
 
-
+        log.register(new ConsoleErrorLogger())
+			.register(new GuiLogger(this));
     }
 
     public async runMetaEditForFile(file: TFile) {
@@ -90,24 +96,6 @@ export default class MetaEdit extends Plugin {
         console.log('Unloading MetaEdit');
         this.onModifyCallbackToggle(false);
         this.linkMenu.unregisterEvent();
-    }
-
-    public getCurrentFile(): TFile {
-        const currentFile = this.abstractFileToMarkdownTFile(this.app.workspace.getActiveFile());
-
-        if (!currentFile) {
-            this.logError("could not get current file content.");
-            return null;
-        }
-
-        return currentFile;
-    }
-
-    public abstractFileToMarkdownTFile(file: TAbstractFile): TFile {
-        if (file instanceof TFile && file.extension === "md")
-            return file;
-        
-        return null;
     }
 
     public onModifyCallbackToggle(enable: boolean) {
@@ -152,7 +140,7 @@ export default class MetaEdit extends Plugin {
     private onModifyCallback = async (file: TAbstractFile) => await this.onModify(file);
 
     private async onModify(file: TAbstractFile) {
-        const outfile: TFile = this.abstractFileToMarkdownTFile(file);
+        const outfile: TFile = abstractFileToMarkdownTFile(file);
         if (!outfile) return;
 
         const fileContent = await this.app.vault.cachedRead(outfile);
@@ -168,45 +156,6 @@ export default class MetaEdit extends Plugin {
         if (!data) return;
 
         await this.controller.handleProgressProps(data, file);
-    }
-
-    private async kanbanHelper(file: TFile) {
-        const fileContent = await this.app.vault.cachedRead(file);
-        const boards = this.settings.KanbanHelper.boards;
-        const board = boards.find(board => board.boardName === file.basename);
-        const fileCache = this.app.metadataCache.getFileCache(file);
-
-        if (board && fileCache) {
-            const {links} = fileCache;
-
-            if (links) {
-                for (const link of links) {
-                    // Because of how links are formatted, I have to do it this way.
-                    // If there are duplicates (two files with the same name) for a link, the path will be in the link.
-                    // If not, the link won't specify the folder. Therefore, we check all files.
-                    const markdownFiles: TFile[] = this.app.vault.getMarkdownFiles();
-                    const linkFile: TFile = markdownFiles.find(f => f.path.includes(`${link.link}.md`));
-
-                    if (linkFile instanceof TFile) {
-                        const headingAttempt1 = getTaskHeading(linkFile.path.replace('.md', ''), fileContent);
-                        const headingAttempt2 = getTaskHeading(link.link, fileContent);
-                        const heading = headingAttempt1 ?? headingAttempt2;
-
-                        if (!heading) {
-                            this.logError("could not open linked file (KanbanHelper)");
-                            return;
-                        }
-
-                        const fileProperties: Property[] = await this.controller.getPropertiesInFile(linkFile);
-                        if (!fileProperties) return;
-                        const targetProperty = fileProperties.find(prop => prop.key === board.property);
-                        if (!targetProperty) return;
-
-                        await this.controller.updatePropertyInFile(targetProperty, heading, linkFile);
-                    }
-                }
-            }
-        }
     }
 
     public async runMetaEditForFolder(targetFolder: TFolder) {

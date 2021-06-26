@@ -10,6 +10,7 @@ import type {ProgressProperty} from "./Types/progressProperty";
 import {ProgressPropertyOptions} from "./Types/progressPropertyOptions";
 import {MetaType} from "./Types/metaType";
 import {Notice} from "obsidian";
+import {log} from "./logger/logManager";
 
 export default class MetaController {
     private parser: MetaEditParser;
@@ -140,7 +141,7 @@ export default class MetaController {
             await this.updateMultipleInFile(props, file);
         }
         catch (e) {
-            this.plugin.logError(e);
+            log.logError(e);
         }
     }
 
