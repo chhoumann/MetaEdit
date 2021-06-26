@@ -58,6 +58,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                         if (value === this.plugin.settings.ProgressProperties.enabled) return;
 
                         this.plugin.settings.ProgressProperties.enabled = value;
+                        this.plugin.toggleAutomators();
 
                         await this.plugin.saveSettings();
                     });
@@ -243,6 +244,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                         if (value === this.plugin.settings.KanbanHelper.enabled) return;
 
                         this.plugin.settings.KanbanHelper.enabled = value;
+                        this.plugin.toggleAutomators();
 
                         await this.plugin.saveSettings();
                     });

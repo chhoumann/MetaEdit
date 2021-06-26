@@ -1,18 +1,17 @@
-import type {App, CachedMetadata, LinkCache, TFile} from "obsidian";
-import type MetaEdit from "./main";
-import type {KanbanProperty} from "./Types/kanbanProperty";
-import {abstractFileToMarkdownTFile} from "./utility";
-import {log} from "./logger/logManager";
-import type {Property} from "./parser";
+import type {CachedMetadata, LinkCache, TFile} from "obsidian";
+import type MetaEdit from "../../main";
+import type {KanbanProperty} from "../../Types/kanbanProperty";
+import {abstractFileToMarkdownTFile} from "../../utility";
+import {log} from "../../logger/logManager";
+import type {Property} from "../../parser";
+import {OnFileModifyAutomator} from "./onFileModifyAutomator";
+import {OnModifyAutomatorType} from "./onModifyAutomatorType";
 
-export class KanbanHelper {
-    private plugin: MetaEdit;
-    private app: App;
+export class KanbanHelper extends OnFileModifyAutomator {
     private get boards(): KanbanProperty[] { return this.plugin.settings.KanbanHelper.boards }
 
     constructor(plugin: MetaEdit) {
-        this.plugin = plugin;
-        this.app = plugin.app;
+        super(plugin, OnModifyAutomatorType.KanbanHelper);
     }
 
     public async onFileModify(file: TFile): Promise<void> {

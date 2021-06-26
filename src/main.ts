@@ -1,4 +1,4 @@
-import {debounce, Notice, Plugin, TAbstractFile, TFile, TFolder} from 'obsidian';
+import {Notice, Plugin, TFile, TFolder} from 'obsidian';
 import {MetaEditSettingsTab} from "./Settings/metaEditSettingsTab";
 import MEMainSuggester from "./Modals/metaEditSuggester";
 import MetaController from "./metaController";
@@ -8,42 +8,28 @@ import {LinkMenu} from "./Modals/LinkMenu";
 import type {Property} from "./parser";
 import type {IMetaEditApi} from "./IMetaEditApi";
 import {MetaEditApi} from "./MetaEditApi";
-import {UniqueQueue} from "./uniqueQueue";
-import {UpdatedFileCache} from "./updatedFileCache";
 import GenericPrompt from "./Modals/GenericPrompt/GenericPrompt";
-import {abstractFileToMarkdownTFile, getActiveMarkdownFile} from "./utility";
+import {getActiveMarkdownFile} from "./utility";
 import {ConsoleErrorLogger} from "./logger/consoleErrorLogger";
 import {GuiLogger} from "./logger/guiLogger";
 import {log} from "./logger/logManager";
-import {KanbanHelper} from "./kanbanHelper";
+import {OnFileModifyAutomatorManager} from "./automators/onFileModifyAutomatorManager";
+import type {IAutomatorManager} from "./automators/IAutomatorManager";
+import {KanbanHelper} from "./automators/onFileModifyAutomators/kanbanHelper";
+import {ProgressPropertyHelper} from "./automators/onFileModifyAutomators/progressPropertyHelper";
+import {OnModifyAutomatorType} from "./automators/onFileModifyAutomators/onModifyAutomatorType";
 
 export default class MetaEdit extends Plugin {
     public settings: MetaEditSettings;
     public linkMenu: LinkMenu;
     public api: IMetaEditApi;
     public controller: MetaController;
-
-    private updateFileQueue: UniqueQueue<TFile>;
-    private updatedFileCache: UpdatedFileCache;
-    private update = debounce(async () => {
-        while (!this.updateFileQueue.isEmpty()) {
-            const file = this.updateFileQueue.dequeue();
-
-            if (this.settings.ProgressProperties.enabled) {
-                await this.updateProgressProperties(file);
-            }
-            if (this.settings.KanbanHelper.enabled) {
-                await new KanbanHelper(this).onFileModify(file);
-            }
-        }
-    }, 5000, true);
+    private automatorManager: IAutomatorManager;
 
     async onload() {
-        this.controller = new MetaController(this.app, this);
-        this.updateFileQueue = new UniqueQueue<TFile>();
-        this.updatedFileCache = new UpdatedFileCache();
-
         console.log('Loading MetaEdit');
+
+        this.controller = new MetaController(this.app, this);
 
         await this.loadSettings();
 
@@ -69,8 +55,6 @@ export default class MetaEdit extends Plugin {
             }
         });
 
-        this.onModifyCallbackToggle(true);
-
         this.addSettingTab(new MetaEditSettingsTab(this.app, this));
         this.linkMenu = new LinkMenu(this);
 
@@ -82,6 +66,21 @@ export default class MetaEdit extends Plugin {
 
         log.register(new ConsoleErrorLogger())
 			.register(new GuiLogger(this));
+
+        this.automatorManager = new OnFileModifyAutomatorManager(this);
+        this.toggleAutomators();
+    }
+
+    public toggleAutomators() {
+        if (this.settings.KanbanHelper.enabled)
+            this.automatorManager.attach(new KanbanHelper(this));
+        else
+            this.automatorManager.detach(OnModifyAutomatorType.KanbanHelper);
+
+        if (this.settings.ProgressProperties.enabled)
+            this.automatorManager.attach(new ProgressPropertyHelper(this));
+        else
+            this.automatorManager.detach(OnModifyAutomatorType.ProgressProperties);
     }
 
     public async runMetaEditForFile(file: TFile) {
@@ -94,16 +93,7 @@ export default class MetaEdit extends Plugin {
 
     onunload() {
         console.log('Unloading MetaEdit');
-        this.onModifyCallbackToggle(false);
         this.linkMenu.unregisterEvent();
-    }
-
-    public onModifyCallbackToggle(enable: boolean) {
-        if (enable) {
-            this.app.vault.on("modify", this.onModifyCallback);
-        } else if (this.onModifyCallback && !enable) {
-            this.app.vault.off("modify", this.onModifyCallback);
-        }
     }
 
     async loadSettings() {
@@ -135,27 +125,6 @@ export default class MetaEdit extends Plugin {
         });
 
         return files;
-    }
-
-    private onModifyCallback = async (file: TAbstractFile) => await this.onModify(file);
-
-    private async onModify(file: TAbstractFile) {
-        const outfile: TFile = abstractFileToMarkdownTFile(file);
-        if (!outfile) return;
-
-        const fileContent = await this.app.vault.cachedRead(outfile);
-        if (!this.updatedFileCache.set(file.path, fileContent)) return;
-
-        if (this.updateFileQueue.enqueue(outfile)) {
-            await this.update();
-        }
-    }
-
-    private async updateProgressProperties(file: TFile) {
-        const data = await this.controller.getPropertiesInFile(file);
-        if (!data) return;
-
-        await this.controller.handleProgressProps(data, file);
     }
 
     public async runMetaEditForFolder(targetFolder: TFolder) {
