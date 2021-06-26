@@ -21,10 +21,14 @@ export class OnFileModifyAutomatorManager implements IAutomatorManager {
     constructor(plugin: MetaEdit) {
         this.plugin = plugin;
         this.app = plugin.app;
+    }
 
+    startAutomators(): IAutomatorManager {
         this.plugin.registerEvent(
             this.plugin.app.vault.on("modify", (file) => this.onFileModify(file))
         );
+
+        return this;
     }
 
     attach(automator: IOnFileModifyAutomator): IAutomatorManager {

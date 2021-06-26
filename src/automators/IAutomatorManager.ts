@@ -4,4 +4,5 @@ import type {OnModifyAutomatorType} from "./onFileModifyAutomators/onModifyAutom
 export interface IAutomatorManager {
     attach(automator: IOnFileModifyAutomator): IAutomatorManager;
     detach(automatorType: OnModifyAutomatorType): IAutomatorManager;
+    startAutomators(): IAutomatorManager;
 }
