@@ -1,6 +1,6 @@
-import {debounce, Notice, Plugin, TAbstractFile, TFile, TFolder} from 'obsidian';
+import {Plugin, TFile, TFolder} from 'obsidian';
 import {MetaEditSettingsTab} from "./Settings/metaEditSettingsTab";
-import MEMainSuggester from "./Modals/metaEditSuggester";
+import MetaEditSuggester from "./Modals/metaEditSuggester";
 import MetaController from "./metaController";
 import type {MetaEditSettings} from "./Settings/metaEditSettings";
 import {DEFAULT_SETTINGS} from "./Settings/defaultSettings";
@@ -8,36 +8,28 @@ import {LinkMenu} from "./Modals/LinkMenu";
 import type {Property} from "./parser";
 import type {IMetaEditApi} from "./IMetaEditApi";
 import {MetaEditApi} from "./MetaEditApi";
-import {UniqueQueue} from "./uniqueQueue";
-import {UpdatedFileCache} from "./updatedFileCache";
 import GenericPrompt from "./Modals/GenericPrompt/GenericPrompt";
+import {getActiveMarkdownFile} from "./utility";
+import {ConsoleErrorLogger} from "./logger/consoleErrorLogger";
+import {GuiLogger} from "./logger/guiLogger";
+import {log} from "./logger/logManager";
+import {OnFileModifyAutomatorManager} from "./automators/onFileModifyAutomatorManager";
+import type {IAutomatorManager} from "./automators/IAutomatorManager";
+import {KanbanHelper} from "./automators/onFileModifyAutomators/kanbanHelper";
+import {ProgressPropertyHelper} from "./automators/onFileModifyAutomators/progressPropertyHelper";
+import {OnModifyAutomatorType} from "./automators/onFileModifyAutomators/onModifyAutomatorType";
 
 export default class MetaEdit extends Plugin {
     public settings: MetaEditSettings;
     public linkMenu: LinkMenu;
     public api: IMetaEditApi;
-    private controller: MetaController;
-    private updateFileQueue: UniqueQueue<TFile>;
-    private updatedFileCache: UpdatedFileCache;
-    private update = debounce(async () => {
-        while (!this.updateFileQueue.isEmpty()) {
-            const file = this.updateFileQueue.dequeue();
-
-            if (this.settings.ProgressProperties.enabled) {
-                await this.updateProgressProperties(file);
-            }
-            if (this.settings.KanbanHelper.enabled) {
-                await this.kanbanHelper(file);
-            }
-        }
-    }, 5000, true);
+    public controller: MetaController;
+    private automatorManager: IAutomatorManager;
 
     async onload() {
-        this.controller = new MetaController(this.app, this);
-        this.updateFileQueue = new UniqueQueue<TFile>();
-        this.updatedFileCache = new UpdatedFileCache();
-
         console.log('Loading MetaEdit');
+
+        this.controller = new MetaController(this.app, this);
 
         await this.loadSettings();
 
@@ -56,14 +48,12 @@ export default class MetaEdit extends Plugin {
             id: 'metaEditRun',
             name: 'Run MetaEdit',
             callback: async () => {
-                const file: TFile = this.getCurrentFile();
+                const file: TFile = getActiveMarkdownFile(this.app);
                 if (!file) return;
 
                 await this.runMetaEditForFile(file);
             }
         });
-
-        this.onModifyCallbackToggle(true);
 
         this.addSettingTab(new MetaEditSettingsTab(this.app, this));
         this.linkMenu = new LinkMenu(this);
@@ -74,47 +64,36 @@ export default class MetaEdit extends Plugin {
 
         this.api = new MetaEditApi(this).make();
 
+        log.register(new ConsoleErrorLogger())
+			.register(new GuiLogger(this));
 
+        this.automatorManager = new OnFileModifyAutomatorManager(this).startAutomators();
+        this.toggleAutomators();
+    }
+
+    public toggleAutomators() {
+        if (this.settings.KanbanHelper.enabled)
+            this.automatorManager.attach(new KanbanHelper(this));
+        else
+            this.automatorManager.detach(OnModifyAutomatorType.KanbanHelper);
+
+        if (this.settings.ProgressProperties.enabled)
+            this.automatorManager.attach(new ProgressPropertyHelper(this));
+        else
+            this.automatorManager.detach(OnModifyAutomatorType.ProgressProperties);
     }
 
     public async runMetaEditForFile(file: TFile) {
         const data: Property[] = await this.controller.getPropertiesInFile(file);
         if (!data) return;
 
-        const suggester: MEMainSuggester = new MEMainSuggester(this.app, this, data, file, this.controller);
+        const suggester: MetaEditSuggester = new MetaEditSuggester(this.app, this, data, file, this.controller);
         suggester.open();
     }
 
     onunload() {
         console.log('Unloading MetaEdit');
-        this.onModifyCallbackToggle(false);
         this.linkMenu.unregisterEvent();
-    }
-
-    public getCurrentFile(): TFile {
-        const currentFile = this.abstractFileToMarkdownTFile(this.app.workspace.getActiveFile());
-
-        if (!currentFile) {
-            this.logError("could not get current file content.");
-            return null;
-        }
-
-        return currentFile;
-    }
-
-    public abstractFileToMarkdownTFile(file: TAbstractFile): TFile {
-        if (file instanceof TFile && file.extension === "md")
-            return file;
-        
-        return null;
-    }
-
-    public onModifyCallbackToggle(enable: boolean) {
-        if (enable) {
-            this.app.vault.on("modify", this.onModifyCallback);
-        } else if (this.onModifyCallback && !enable) {
-            this.app.vault.off("modify", this.onModifyCallback);
-        }
     }
 
     async loadSettings() {
@@ -123,10 +102,6 @@ export default class MetaEdit extends Plugin {
 
     async saveSettings() {
         await this.saveData(this.settings);
-    }
-
-    public logError(error: string) {
-        new Notice(`MetaEdit: ${error}`);
     }
 
     public getFilesWithProperty(property: string): TFile[] {
@@ -146,87 +121,6 @@ export default class MetaEdit extends Plugin {
         });
 
         return files;
-    }
-
-    private onModifyCallback = async (file: TAbstractFile) => await this.onModify(file);
-
-    private async onModify(file: TAbstractFile) {
-        const outfile: TFile = this.abstractFileToMarkdownTFile(file);
-        if (!outfile) return;
-
-        const fileContent = await this.app.vault.cachedRead(outfile);
-        if (!this.updatedFileCache.set(file.path, fileContent)) return;
-
-        if (this.updateFileQueue.enqueue(outfile)) {
-            await this.update();
-        }
-    }
-
-    private async updateProgressProperties(file: TFile) {
-        const data = await this.controller.getPropertiesInFile(file);
-        if (!data) return;
-
-        await this.controller.handleProgressProps(data, file);
-    }
-
-    private async kanbanHelper(file: TFile) {
-        const fileContent = await this.app.vault.cachedRead(file);
-        const boards = this.settings.KanbanHelper.boards;
-        const board = boards.find(board => board.boardName === file.basename);
-        const fileCache = this.app.metadataCache.getFileCache(file);
-
-        if (board && fileCache) {
-            const {links} = fileCache;
-
-            if (links) {
-                for (const link of links) {
-                    // Because of how links are formatted, I have to do it this way.
-                    // If there are duplicates (two files with the same name) for a link, the path will be in the link.
-                    // If not, the link won't specify the folder. Therefore, we check all files.
-                    const markdownFiles: TFile[] = this.app.vault.getMarkdownFiles();
-                    const linkFile: TFile = markdownFiles.find(f => f.path.includes(`${link.link}.md`));
-
-                    if (linkFile instanceof TFile) {
-                        const headingAttempt1 = this.getTaskHeading(linkFile.path.replace('.md', ''), fileContent);
-                        const headingAttempt2 = this.getTaskHeading(link.link, fileContent);
-                        const heading = headingAttempt1 ?? headingAttempt2;
-
-                        if (!heading) {
-                            this.logError("could not open linked file (KanbanHelper)");
-                            return;
-                        }
-
-                        const fileProperties: Property[] = await this.controller.getPropertiesInFile(linkFile);
-                        if (!fileProperties) return;
-                        const targetProperty = fileProperties.find(prop => prop.key === board.property);
-                        if (!targetProperty) return;
-
-                        await this.controller.updatePropertyInFile(targetProperty, heading, linkFile);
-                    }
-                }
-            }
-        }
-    }
-
-    private getTaskHeading(taskName: string, fileContent: string): string | null {
-        const MARKDOWN_HEADING = new RegExp(/#+\s+(.+)/);
-        const TASK_REGEX = new RegExp(/(\s*)-\s*\[([ Xx\.]?)\]\s*(.+)/, "i");
-
-        let lastHeading: string = "";
-        const splitContent = fileContent.split("\n");
-        for (const line of splitContent) {
-            const heading = MARKDOWN_HEADING.exec(line);
-            if (heading) {
-                lastHeading = heading[1];
-            }
-
-            const taskMatch = TASK_REGEX.exec(line);
-            if (taskMatch && taskMatch[3].includes(`${taskName}`)) {
-                return lastHeading;
-            }
-        }
-
-        return null;
     }
 
     public async runMetaEditForFolder(targetFolder: TFolder) {
