@@ -15,7 +15,7 @@ export class GenericTextSuggester extends TextInputSuggest<string> {
         });
 
         if (!filtered) this.close();
-        if (filtered?.length === 1) return [inputStr, ...filtered]
+        if (filtered?.length === 1) return [...filtered, inputStr];
         if (filtered?.length > 1) return filtered;
     }
 
