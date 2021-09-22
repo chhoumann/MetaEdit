@@ -1,5 +1,5 @@
 import MetaEditParser, {Property} from "./parser";
-import type {App, FrontMatterCache, TFile} from "obsidian";
+import type {App, TFile} from "obsidian";
 import type MetaEdit from "./main";
 import GenericPrompt from "./Modals/GenericPrompt/GenericPrompt";
 import {EditMode} from "./Types/editMode";
