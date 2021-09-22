@@ -3,6 +3,7 @@
     import {KanbanHelperSettingSuggester} from "./KanbanHelperSettingSuggester";
     import type {App, TFile} from "obsidian";
     import {onMount} from "svelte";
+    import {log} from "../../logger/logManager";
 
     export let save: (kanbanProperties: KanbanProperty[]) => void;
     export let kanbanProperties: KanbanProperty[] = [];
@@ -38,8 +39,14 @@
 
     function getHeadingsInBoard(boardName: string): string {
         const file = boards.find(board => board.basename === boardName)
+        if (!file) {
+            log.logWarning(`file ${boardName} not found.`);
+            return "FILE NOT FOUND";
+        }
+
         const headings = app.metadataCache.getFileCache(file).headings;
         if (!headings) return "";
+
         return headings.map(heading => heading.heading).join(", ");
     }
 </script>
