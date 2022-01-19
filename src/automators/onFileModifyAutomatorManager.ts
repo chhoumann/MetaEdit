@@ -57,6 +57,13 @@ export class OnFileModifyAutomatorManager implements IAutomatorManager {
         const outfile: TFile = abstractFileToMarkdownTFile(file);
         if (!outfile) return;
 
+        // Return on Excalidraw files to prevent conflict with its auto-save feature.
+        const metadata = await this.app.metadataCache.getFileCache(outfile);
+        const keys = Object.keys(metadata?.frontmatter);
+        if (keys && keys.some(key => key.toLowerCase().contains("excalidraw"))) {
+            return;
+        }
+
         const fileContent: string = await this.app.vault.cachedRead(outfile);
         if (!this.updatedFileCache.set(outfile.path, fileContent)) return;
 
