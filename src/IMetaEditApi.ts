@@ -1,5 +1,5 @@
 import type {TFile} from "obsidian";
-import type {Property} from "./parser";
+import type {Property} from "./Parser/parser";
 
 export interface IMetaEditApi {
     autoprop: (propertyName: string) => void;

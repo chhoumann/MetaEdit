@@ -1,4 +1,4 @@
-import type {Property} from "./parser";
+import type {Property} from "./Parser/parser";
 import {MetaType} from "./Types/metaType";
 
 export const ADD_FIRST_ELEMENT: string = "cmd:addfirst";

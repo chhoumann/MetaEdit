@@ -1,6 +1,6 @@
 import type {App, TFile} from "obsidian";
 import {parseYaml} from "obsidian";
-import {MetaType} from "./Types/metaType";
+import {MetaType} from "../Types/metaType";
 
 export type Property = {key: string, content: any, type: MetaType};
 
@@ -25,11 +25,13 @@ export default class MetaEditParser {
     public async parseFrontmatter(file: TFile): Promise<Property[]> {
         const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
         if (!frontmatter) return [];
+
         const {position: {start, end}} = frontmatter;
         const filecontent = await this.app.vault.cachedRead(file);
 
         const yamlContent: string = filecontent.split("\n").slice(start.line, end.line).join("\n");
         const parsedYaml = parseYaml(yamlContent);
+        console.log(parsedYaml);
 
         let metaYaml: Property[] = [];
 

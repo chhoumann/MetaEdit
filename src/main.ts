@@ -5,7 +5,7 @@ import MetaController from "./metaController";
 import type {MetaEditSettings} from "./Settings/metaEditSettings";
 import {DEFAULT_SETTINGS} from "./Settings/defaultSettings";
 import {LinkMenu} from "./Modals/LinkMenu";
-import type {Property} from "./parser";
+import type {Property} from "./Parser/parser";
 import type {IMetaEditApi} from "./IMetaEditApi";
 import {MetaEditApi} from "./MetaEditApi";
 import GenericPrompt from "./Modals/GenericPrompt/GenericPrompt";

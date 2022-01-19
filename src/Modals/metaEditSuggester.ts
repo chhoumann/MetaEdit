@@ -1,7 +1,7 @@
 import {App, FuzzyMatch, FuzzySuggestModal, TFile} from "obsidian";
 import type MetaEdit from "../main";
 import type MetaController from "../metaController";
-import type {Property} from "../parser";
+import type {Property} from "../Parser/parser";
 import {MAIN_SUGGESTER_OPTIONS, newDataView, newYaml} from "../constants";
 import {MetaType} from "../Types/metaType";
 import {concat} from "svelte-preprocess/dist/modules/utils";
