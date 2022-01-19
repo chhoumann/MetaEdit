@@ -1,8 +1,9 @@
 import type {App, TFile} from "obsidian";
 import {parseYaml} from "obsidian";
 import {MetaType} from "../Types/metaType";
+import {MetaDataType} from "../Types/MetaDataType";
 
-export type Property = {key: string, content: any, type: MetaType};
+export type Property = {key: string, content: any, type: MetaType, dataType?: MetaDataType};
 
 export default class MetaEditParser {
     private app: App;
@@ -27,19 +28,65 @@ export default class MetaEditParser {
         if (!frontmatter) return [];
 
         const {position: {start, end}} = frontmatter;
-        const filecontent = await this.app.vault.cachedRead(file);
+        const fileContent = await this.app.vault.cachedRead(file);
 
-        const yamlContent: string = filecontent.split("\n").slice(start.line, end.line).join("\n");
+        const yamlContent: string = fileContent.split("\n").slice(start.line, end.line).join("\n");
         const parsedYaml = parseYaml(yamlContent);
-        console.log(parsedYaml);
 
-        let metaYaml: Property[] = [];
-
-        for (const key in parsedYaml) {
-            metaYaml.push({key, content: parsedYaml[key], type: MetaType.YAML});
-        }
+        let metaYaml: Property[] = this.createPropertyArray(parsedYaml);
+        console.log(metaYaml);
 
         return metaYaml;
+    }
+
+    private createPropertyArray(properties: any): Property[] {
+        const metaProperties: Property[] = [];
+
+        for (const key in properties) {
+            const property: Property = this.createProperty(key, properties[key]);
+            metaProperties.push(property);
+        }
+
+        return metaProperties;
+    }
+
+    private createProperty(key: string, content: any): Property {
+        const dataType = this.getPropertyType(key, content);
+
+        if (dataType === MetaDataType.Object) {
+            for (const key in content) {
+                content[key] = this.createProperty(key, content[key]);
+            }
+        }
+
+        if (dataType === MetaDataType.Array) {
+            content = content.map(item => this.createProperty(null, item));
+        }
+
+        const property: Property = {
+            key,
+            dataType,
+            content,
+            type: MetaType.YAML
+        }
+
+        return property;
+    }
+
+    private getPropertyType(key: string, property: any): MetaDataType {
+        if (Array.isArray(property)) {
+            return MetaDataType.Array;
+        }
+
+        if (typeof property === "object") {
+            return MetaDataType.Object;
+        }
+
+        if (key) {
+            return MetaDataType.KeyValue;
+        }
+
+        return MetaDataType.ArrayItem;
     }
 
     public async parseInlineFields(file: TFile): Promise<Property[]> {
