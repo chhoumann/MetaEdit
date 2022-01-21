@@ -11,6 +11,8 @@ import {ProgressPropertyOptions} from "./Types/progressPropertyOptions";
 import {MetaType} from "./Types/metaType";
 import {Notice} from "obsidian";
 import {log} from "./logger/logManager";
+import {MetaDataType} from "./Types/MetaDataType";
+import PropertyListEditorModal from "./Modals/ListEditor/PropertyListEditorModal";
 
 export default class MetaController {
     private parser: MetaEditParser;
@@ -85,14 +87,18 @@ export default class MetaController {
     }
 
     public async editMetaElement(property: Property, meta: Property[], file: TFile): Promise<void> {
-        const mode: EditMode = this.plugin.settings.EditMode.mode;
-
-        if (property.type === MetaType.Tag)
-            await this.editTag(property, file);
-        else if (mode === EditMode.AllMulti || mode === EditMode.SomeMulti)
-            await this.multiValueMode(property, file);
-        else
-            await this.standardMode(property, file);
+        switch (property.type) {
+            case MetaType.YAML:
+                await this.editYamlProperty(property, file);
+                break;
+            case MetaType.Dataview:
+                break;
+            case MetaType.Tag:
+                await this.editTag(property, file);
+                break;
+            case MetaType.Option:
+                break;
+        }
     }
 
     private async editTag(property: Property, file: TFile) {
@@ -122,6 +128,28 @@ export default class MetaController {
         if (newValue) {
             await this.updatePropertyInFile(property, newValue, file);
         }
+    }
+
+    private async editYamlProperty(property: Property, file: TFile) {
+        // Depending on data type, we need to do something different.
+        // Arrays should ask for lists of values, and objects should ask for a key/value pair.
+        // Simple values should just be prompted for a new value.
+        switch (property.dataType) {
+            case MetaDataType.Array:
+                const newList = await PropertyListEditorModal.Prompt(this.app, (property.content as Property[]));
+                
+                break;
+            case MetaDataType.Object:
+                break;
+            case MetaDataType.KeyValue:
+                break;
+            case MetaDataType.ArrayItem:
+                break;
+        }
+    }
+
+    private async editDataViewProperty(property: Property, file: TFile) {
+        // ...
     }
 
     public async handleProgressProps(meta: Property[], file: TFile): Promise<void> {
@@ -199,100 +227,6 @@ export default class MetaController {
         }, [])
     }
 
-    private async standardMode(property: Property, file: TFile): Promise<void> {
-        const autoProp = await this.handleAutoProperties(property.key);
-        let newValue;
-
-        if (autoProp)
-            newValue = autoProp;
-        else
-            newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`, property.content, property.content);
-
-        if (newValue) {
-            await this.updatePropertyInFile(property, newValue, file);
-        }
-    }
-
-    private async multiValueMode(property: Property, file: TFile): Promise<Boolean> {
-        const settings: MetaEditSettings = this.plugin.settings;
-        let newValue: string;
-
-
-        if (settings.EditMode.mode == EditMode.SomeMulti && !settings.EditMode.properties.includes(property.key)) {
-            await this.standardMode(property, file);
-            return false;
-        }
-
-        let selectedOption: string, tempValue: string, splitValues: string[];
-        let currentPropValue: string = property.content;
-
-        if (currentPropValue !== null)
-            currentPropValue = currentPropValue.toString();
-        else
-            currentPropValue = "";
-
-        if (property.type === MetaType.YAML) {
-            splitValues = currentPropValue.split('').filter(c => !c.includes("[]")).join('').split(",");
-        } else {
-            splitValues = currentPropValue.split(",").map(prop => prop.trim());
-        }
-
-        if (splitValues.length == 0 || (splitValues.length == 1 && splitValues[0] == "")) {
-            const options = ["Add new value"];
-            selectedOption = await GenericSuggester.Suggest(this.app, options, [ADD_FIRST_ELEMENT]);
-        }
-        else if (splitValues.length == 1) {
-            const options = [splitValues[0], "Add to end", "Add to beginning"];
-            selectedOption = await GenericSuggester.Suggest(this.app, options, [splitValues[0], ADD_TO_END, ADD_TO_BEGINNING]);
-        } else {
-            const options = ["Add to end", ...splitValues, "Add to beginning"];
-            selectedOption = await GenericSuggester.Suggest(this.app, options, [ADD_TO_END, ...splitValues, ADD_TO_BEGINNING]);
-        }
-
-        if (!selectedOption) return;
-        let selectedIndex;
-
-        const autoProp = await this.handleAutoProperties(property.key);
-        if (autoProp) {
-            tempValue = autoProp;
-        } else if (selectedOption.includes("cmd")) {
-            tempValue = await GenericPrompt.Prompt(this.app, "Enter a new value");
-        } else {
-            selectedIndex = splitValues.findIndex(el => el == selectedOption);
-            tempValue = await GenericPrompt.Prompt(this.app, `Change ${selectedOption} to`, selectedOption);
-        }
-
-        if (!tempValue) return;
-        switch(selectedOption) {
-            case ADD_FIRST_ELEMENT:
-                newValue = `${tempValue}`;
-                break;
-            case ADD_TO_BEGINNING:
-                newValue = `${[tempValue, ...splitValues].join(", ")}`;
-                break;
-            case ADD_TO_END:
-                newValue = `${[...splitValues, tempValue].join(", ")}`;
-                break;
-            default:
-                if (selectedIndex)
-                    splitValues[selectedIndex] = tempValue;
-                else
-                    splitValues = [tempValue];
-                newValue = `${splitValues.join(", ")}`;
-                break;
-        }
-
-        if (property.type === MetaType.YAML)
-            newValue = `[${newValue}]`;
-
-        if (newValue) {
-            await this.updatePropertyInFile(property, newValue, file);
-            return true;
-        }
-
-        return false;
-    }
-
     public async handleAutoProperties(propertyName: string): Promise<string> {
         const autoProp = this.plugin.settings.AutoProperties.properties.find(a => a.name === propertyName);
 
@@ -367,7 +301,7 @@ export default class MetaController {
             fileContent = fileContent.map(line => {
 
                 if (this.lineMatch(prop, line)) {
-                    return this.updatePropertyLine(prop, prop.content)
+                    return this.updatePropertyLine(prop, prop.content.toString())
                 }
 
                 return line;

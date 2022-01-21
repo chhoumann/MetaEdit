@@ -98,12 +98,12 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
 
     private async toYaml(property: Property) {
         await this.controller.deleteProperty(property, this.file);
-        await this.controller.addYamlProp(property.key, property.content, this.file);
+        await this.controller.addYamlProp(property.key, property.content.toString(), this.file);
     }
 
     private async toDataview(property: Property) {
         await this.controller.deleteProperty(property, this.file);
-        await this.controller.addDataviewField(property.key, property.content, this.file);
+        await this.controller.addDataviewField(property.key, property.content.toString(), this.file);
     }
 
     private createButton(el: HTMLElement, content: string, callback: (evt: MouseEvent) => void) {
