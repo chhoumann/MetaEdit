@@ -1,4 +1,4 @@
-import type {CachedMetadata, LinkCache, TFile} from "obsidian";
+import {CachedMetadata, LinkCache, Notice, TFile} from "obsidian";
 import type MetaEdit from "../../main";
 import type {KanbanProperty} from "../../Types/kanbanProperty";
 import {abstractFileToMarkdownTFile} from "../../utility";
@@ -64,11 +64,16 @@ export class KanbanHelper extends OnFileModifyAutomator {
         }
         const targetProperty = fileProperties.find(prop => prop.key === board.property);
         if (!targetProperty) {
-            log.logWarning(`'${board.property} not found in ${board.boardName}'`)
+            log.logWarning(`'${board.property} not found in ${board.boardName} for file "${linkFile.name}".'`);
+            new Notice(`'${board.property} not found in ${board.boardName} for file "${linkFile.name}".'`); // This notice will help users debug "Property not found in board" errors.
             return;
         }
 
-        await this.plugin.controller.updatePropertyInFile(targetProperty, heading, linkFile);
+        const propertyHasChanged = (targetProperty.content != heading); // Kanban Helper will check if the file's property is different from its current heading in the kanban and will only make changes to the file if there's a difference
+        if (propertyHasChanged) {
+            console.debug("Updating " + targetProperty.key + " of file " + linkFile.name + " to " + heading);
+            await this.plugin.controller.updatePropertyInFile(targetProperty, heading, linkFile);
+        }
     }
 
     private getTaskHeading(targetTaskContent: string, fileContent: string): string | null {
