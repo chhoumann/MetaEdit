@@ -45,12 +45,6 @@ export default class MetaController {
             return;
         }
 
-        const settings = this.plugin.settings;
-        if (settings.EditMode.mode === EditMode.AllMulti ||
-            (settings.EditMode.mode === EditMode.SomeMulti && settings.EditMode.properties.contains(propName))) {
-            propValue = `[${propValue}]`;
-        }
-
         let splitContent = fileContent.split("\n");
         if (isYamlEmpty) {
             splitContent.unshift("---");

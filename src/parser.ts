@@ -26,9 +26,11 @@ export default class MetaEditParser {
         const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
         if (!frontmatter) return [];
         const {position: {start, end}} = frontmatter;
-        const filecontent = await this.app.vault.cachedRead(file);
+        const fileContent = await this.app.vault.cachedRead(file);
 
-        const yamlContent: string = filecontent.split("\n").slice(start.line, end.line).join("\n");
+        const yamlContent: string = fileContent.split("\n").slice(start.line, end.line).join("\n");
+        // This is done to avoid the accidently removing the property 'position' from the frontmatter, as
+        // it gets overwritten had we just used the frontmatter object.
         const parsedYaml = parseYaml(yamlContent);
 
         let metaYaml: Property[] = [];
