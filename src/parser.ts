@@ -5,14 +5,8 @@ import {MetaType} from "./Types/metaType";
 export type Property = {key: string, content: any, type: MetaType};
 
 export default class MetaEditParser {
-    private app: App;
-
-    constructor(app: App) {
-        this.app = app;
-    }
-
     public async getTagsForFile(file: TFile): Promise<Property[]> {
-        const cache = this.app.metadataCache.getFileCache(file);
+        const cache = app.metadataCache.getFileCache(file);
         if (!cache) return [];
         const tags = cache.tags;
         if (!tags) return [];
@@ -23,10 +17,10 @@ export default class MetaEditParser {
     }
 
     public async parseFrontmatter(file: TFile): Promise<Property[]> {
-        const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
+        const frontmatter = app.metadataCache.getFileCache(file)?.frontmatter;
         if (!frontmatter) return [];
         const {position: {start, end}} = frontmatter;
-        const fileContent = await this.app.vault.cachedRead(file);
+        const fileContent = await app.vault.cachedRead(file);
 
         const yamlContent: string = fileContent.split("\n").slice(start.line, end.line).join("\n");
         // This is done to avoid the accidentally removing the property 'position' from the frontmatter, as
@@ -43,7 +37,7 @@ export default class MetaEditParser {
     }
 
     public async parseInlineFields(file: TFile): Promise<Property[]> {
-        const content = await this.app.vault.cachedRead(file);
+        const content = await app.vault.cachedRead(file);
 
         return content.split("\n").reduce((obj: Property[], str: string) => {
             let parts = str.split("::");

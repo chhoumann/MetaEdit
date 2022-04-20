@@ -29,7 +29,7 @@ export default class MetaEdit extends Plugin {
     async onload() {
         console.log('Loading MetaEdit');
 
-        this.controller = new MetaController(this.app, this);
+        this.controller = new MetaController(this);
 
         await this.loadSettings();
 
@@ -37,8 +37,8 @@ export default class MetaEdit extends Plugin {
         this.addCommand({
             id: 'reloadMetaEdit',
             name: 'Reload MetaEdit (dev)',
-            callback: () => { // @ts-ignore - for this.app.plugins
-                const id: string = this.manifest.id, plugins = this.app.plugins;
+            callback: () => { // @ts-ignore - for app.plugins
+                const id: string = this.manifest.id, plugins = app.plugins;
                 plugins.disablePlugin(id).then(() => plugins.enablePlugin(id));
             },
         });
@@ -48,14 +48,14 @@ export default class MetaEdit extends Plugin {
             id: 'metaEditRun',
             name: 'Run MetaEdit',
             callback: async () => {
-                const file: TFile = getActiveMarkdownFile(this.app);
+                const file: TFile = getActiveMarkdownFile();
                 if (!file) return;
 
                 await this.runMetaEditForFile(file);
             }
         });
 
-        this.addSettingTab(new MetaEditSettingsTab(this.app, this));
+        this.addSettingTab(new MetaEditSettingsTab(app, this));
         this.linkMenu = new LinkMenu(this);
 
         if (this.settings.UIElements.enabled) {
@@ -87,7 +87,7 @@ export default class MetaEdit extends Plugin {
         const data: Property[] = await this.controller.getPropertiesInFile(file);
         if (!data) return;
 
-        const suggester: MetaEditSuggester = new MetaEditSuggester(this.app, this, data, file, this.controller);
+        const suggester: MetaEditSuggester = new MetaEditSuggester(app, this, data, file, this.controller);
         suggester.open();
     }
 
@@ -105,11 +105,11 @@ export default class MetaEdit extends Plugin {
     }
 
     public getFilesWithProperty(property: string): TFile[] {
-        const markdownFiles = this.app.vault.getMarkdownFiles();
+        const markdownFiles = app.vault.getMarkdownFiles();
         let files: TFile[] = [];
 
         markdownFiles.forEach(file => {
-            const fileCache = this.app.metadataCache.getFileCache(file);
+            const fileCache = app.metadataCache.getFileCache(file);
 
             if (fileCache) {
                 const fileFrontmatter = fileCache.frontmatter;
@@ -124,10 +124,10 @@ export default class MetaEdit extends Plugin {
     }
 
     public async runMetaEditForFolder(targetFolder: TFolder) {
-        const pName = await GenericPrompt.Prompt(this.app, `Add a new property to all files in ${targetFolder.name} (and subfolders)`);
+        const pName = await GenericPrompt.Prompt(app, `Add a new property to all files in ${targetFolder.name} (and subfolders)`);
         if (!pName) return;
 
-        const pVal = await GenericPrompt.Prompt(this.app, "Enter a value");
+        const pVal = await GenericPrompt.Prompt(app, "Enter a value");
         if (!pVal) return;
 
         const updateFilesInFolder = async (targetFolder: TFolder, propertyName: string, propertyValue: string) => {
