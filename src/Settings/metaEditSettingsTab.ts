@@ -23,7 +23,7 @@ function toggleHiddenEl(el: HTMLElement, bShow: boolean) {
 
 export class MetaEditSettingsTab extends PluginSettingTab {
     plugin: MetaEdit;
-    private svelteElements: (SingleValueTableEditorContent | AutoPropertiesModalContent | ProgressPropertiesModalContent)[] = [];
+    private svelteElements: (SingleValueTableEditorContent | AutoPropertiesModalContent | ProgressPropertiesModalContent | KanbanHelperSettingContent)[] = [];
 
     constructor(plugin: MetaEdit) {
         super(app, plugin);
@@ -232,7 +232,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
     }
 
     private addKanbanHelperSetting(containerEl: HTMLElement) {
-        let modal: ProgressPropertiesModalContent, div: HTMLDivElement, hidden: boolean = true;
+        let modal: KanbanHelperSettingContent, div: HTMLDivElement, hidden: boolean = true;
         const setting = new Setting(containerEl)
             .setName("Kanban Board Helper")
             .setDesc("Update properties in links in kanban boards automatically when a card is moved to a new lane.")

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {KanbanProperty} from "../../Types/kanbanProperty";
+    import type {KanbanProperty} from "../../Types/kanbanProperty";
     import {KanbanHelperSettingSuggester} from "./KanbanHelperSettingSuggester";
     import type {App, TFile} from "obsidian";
     import {onMount} from "svelte";
