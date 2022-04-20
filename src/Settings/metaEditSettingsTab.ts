@@ -1,4 +1,4 @@
-import {App, PluginSettingTab, Setting} from "obsidian";
+import {PluginSettingTab, Setting} from "obsidian";
 import type MetaEdit from "../main";
 import {EditMode} from "../Types/editMode";
 import ProgressPropertiesModalContent
@@ -25,7 +25,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
     plugin: MetaEdit;
     private svelteElements: (SingleValueTableEditorContent | AutoPropertiesModalContent | ProgressPropertiesModalContent)[] = [];
 
-    constructor(app: App, plugin: MetaEdit) {
+    constructor(plugin: MetaEdit) {
         super(app, plugin);
         this.plugin = plugin;
     }
@@ -260,7 +260,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
             props: {
                 kanbanProperties: this.plugin.settings.KanbanHelper.boards,
                 boards: this.plugin.getFilesWithProperty("kanban-plugin"),
-                app: this.app,
+                app,
                 save: async (kanbanProperties: KanbanProperty[]) => {
                     this.plugin.settings.KanbanHelper.boards = kanbanProperties;
                     await this.plugin.saveSettings();
