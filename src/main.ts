@@ -55,7 +55,7 @@ export default class MetaEdit extends Plugin {
             }
         });
 
-        this.addSettingTab(new MetaEditSettingsTab(app, this));
+        this.addSettingTab(new MetaEditSettingsTab(this));
         this.linkMenu = new LinkMenu(this);
 
         if (this.settings.UIElements.enabled) {
