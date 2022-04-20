@@ -29,7 +29,7 @@ export default class MetaEditParser {
         const fileContent = await this.app.vault.cachedRead(file);
 
         const yamlContent: string = fileContent.split("\n").slice(start.line, end.line).join("\n");
-        // This is done to avoid the accidently removing the property 'position' from the frontmatter, as
+        // This is done to avoid the accidentally removing the property 'position' from the frontmatter, as
         // it gets overwritten had we just used the frontmatter object.
         const parsedYaml = parseYaml(yamlContent);
 
