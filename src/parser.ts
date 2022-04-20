@@ -1,4 +1,4 @@
-import type {App, TFile} from "obsidian";
+import type {TFile} from "obsidian";
 import {parseYaml} from "obsidian";
 import {MetaType} from "./Types/metaType";
 
