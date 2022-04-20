@@ -3,7 +3,7 @@ import type MetaEdit from "../../main";
 import type {KanbanProperty} from "../../Types/kanbanProperty";
 import {abstractFileToMarkdownTFile} from "../../utility";
 import {log} from "../../logger/logManager";
-import type {Property} from "../../parser";
+import { Property } from "../../Types/Property";
 import {OnFileModifyAutomator} from "./onFileModifyAutomator";
 import {OnModifyAutomatorType} from "./onModifyAutomatorType";
 

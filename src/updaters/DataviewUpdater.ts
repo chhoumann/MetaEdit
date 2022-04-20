@@ -1,7 +1,7 @@
 import {Updater} from "./Updater";
 
 export default class DataviewUpdater extends Updater {
-    add(propertyName: string, value: any): string {
+    add(propertyName: string, value: unknown): string {
         return "";
     }
 
@@ -9,7 +9,7 @@ export default class DataviewUpdater extends Updater {
         return "";
     }
 
-    update(propertyName: string, newValue: any): string {
+    update(propertyName: string, newValue: unknown): string {
         return "";
     }
 }

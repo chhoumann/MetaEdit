@@ -1,36 +1,47 @@
-import MetaEditParser, {Property} from "./parser";
+import MetaEditParser from "../parser";
+import { Property } from "../Types/Property";
 import type {TFile} from "obsidian";
-import type MetaEdit from "./main";
-import GenericPrompt from "./Modals/GenericPrompt/GenericPrompt";
-import {EditMode} from "./Types/editMode";
-import GenericSuggester from "./Modals/GenericSuggester/GenericSuggester";
-import type {MetaEditSettings} from "./Settings/metaEditSettings";
-import {ADD_FIRST_ELEMENT, ADD_TO_BEGINNING, ADD_TO_END} from "./constants";
-import type {ProgressProperty} from "./Types/progressProperty";
-import {ProgressPropertyOptions} from "./Types/progressPropertyOptions";
-import {MetaType} from "./Types/metaType";
+import GenericPrompt from "../Modals/GenericPrompt/GenericPrompt";
+import {EditMode} from "../Types/editMode";
+import GenericSuggester from "../Modals/GenericSuggester/GenericSuggester";
+import type {MetaEditSettings} from "../Settings/metaEditSettings";
+import {ADD_FIRST_ELEMENT, ADD_TO_BEGINNING, ADD_TO_END} from "../constants";
+import type {ProgressProperty} from "../Types/progressProperty";
+import {ProgressPropertyOptions} from "../Types/progressPropertyOptions";
+import {MetaType} from "../Types/metaType";
 import {Notice} from "obsidian";
-import {log} from "./logger/logManager";
+import {log} from "../logger/logManager";
 
-export default class MetaController {
+interface IMetaController {
+    addProperty(property: Property): void;
+    removeProperty(property: Property): void;
+    editProperty(property: Property): void;
+}
+
+export default class MetaController implements IMetaController {
+    addProperty(property: Property): void {
+        // Handling for YAML, Tags, and DataView.
+        throw new Error("Method not implemented.");
+    }
+
+    removeProperty(property: Property): void {
+        throw new Error("Method not implemented.");
+    }
+
+    editProperty(property: Property): void {
+        throw new Error("Method not implemented.");
+    }
+}
+
+export class MetaController_Old {
     private parser: MetaEditParser;
-    private plugin: MetaEdit;
     private readonly hasTrackerPlugin: boolean = false;
     private useTrackerPlugin: boolean = false;
 
-    constructor(plugin: MetaEdit) {
+    constructor() {
         this.parser = new MetaEditParser();
-        this.plugin = plugin;
         // @ts-ignore
         this.hasTrackerPlugin = !!app.plugins.plugins["obsidian-tracker"];
-    }
-
-    public async getPropertiesInFile(file: TFile): Promise<Property[]> {
-        const yaml = await this.parser.parseFrontmatter(file);
-        const inlineFields = await this.parser.parseInlineFields(file);
-        const tags = await this.parser.getTagsForFile(file);
-
-        return [...tags, ...yaml, ...inlineFields];
     }
 
     public async addYamlProp(propName: string, propValue: string, file: TFile): Promise<void> {

@@ -1,11 +1,18 @@
 import type {TFile} from "obsidian";
 import {parseYaml} from "obsidian";
+import type { Property } from "./Types/Property";
 import {MetaType} from "./Types/metaType";
 
-export type Property = {key: string, content: any, type: MetaType};
-
 export default class MetaEditParser {
-    public async getTagsForFile(file: TFile): Promise<Property[]> {
+    public async getFileMetadata(file: TFile): Promise<Property[]> {
+        const frontmatter = await this.parseFrontmatter(file);
+        const inlineFields = await this.parseInlineFields(file);
+        const tags = await this.getTagsInFile(file);
+
+        return [...frontmatter, ...inlineFields, ...tags];
+    }
+
+    public async getTagsInFile(file: TFile): Promise<Property[]> {
         const cache = app.metadataCache.getFileCache(file);
         if (!cache) return [];
         const tags = cache.tags;
@@ -13,6 +20,7 @@ export default class MetaEditParser {
 
         let mTags: Property[] = [];
         tags.forEach(tag => mTags.push({key: tag.tag, content: tag.tag, type: MetaType.Tag}));
+        
         return mTags;
     }
 

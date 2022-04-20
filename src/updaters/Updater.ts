@@ -10,9 +10,9 @@ export abstract class Updater implements IUpdater {
         this.file = file;
     }
 
-    abstract add(propertyName: string, value: any): string;
+    abstract add(propertyName: string, value: unknown): string;
 
     abstract remove(propertyName: string): string;
 
-    abstract update(propertyName: string, newValue: any): string;
+    abstract update(propertyName: string, newValue: unknown): string;
 }

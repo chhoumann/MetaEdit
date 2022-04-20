@@ -1,7 +1,6 @@
 import type MetaEdit from "./main";
-import MetaController from "./metaController";
 import type {IMetaEditApi} from "./IMetaEditApi";
-import type {Property} from "./parser";
+import type { Property } from "./Types/Property";
 import {TFile} from "obsidian";
 
 export class MetaEditApi {
