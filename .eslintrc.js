@@ -37,7 +37,8 @@ module.exports = {
                 trailingComma: 'all',
             },
         ],
-        semi: ['error', 'always'],
+        "no-useless-escape": "off",
+        "no-extra-semi": "off",
         'import/order': 'error',
         'sort-imports': [
             'error',
