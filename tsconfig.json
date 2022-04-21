@@ -1,13 +1,40 @@
 {
   "extends": "@tsconfig/svelte/tsconfig.json",
-
-  "include": ["src/**/*"],
-  "exclude": ["node_modules/*"],
   "compilerOptions": {
-    "types": ["node", "svelte", "jest"],
-    "baseUrl": ".",
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": "./src",
+    "esModuleInterop": true,
+    "inlineSources": true,
+    "sourceMap": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "module": "ESNext",
+    "target": "es6",
+    "allowJs": true,
+    "noImplicitAny": true,
+    "moduleResolution": "node",
+    "importHelpers": true,
     "paths": {
-      "src": ["src/*"]
-    }
-  }
+      "src": ["src/*", "tests/*"]
+    },
+    "types": [
+      "jest",
+      "node",
+      "svelte"
+    ],
+    "lib": [
+      "dom",
+      "es5",
+      "scripthost",
+      "es2015"
+    ]
+  },
+  "include": [
+    "src/**/*",
+    "tests/**/*"
+  ],
+  "exclude": [
+    "node_modules/*"
+  ]
 }
