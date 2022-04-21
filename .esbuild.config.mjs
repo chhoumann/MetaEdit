@@ -130,6 +130,7 @@ esbuild.build({
         '@codemirror/stream-parser',
         '@codemirror/text',
         '@codemirror/view',
+        ...builtins
     ],
     format: 'cjs',
     logLevel: "info",
