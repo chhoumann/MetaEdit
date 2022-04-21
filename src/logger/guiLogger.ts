@@ -1,10 +1,9 @@
-import {Notice} from "obsidian";
-import type QuickAdd from "../main";
-import {ErrorLevel} from "./errorLevel";
-import {MetaEditLogger} from "./logger";
+import { Notice } from 'obsidian';
+import { ErrorLevel } from './errorLevel';
+import { MetaEditLogger } from './logger';
 
 export class GuiLogger extends MetaEditLogger {
-    constructor(private plugin: QuickAdd) {
+    constructor() {
         super();
     }
 
@@ -18,5 +17,8 @@ export class GuiLogger extends MetaEditLogger {
         new Notice(this.formatOutputString(warning));
     }
 
-    logMessage(msg: string): void {}
+    logMessage(msg: string): void {
+        const message = this.getMetaEditError(msg, ErrorLevel.Log);
+        new Notice(this.formatOutputString(message));
+    }
 }

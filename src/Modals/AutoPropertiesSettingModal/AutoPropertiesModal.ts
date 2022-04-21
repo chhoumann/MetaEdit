@@ -1,29 +1,29 @@
-import {App, Modal} from "obsidian";
-import type MetaEdit from "../../main";
-import AutoPropertiesModalContent from "./AutoPropertiesModalContent.svelte";
-import type {AutoProperty} from "../../Types/autoProperty";
+import { App, Modal } from 'obsidian';
+import type { AutoProperty } from '../../Types/autoProperty';
+import AutoPropertiesModalContent from './AutoPropertiesModalContent.svelte';
 
 export default class AutoPropertiesModal extends Modal {
     public waitForResolve: Promise<AutoProperty[]>;
-    private plugin: MetaEdit;
     private content: AutoPropertiesModalContent;
-    private resolvePromise: (autoProperties: AutoProperty[]) => void;
+    private resolvePromise:
+        | ((autoProperties: AutoProperty[]) => void)
+        | undefined;
     private autoProperties: AutoProperty[];
 
-    constructor(app: App, plugin: MetaEdit, autoProperties: AutoProperty[]) {
+    constructor(app: App, autoProperties: AutoProperty[]) {
         super(app);
-        this.plugin = plugin;
         this.autoProperties = autoProperties;
 
         this.waitForResolve = new Promise<AutoProperty[]>(
-            (resolve) => (this.resolvePromise = resolve)
+            (resolve) => (this.resolvePromise = resolve),
         );
 
         this.content = new AutoPropertiesModalContent({
             target: this.contentEl,
             props: {
-                save: (autoProperties: AutoProperty[]) => this.save(autoProperties),
-                autoProperties
+                save: (autoProperties: AutoProperty[]) =>
+                    this.save(autoProperties),
+                autoProperties,
             },
         });
 
@@ -38,6 +38,8 @@ export default class AutoPropertiesModal extends Modal {
     onClose() {
         super.onClose();
         this.content.$destroy();
-        this.resolvePromise(this.autoProperties);
+        if (this.resolvePromise) {
+            this.resolvePromise(this.autoProperties);
+        }
     }
 }

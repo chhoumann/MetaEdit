@@ -1,7 +1,7 @@
-import type {IOnFileModifyAutomator} from "./IOnFileModifyAutomator";
-import type MetaEdit from "../../main";
-import type {App, TFile} from "obsidian";
-import type {OnModifyAutomatorType} from "./onModifyAutomatorType";
+import type { App, TFile } from 'obsidian';
+import type MetaEdit from '../../main';
+import type { IOnFileModifyAutomator } from './IOnFileModifyAutomator';
+import type { OnModifyAutomatorType } from './onModifyAutomatorType';
 
 export abstract class OnFileModifyAutomator implements IOnFileModifyAutomator {
     protected plugin: MetaEdit;

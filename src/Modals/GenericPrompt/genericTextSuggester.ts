@@ -1,32 +1,35 @@
-import {TextInputSuggest} from "../../suggest";
-import type {App} from "obsidian";
+import type { App } from 'obsidian';
+import { TextInputSuggest } from '../../suggest';
 
 export class GenericTextSuggester extends TextInputSuggest<string> {
-
-    constructor(public app: App, public inputEl: HTMLInputElement, private items: string[]) {
+    constructor(
+        public app: App,
+        public inputEl: HTMLInputElement,
+        private items: string[],
+    ) {
         super(app, inputEl);
     }
 
     getSuggestions(inputStr: string): string[] {
         const inputLowerCase: string = inputStr.toLowerCase();
-        const filtered = this.items.filter(item => {
-            if (item.toLowerCase().contains(inputLowerCase))
-                return item;
+        const filtered = this.items.filter((item) => {
+            if (item.toLowerCase().contains(inputLowerCase)) return item;
         });
 
         if (!filtered) this.close();
         if (filtered?.length === 1) return [...filtered, inputStr];
         if (filtered?.length > 1) return filtered;
+
+        return [];
     }
 
     selectSuggestion(item: string): void {
         this.inputEl.value = item;
-        this.inputEl.trigger("input");
+        this.inputEl.trigger('input');
         this.close();
     }
 
     renderSuggestion(value: string, el: HTMLElement): void {
-        if (value)
-            el.setText(value);
+        if (value) el.setText(value);
     }
 }

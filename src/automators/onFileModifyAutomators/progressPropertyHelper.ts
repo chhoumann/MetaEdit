@@ -1,7 +1,8 @@
-import type MetaEdit from "../../main";
-import type {TFile} from "obsidian";
-import {OnFileModifyAutomator} from "./onFileModifyAutomator";
-import {OnModifyAutomatorType} from "./onModifyAutomatorType";
+import type { TFile } from 'obsidian';
+import type MetaEdit from '../../main';
+import MetaEditParser from '../../parser';
+import { OnFileModifyAutomator } from './onFileModifyAutomator';
+import { OnModifyAutomatorType } from './onModifyAutomatorType';
 
 export class ProgressPropertyHelper extends OnFileModifyAutomator {
     constructor(plugin: MetaEdit) {
@@ -9,9 +10,10 @@ export class ProgressPropertyHelper extends OnFileModifyAutomator {
     }
 
     async onFileModify(file: TFile): Promise<void> {
-        const data = await this.plugin.controller.getPropertiesInFile(file);
+        const parser: MetaEditParser = new MetaEditParser();
+        const data = await parser.getFileMetadata(file);
         if (!data) return;
 
-        await this.plugin.controller.handleProgressProps(data, file);
+        await this.plugin.controller?.handleProgressProps(data, file);
     }
 }

@@ -1,20 +1,38 @@
-import {App, Modal} from "obsidian";
-import GenericPromptContent from "./GenericPromptContent.svelte"
+import { App, Modal } from 'obsidian';
+import GenericPromptContent from './GenericPromptContent.svelte';
 
 export default class GenericPrompt extends Modal {
     private modalContent: GenericPromptContent;
-    private resolvePromise: (input: string) => void;
-    private input: string;
+    private resolvePromise: ((input: string) => void) | undefined;
+    private input: string | undefined;
     public waitForClose: Promise<string>;
-    private rejectPromise: (reason?: any) => void;
+    private rejectPromise: ((reason?: any) => void) | undefined;
     private didSubmit: boolean = false;
 
-    public static Prompt(app: App, header: string, placeholder?: string, value?: string, suggestValues?: string[]): Promise<string> {
-        const newPromptModal = new GenericPrompt(app, header, placeholder, value, suggestValues);
+    public static Prompt(
+        app: App,
+        header: string,
+        placeholder?: string,
+        value?: string,
+        suggestValues?: string[],
+    ): Promise<string> {
+        const newPromptModal = new GenericPrompt(
+            app,
+            header,
+            placeholder,
+            value,
+            suggestValues,
+        );
         return newPromptModal.waitForClose;
     }
 
-    private constructor(app: App, header: string, placeholder?: string, value?: string, suggestValues?: string[]) {
+    private constructor(
+        app: App,
+        header: string,
+        placeholder?: string,
+        value?: string,
+        suggestValues?: string[],
+    ) {
         super(app);
 
         this.modalContent = new GenericPromptContent({
@@ -29,16 +47,14 @@ export default class GenericPrompt extends Modal {
                     this.input = input;
                     this.didSubmit = true;
                     this.close();
-                }
-            }
+                },
+            },
         });
 
-        this.waitForClose = new Promise<string>(
-            (resolve, reject) => {
-                this.resolvePromise = resolve;
-                this.rejectPromise = reject;
-            }
-        );
+        this.waitForClose = new Promise<string>((resolve, reject) => {
+            this.resolvePromise = resolve;
+            this.rejectPromise = reject;
+        });
 
         this.open();
     }
@@ -46,8 +62,15 @@ export default class GenericPrompt extends Modal {
     onOpen() {
         super.onOpen();
 
-        const modalPrompt: HTMLElement = document.querySelector('.metaEditPrompt');
-        const modalInput: any = modalPrompt.querySelector('.metaEditPromptInput');
+        const modalPrompt: HTMLElement | null =
+            document.querySelector('.metaEditPrompt');
+
+        if (!modalPrompt) return;
+
+        const modalInput: any = modalPrompt.querySelector(
+            '.metaEditPromptInput',
+        );
+
         modalInput.focus();
         modalInput.select();
     }
@@ -56,7 +79,11 @@ export default class GenericPrompt extends Modal {
         super.onClose();
         this.modalContent.$destroy();
 
-        if(!this.didSubmit) this.rejectPromise("No input given.");
-        else this.resolvePromise(this.input);
+        if (!this.rejectPromise || !this.resolvePromise) return;
+
+        if (!this.didSubmit) this.rejectPromise('No input given.');
+
+        if (this.input) this.resolvePromise(this.input);
+        else this.rejectPromise();
     }
 }

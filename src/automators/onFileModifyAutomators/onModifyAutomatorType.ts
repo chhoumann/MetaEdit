@@ -1,3 +1,4 @@
 export enum OnModifyAutomatorType {
-    KanbanHelper = "KanbanHelper", ProgressProperties = "ProgressProperties"
+    KanbanHelper = 'KanbanHelper',
+    ProgressProperties = 'ProgressProperties',
 }

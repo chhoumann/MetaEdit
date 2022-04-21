@@ -1,107 +1,144 @@
-import MetaEditParser from "../parser";
-import { Property } from "../Types/Property";
-import type {TFile} from "obsidian";
-import GenericPrompt from "../Modals/GenericPrompt/GenericPrompt";
-import {EditMode} from "../Types/editMode";
-import GenericSuggester from "../Modals/GenericSuggester/GenericSuggester";
-import type {MetaEditSettings} from "../Settings/metaEditSettings";
-import {ADD_FIRST_ELEMENT, ADD_TO_BEGINNING, ADD_TO_END} from "../constants";
-import type {ProgressProperty} from "../Types/progressProperty";
-import {ProgressPropertyOptions} from "../Types/progressPropertyOptions";
-import {MetaType} from "../Types/metaType";
-import {Notice} from "obsidian";
-import {log} from "../logger/logManager";
+import type { TFile } from 'obsidian';
+import { Notice } from 'obsidian';
+import MetaEditParser from '../parser';
+import type { Property } from '../Types/Property';
+import GenericPrompt from '../Modals/GenericPrompt/GenericPrompt';
+import { EditMode } from '../Types/editMode';
+import GenericSuggester from '../Modals/GenericSuggester/GenericSuggester';
+import type { MetaEditSettings } from '../Settings/metaEditSettings';
+import { ADD_FIRST_ELEMENT, ADD_TO_BEGINNING, ADD_TO_END } from '../constants';
+import type { ProgressProperty } from '../Types/progressProperty';
+import { ProgressPropertyOptions } from '../Types/progressPropertyOptions';
+import { MetaType } from '../Types/metaType';
+import { log } from '../logger/logManager';
+import type MetaEdit from '../main';
 
 interface IMetaController {
-    addProperty(property: Property): void;
-    removeProperty(property: Property): void;
-    editProperty(property: Property): void;
+    addProperty(property: Property, file: TFile): void;
+    removeProperty(property: Property, file: TFile): void;
+    editProperty(property: Property, file: TFile): void;
 }
 
-export default class MetaController implements IMetaController {
-    addProperty(property: Property): void {
+export class MetaController_NEW implements IMetaController {
+    // @ts-ignore
+    addProperty(property: Property, file: TFile): void {
         // Handling for YAML, Tags, and DataView.
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
 
-    removeProperty(property: Property): void {
-        throw new Error("Method not implemented.");
+    // @ts-ignore
+    removeProperty(property: Property, file: TFile): void {
+        throw new Error('Method not implemented.');
     }
 
-    editProperty(property: Property): void {
-        throw new Error("Method not implemented.");
+    // @ts-ignore
+    editProperty(property: Property, file: TFile): void {
+        throw new Error('Method not implemented.');
     }
 }
 
-export class MetaController_Old {
+export default class MetaController {
     private parser: MetaEditParser;
     private readonly hasTrackerPlugin: boolean = false;
     private useTrackerPlugin: boolean = false;
 
-    constructor() {
+    constructor(private plugin: MetaEdit) {
         this.parser = new MetaEditParser();
         // @ts-ignore
-        this.hasTrackerPlugin = !!app.plugins.plugins["obsidian-tracker"];
+        this.hasTrackerPlugin = !!app.plugins.plugins['obsidian-tracker'];
     }
 
-    public async addYamlProp(propName: string, propValue: string, file: TFile): Promise<void> {
+    public async addYamlProp(
+        propName: string,
+        propValue: string,
+        file: TFile,
+    ): Promise<void> {
         const fileContent: string = await app.vault.read(file);
-        const frontmatter: Property[] = await this.parser.parseFrontmatter(file);
-        const isYamlEmpty: boolean = ((!frontmatter || frontmatter.length === 0) && !fileContent.match(/^-{3}\s*\n*\r*-{3}/));
+        const frontmatter: Property[] = await this.parser.parseFrontmatter(
+            file,
+        );
+        const isYamlEmpty: boolean =
+            (!frontmatter || frontmatter.length === 0) &&
+            !fileContent.match(/^-{3}\s*\n*\r*-{3}/);
 
-        if (frontmatter.some(value => value.key === propName)) {
-            new Notice(`Frontmatter in file '${file.name}' already has property '${propName}. Will not add.'`);
+        if (frontmatter.some((value) => value.key === propName)) {
+            new Notice(
+                `Frontmatter in file '${file.name}' already has property '${propName}. Will not add.'`,
+            );
             return;
         }
 
-        let splitContent = fileContent.split("\n");
+        const splitContent = fileContent.split('\n');
         if (isYamlEmpty) {
-            splitContent.unshift("---");
+            splitContent.unshift('---');
             splitContent.unshift(`${propName}: ${propValue}`);
-            splitContent.unshift("---");
-        }
-        else {
+            splitContent.unshift('---');
+        } else {
             splitContent.splice(1, 0, `${propName}: ${propValue}`);
         }
 
-        const newFileContent = splitContent.join("\n");
+        const newFileContent = splitContent.join('\n');
         await app.vault.modify(file, newFileContent);
     }
 
-    public async addDataviewField(propName: string, propValue: string, file: TFile): Promise<void> {
+    public async addDataviewField(
+        propName: string,
+        propValue: string,
+        file: TFile,
+    ): Promise<void> {
         const fileContent: string = await app.vault.read(file);
-        let lines = fileContent.split("\n").reduce((obj: {[key: string]: string}, line: string, idx: number) => {
-            obj[idx] = !!line ? line : "";
-            return obj;
-        }, {});
+        const lines = fileContent
+            .split('\n')
+            .reduce(
+                (obj: { [key: string]: string }, line: string, idx: number) => {
+                    obj[idx] = line ? line : '';
+                    return obj;
+                },
+                {},
+            );
 
-        let appendAfter: string = await GenericSuggester.Suggest(app, Object.values(lines), Object.keys(lines));
+        const appendAfter: string = await GenericSuggester.Suggest(
+            app,
+            Object.values(lines),
+            Object.keys(lines),
+        );
         if (!appendAfter) return;
 
-        let splitContent: string[] = fileContent.split("\n");
-        if (typeof appendAfter === "number" || parseInt(appendAfter)) {
-            splitContent.splice(parseInt(appendAfter), 0, `${propName}:: ${propValue}`);
+        const splitContent: string[] = fileContent.split('\n');
+        if (typeof appendAfter === 'number' || parseInt(appendAfter)) {
+            splitContent.splice(
+                parseInt(appendAfter),
+                0,
+                `${propName}:: ${propValue}`,
+            );
         }
-        const newFileContent = splitContent.join("\n");
+        const newFileContent = splitContent.join('\n');
 
         await app.vault.modify(file, newFileContent);
     }
 
-    public async editMetaElement(property: Property, meta: Property[], file: TFile): Promise<void> {
-        const mode: EditMode = this.plugin.settings.EditMode.mode;
+    public async editMetaElement(
+        property: Property,
+        // @ts-ignore
+        meta: Property[],
+        file: TFile,
+    ): Promise<void> {
+        const mode: EditMode | undefined = this.plugin.settings?.EditMode.mode;
 
-        if (property.type === MetaType.Tag)
-            await this.editTag(property, file);
+        if (property.type === MetaType.Tag) await this.editTag(property, file);
         else if (mode === EditMode.AllMulti || mode === EditMode.SomeMulti)
             await this.multiValueMode(property, file);
-        else
-            await this.standardMode(property, file);
+        else await this.standardMode(property, file);
     }
 
     private async editTag(property: Property, file: TFile) {
-        const splitTag: string[] = property.key.split("/");
-        const allButLast: string = splitTag.slice(0, splitTag.length - 1).join("/");
-        const trackerPluginMethod = "Use Tracker", metaEditMethod = "Use MetaEdit", choices = [trackerPluginMethod, metaEditMethod];
+        const splitTag: string[] = property.key.split('/');
+        const allButLast: string = splitTag
+            .slice(0, splitTag.length - 1)
+            .join('/');
+        const trackerPluginMethod = 'Use Tracker',
+            metaEditMethod = 'Use MetaEdit',
+            choices = [trackerPluginMethod, metaEditMethod];
         let newValue: string;
         let method: string = metaEditMethod;
 
@@ -111,45 +148,71 @@ export class MetaController_Old {
         if (!method) return;
 
         if (method === trackerPluginMethod) {
-            newValue = await GenericPrompt.Prompt(app, `Enter a new value for ${property.key}`)
+            newValue = await GenericPrompt.Prompt(
+                app,
+                `Enter a new value for ${property.key}`,
+            );
             this.useTrackerPlugin = true;
         } else if (method === metaEditMethod) {
             const autoProp = await this.handleAutoProperties(allButLast);
 
-            if (autoProp)
-                newValue = autoProp;
+            if (autoProp) newValue = autoProp;
             else
-                newValue = await GenericPrompt.Prompt(app, `Enter a new value for ${property.key}`);
+                newValue = await GenericPrompt.Prompt(
+                    app,
+                    `Enter a new value for ${property.key}`,
+                );
         }
 
+        // @ts-ignore
         if (newValue) {
             await this.updatePropertyInFile(property, newValue, file);
         }
     }
 
-    public async handleProgressProps(meta: Property[], file: TFile): Promise<void> {
+    public async handleProgressProps(
+        meta: Property[],
+        file: TFile,
+    ): Promise<void> {
         try {
-            const {enabled, properties} = this.plugin.settings.ProgressProperties;
+            if (!this.plugin.settings?.ProgressProperties.enabled) return;
+
+            const { enabled, properties } =
+                this.plugin.settings.ProgressProperties;
             if (!enabled) return;
 
-            const tasks = app.metadataCache.getFileCache(file)?.listItems?.filter(li => li.task);
+            const tasks = app.metadataCache
+                .getFileCache(file)
+                ?.listItems?.filter((li) => li.task);
             if (!tasks) return;
-            let total: number = 0, complete: number = 0, incomplete: number = 0;
+            let total: number = 0,
+                complete: number = 0,
+                incomplete: number = 0;
 
             total = tasks.length;
-            complete = tasks.filter(i => i.task != " ").length;
+            complete = tasks.filter((i) => i.task != ' ').length;
             incomplete = total - complete;
 
-            const props = await this.progressPropHelper(properties, meta, {total, complete, incomplete});
+            const props = await this.progressPropHelper(properties, meta, {
+                total,
+                complete,
+                incomplete,
+            });
             await this.updateMultipleInFile(props, file);
-        }
-        catch (e) {
+        } catch (e) {
+            // @ts-ignore
             log.logError(e);
         }
     }
 
     public async createNewProperty(suggestValues?: string[]) {
-        let propName = await GenericPrompt.Prompt(app, "Enter a property name", "Property", "", suggestValues);
+        const propName = await GenericPrompt.Prompt(
+            app,
+            'Enter a property name',
+            'Property',
+            '',
+            suggestValues,
+        );
         if (!propName) return null;
 
         let propValue: string;
@@ -158,135 +221,201 @@ export class MetaController_Old {
         if (autoProp) {
             propValue = autoProp;
         } else {
-            propValue = await GenericPrompt.Prompt(app, "Enter a property value", "Value")
-                .catch(() => null);
+            // @ts-ignore
+            propValue = await GenericPrompt.Prompt(
+                app,
+                'Enter a property value',
+                'Value',
+            ).catch(() => null);
         }
 
         if (propValue === null) return null;
 
-        return {propName, propValue: propValue.trim()};
+        return { propName, propValue: propValue.trim() };
     }
 
-    public async deleteProperty(property: Property, file: TFile): Promise<void> {
+    public async deleteProperty(
+        property: Property,
+        file: TFile,
+    ): Promise<void> {
         const fileContent = await app.vault.read(file);
-        const splitContent = fileContent.split("\n");
+        const splitContent = fileContent.split('\n');
         const regexp = new RegExp(`^\s*${property.key}:`);
 
-        const idx = splitContent.findIndex(s => s.match(regexp));
-        const newFileContent = splitContent.filter((v, i) => {
-            if (i != idx) return true;
-        }).join("\n");
+        const idx = splitContent.findIndex((s) => s.match(regexp));
+        const newFileContent = splitContent
+            .filter((_v, i) => {
+                if (i != idx) return true;
+            })
+            .join('\n');
 
         await app.vault.modify(file, newFileContent);
     }
 
-    private async progressPropHelper(progressProps: ProgressProperty[], meta: Property[], counts: {total: number, complete: number, incomplete: number}) {
+    private async progressPropHelper(
+        progressProps: ProgressProperty[],
+        meta: Property[],
+        counts: { total: number; complete: number; incomplete: number },
+    ) {
         return progressProps.reduce((obj: Property[], el) => {
-            const property = meta.find(prop => prop.key === el.name);
+            const property = meta.find((prop) => prop.key === el.name);
             if (property) {
                 switch (el.type) {
                     case ProgressPropertyOptions.TaskComplete:
-                        obj.push({...property, content: counts.complete.toString()});
+                        obj.push({
+                            ...property,
+                            content: counts.complete.toString(),
+                        });
                         break;
                     case ProgressPropertyOptions.TaskIncomplete:
-                        obj.push({...property, content: counts.incomplete.toString()});
+                        obj.push({
+                            ...property,
+                            content: counts.incomplete.toString(),
+                        });
                         break;
                     case ProgressPropertyOptions.TaskTotal:
-                        obj.push({...property, content: counts.total.toString()});
+                        obj.push({
+                            ...property,
+                            content: counts.total.toString(),
+                        });
                         break;
-                    default: break;
+                    default:
+                        break;
                 }
             }
 
             return obj;
-        }, [])
+        }, []);
     }
 
     private async standardMode(property: Property, file: TFile): Promise<void> {
         const autoProp = await this.handleAutoProperties(property.key);
         let newValue;
 
-        if (autoProp)
-            newValue = autoProp;
+        if (autoProp) newValue = autoProp;
         else
-            newValue = await GenericPrompt.Prompt(app, `Enter a new value for ${property.key}`, property.content, property.content);
+            newValue = await GenericPrompt.Prompt(
+                app,
+                `Enter a new value for ${property.key}`,
+                //@ts-ignore
+                property.content,
+                property.content,
+            );
 
         if (newValue) {
             await this.updatePropertyInFile(property, newValue, file);
         }
     }
 
-    private async multiValueMode(property: Property, file: TFile): Promise<Boolean> {
-        const settings: MetaEditSettings = this.plugin.settings;
+    private async multiValueMode(
+        property: Property,
+        file: TFile,
+    ): Promise<Boolean> {
+        const settings: MetaEditSettings | undefined = this.plugin.settings;
         let newValue: string;
 
-
-        if (settings.EditMode.mode == EditMode.SomeMulti && !settings.EditMode.properties.includes(property.key)) {
+        if (
+            settings?.EditMode.mode == EditMode.SomeMulti &&
+            !settings.EditMode.properties.includes(property.key)
+        ) {
             await this.standardMode(property, file);
             return false;
         }
 
         let selectedOption: string, tempValue: string, splitValues: string[];
-        let currentPropValue: string = property.content;
+        let currentPropValue: unknown = property.content;
 
-        if (currentPropValue !== null)
+        if (currentPropValue !== null) {
+            // @ts-ignore
             currentPropValue = currentPropValue.toString();
-        else
-            currentPropValue = "";
+        } else currentPropValue = '';
 
         if (property.type === MetaType.YAML) {
-            splitValues = currentPropValue.split('').filter(c => !c.includes("[]")).join('').split(",");
+            // @ts-ignore
+            splitValues = currentPropValue
+                // @ts-ignore
+                .split('')
+                // @ts-ignore
+                .filter((c: string | string[]) => !c.includes('[]'))
+                // @ts-ignore
+                .join('')
+                // @ts-ignore
+                .split(',');
         } else {
-            splitValues = currentPropValue.split(",").map(prop => prop.trim());
+            // @ts-ignore
+            splitValues = currentPropValue
+                // @ts-ignore
+                .split(',')
+                // @ts-ignore
+                .map((prop: string) => prop.trim());
         }
 
-        if (splitValues.length == 0 || (splitValues.length == 1 && splitValues[0] == "")) {
-            const options = ["Add new value"];
-            selectedOption = await GenericSuggester.Suggest(app, options, [ADD_FIRST_ELEMENT]);
-        }
-        else if (splitValues.length == 1) {
-            const options = [splitValues[0], "Add to end", "Add to beginning"];
-            selectedOption = await GenericSuggester.Suggest(app, options, [splitValues[0], ADD_TO_END, ADD_TO_BEGINNING]);
+        if (
+            splitValues.length == 0 ||
+            (splitValues.length == 1 && splitValues[0] == '')
+        ) {
+            const options = ['Add new value'];
+            selectedOption = await GenericSuggester.Suggest(app, options, [
+                ADD_FIRST_ELEMENT,
+            ]);
+        } else if (splitValues.length == 1) {
+            const options = [splitValues[0], 'Add to end', 'Add to beginning'];
+            selectedOption = await GenericSuggester.Suggest(app, options, [
+                splitValues[0],
+                ADD_TO_END,
+                ADD_TO_BEGINNING,
+            ]);
         } else {
-            const options = ["Add to end", ...splitValues, "Add to beginning"];
-            selectedOption = await GenericSuggester.Suggest(app, options, [ADD_TO_END, ...splitValues, ADD_TO_BEGINNING]);
+            const options = ['Add to end', ...splitValues, 'Add to beginning'];
+            selectedOption = await GenericSuggester.Suggest(app, options, [
+                ADD_TO_END,
+                ...splitValues,
+                ADD_TO_BEGINNING,
+            ]);
         }
 
-        if (!selectedOption) return;
+        if (!selectedOption) {
+            // @ts-ignore
+            return;
+        }
         let selectedIndex;
 
         const autoProp = await this.handleAutoProperties(property.key);
         if (autoProp) {
             tempValue = autoProp;
-        } else if (selectedOption.includes("cmd")) {
-            tempValue = await GenericPrompt.Prompt(app, "Enter a new value");
+        } else if (selectedOption.includes('cmd')) {
+            tempValue = await GenericPrompt.Prompt(app, 'Enter a new value');
         } else {
-            selectedIndex = splitValues.findIndex(el => el == selectedOption);
-            tempValue = await GenericPrompt.Prompt(app, `Change ${selectedOption} to`, selectedOption);
+            selectedIndex = splitValues.findIndex((el) => el == selectedOption);
+            tempValue = await GenericPrompt.Prompt(
+                app,
+                `Change ${selectedOption} to`,
+                selectedOption,
+            );
         }
 
-        if (!tempValue) return;
-        switch(selectedOption) {
+        if (!tempValue) {
+            // @ts-ignore
+            return;
+        }
+        switch (selectedOption) {
             case ADD_FIRST_ELEMENT:
                 newValue = `${tempValue}`;
                 break;
             case ADD_TO_BEGINNING:
-                newValue = `${[tempValue, ...splitValues].join(", ")}`;
+                newValue = `${[tempValue, ...splitValues].join(', ')}`;
                 break;
             case ADD_TO_END:
-                newValue = `${[...splitValues, tempValue].join(", ")}`;
+                newValue = `${[...splitValues, tempValue].join(', ')}`;
                 break;
             default:
-                if (selectedIndex)
-                    splitValues[selectedIndex] = tempValue;
-                else
-                    splitValues = [tempValue];
-                newValue = `${splitValues.join(", ")}`;
+                if (selectedIndex) splitValues[selectedIndex] = tempValue;
+                else splitValues = [tempValue];
+                newValue = `${splitValues.join(', ')}`;
                 break;
         }
 
-        if (property.type === MetaType.YAML)
-            newValue = `[${newValue}]`;
+        if (property.type === MetaType.YAML) newValue = `[${newValue}]`;
 
         if (newValue) {
             await this.updatePropertyInFile(property, newValue, file);
@@ -296,27 +425,44 @@ export class MetaController_Old {
         return false;
     }
 
-    public async handleAutoProperties(propertyName: string): Promise<string> {
-        const autoProp = this.plugin.settings.AutoProperties.properties.find(a => a.name === propertyName);
+    public async handleAutoProperties(
+        propertyName: string,
+    ): Promise<string | null> {
+        const autoProp = this.plugin.settings?.AutoProperties.properties.find(
+            (a) => a.name === propertyName,
+        );
 
-        if (this.plugin.settings.AutoProperties.enabled && autoProp) {
+        if (this.plugin.settings?.AutoProperties.enabled && autoProp) {
             const options = autoProp.choices;
-            return await GenericPrompt.Prompt(app, `Enter a new value for ${propertyName}`, '', '', options);
+            return await GenericPrompt.Prompt(
+                app,
+                `Enter a new value for ${propertyName}`,
+                '',
+                '',
+                options,
+            );
         }
 
         return null;
     }
 
-    public async updatePropertyInFile(property: Partial<Property>, newValue: string, file: TFile): Promise<void> {
+    public async updatePropertyInFile(
+        property: Partial<Property>,
+        newValue: string,
+        file: TFile,
+    ): Promise<void> {
         const fileContent = await app.vault.read(file);
 
-        const newFileContent = fileContent.split("\n").map(line => {
-            if (this.lineMatch(property, line)) {
-                return this.updatePropertyLine(property, newValue);
-            }
+        const newFileContent = fileContent
+            .split('\n')
+            .map((line) => {
+                if (this.lineMatch(property, line)) {
+                    return this.updatePropertyLine(property, newValue);
+                }
 
-            return line;
-        }).join("\n");
+                return line;
+            })
+            .join('\n');
 
         await app.vault.modify(file, newFileContent);
     }
@@ -325,7 +471,7 @@ export class MetaController_Old {
         const propertyRegex = new RegExp(`^\s*${property.key}\:{1,2}`);
         const tagRegex = new RegExp(`^\s*${property.key}`);
 
-        if (property.key.contains('#')) {
+        if (property.key && property.key.contains('#')) {
             return tagRegex.test(line);
         }
 
@@ -345,17 +491,23 @@ export class MetaController_Old {
                 if (this.useTrackerPlugin) {
                     newLine = `${property.key}:${newValue}`;
                 } else {
-                    const splitTag: string[] = property.key.split("/");
+                    // @ts-ignore
+                    const splitTag: string[] = property.key.split('/');
                     if (splitTag.length === 1)
                         newLine = `${splitTag[0]}/${newValue}`;
                     else if (splitTag.length > 1) {
-                        const allButLast: string = splitTag.slice(0, splitTag.length - 1).join("/");
+                        const allButLast: string = splitTag
+                            .slice(0, splitTag.length - 1)
+                            .join('/');
                         newLine = `${allButLast}/${newValue}`;
-                    } else
+                    } else {
+                        // @ts-ignore
                         newLine = property.key;
+                    }
                 }
                 break;
             default:
+                // @ts-ignore
                 newLine = property.key;
                 break;
         }
@@ -363,20 +515,23 @@ export class MetaController_Old {
         return newLine;
     }
 
-    private async updateMultipleInFile(properties: Property[], file: TFile): Promise<void> {
-        let fileContent = (await app.vault.read(file)).split("\n");
+    private async updateMultipleInFile(
+        properties: Property[],
+        file: TFile,
+    ): Promise<void> {
+        let fileContent = (await app.vault.read(file)).split('\n');
 
         for (const prop of properties) {
-            fileContent = fileContent.map(line => {
-
+            fileContent = fileContent.map((line) => {
                 if (this.lineMatch(prop, line)) {
-                    return this.updatePropertyLine(prop, prop.content)
+                    // @ts-ignore
+                    return this.updatePropertyLine(prop, prop.content);
                 }
 
                 return line;
             });
         }
-        const newFileContent = fileContent.join("\n");
+        const newFileContent = fileContent.join('\n');
 
         await app.vault.modify(file, newFileContent);
     }

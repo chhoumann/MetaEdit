@@ -1,32 +1,27 @@
 import { stringifyYaml } from 'obsidian';
-import type { Property } from './../Types/Property';
+import type { Property } from '../Types/Property';
 import propertiesToObject from './propertiesToObject';
-import {Updater} from "./Updater";
+import { Updater } from './Updater';
 
 export default class YamlUpdater extends Updater {
-    /**
-     *
-     */
-    constructor() {
-        super(app, app.workspace.getActiveFile());
-        
-    }
-
+    // @ts-ignore
     add(propertyName: string, value: unknown): string {
-        return "";
+        return '';
     }
 
+    // @ts-ignore
     remove(propertyName: string): string {
-        return "";
+        return '';
     }
 
+    // @ts-ignore
     update(propertyName: string, newValue: unknown): string {
-        return "";
+        return '';
     }
 
+    // @ts-ignore
     private getStringifiedYaml(properties: Property[]): string {
         const yamlObj = propertiesToObject(properties);
         return stringifyYaml(yamlObj);
     }
 }
-

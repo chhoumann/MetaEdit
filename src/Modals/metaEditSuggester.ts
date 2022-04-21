@@ -1,11 +1,11 @@
-import {App, FuzzyMatch, FuzzySuggestModal, TFile} from "obsidian";
-import type MetaEdit from "../main";
-import type MetaController from "../metaController/metaController/metaController";
-import { Property } from "../Types/Property";
-import {MAIN_SUGGESTER_OPTIONS, newDataView, newYaml} from "../constants";
-import {MetaType} from "../Types/metaType";
-import {concat} from "svelte-preprocess/dist/modules/utils";
-import type {AutoProperty} from "../Types/autoProperty";
+import { App, FuzzyMatch, FuzzySuggestModal, TFile } from 'obsidian';
+import { concat } from 'svelte-preprocess/dist/modules/utils';
+import type MetaEdit from '../main';
+import type MetaController from '../metaController/metaController';
+import type { Property } from '../Types/Property';
+import { MAIN_SUGGESTER_OPTIONS, newDataView, newYaml } from '../constants';
+import { MetaType } from '../Types/metaType';
+import type { AutoProperty } from '../Types/autoProperty';
 
 export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     public app: App;
@@ -14,9 +14,15 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     private readonly data: Property[];
     private readonly options: Property[];
     private controller: MetaController;
-    private suggestValues: string[];
+    private suggestValues: string[] | undefined;
 
-    constructor(app: App, plugin: MetaEdit, data: Property[], file: TFile, controller: MetaController) {
+    constructor(
+        app: App,
+        plugin: MetaEdit,
+        data: Property[],
+        file: TFile,
+        controller: MetaController,
+    ) {
         super(app);
         this.file = file;
         this.app = app;
@@ -28,19 +34,19 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
         this.setSuggestValues();
 
         this.setInstructions([
-            {command: "❌", purpose: "Delete property"},
-            {command: "🔃", purpose: "Transform to YAML/Dataview"}
-        ])
+            { command: '❌', purpose: 'Delete property' },
+            { command: '🔃', purpose: 'Transform to YAML/Dataview' },
+        ]);
     }
 
     renderSuggestion(item: FuzzyMatch<Property>, el: HTMLElement) {
         super.renderSuggestion(item, el);
 
-        if (Object.values(this.options).find(v => v === item.item)) {
-            el.style.fontWeight = "bold";
+        if (Object.values(this.options).find((v) => v === item.item)) {
+            el.style.fontWeight = 'bold';
         } else {
-            this.createButton(el,"❌", this.deleteItem(item));
-            this.createButton(el, "🔃", this.transformProperty(item))
+            this.createButton(el, '❌', this.deleteItem(item));
+            this.createButton(el, '🔃', this.transformProperty(item));
         }
     }
 
@@ -52,22 +58,40 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
         return concat(this.options, this.data);
     }
 
-    async onChooseItem(item: Property, evt: MouseEvent | KeyboardEvent): Promise<void> {
+    async onChooseItem(
+        item: Property,
+        // @ts-ignore
+        evt: MouseEvent | KeyboardEvent,
+    ): Promise<void> {
         if (item.content === newYaml) {
-            const newProperty = await this.controller.createNewProperty(this.suggestValues);
-            if (!newProperty) return null;
+            const newProperty = await this.controller.createNewProperty(
+                this.suggestValues,
+            );
+            if (!newProperty) {
+                // @ts-ignore
+                return null;
+            }
 
-            const {propName, propValue} = newProperty;
+            const { propName, propValue } = newProperty;
             await this.controller.addYamlProp(propName, propValue, this.file);
             return;
         }
 
         if (item.content === newDataView) {
-            const newProperty = await this.controller.createNewProperty(this.suggestValues);
-            if (!newProperty) return null;
+            const newProperty = await this.controller.createNewProperty(
+                this.suggestValues,
+            );
+            if (!newProperty) {
+                // @ts-ignore
+                return null;
+            }
 
-            const {propName, propValue} = newProperty;
-            await this.controller.addDataviewField(propName, propValue, this.file);
+            const { propName, propValue } = newProperty;
+            await this.controller.addDataviewField(
+                propName,
+                propValue,
+                this.file,
+            );
             return;
         }
 
@@ -85,7 +109,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     private transformProperty(item: FuzzyMatch<Property>) {
         return async (evt: MouseEvent | KeyboardEvent) => {
             evt.stopPropagation();
-            const {item: property} = item;
+            const { item: property } = item;
             if (property.type === MetaType.YAML) {
                 await this.toDataview(property);
             } else {
@@ -93,49 +117,72 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
             }
 
             this.close();
-        }
+        };
     }
 
     private async toYaml(property: Property) {
         await this.controller.deleteProperty(property, this.file);
-        await this.controller.addYamlProp(property.key, property.content, this.file);
+        await this.controller.addYamlProp(
+            property.key,
+            // @ts-ignore
+            property.content,
+            this.file,
+        );
     }
 
     private async toDataview(property: Property) {
         await this.controller.deleteProperty(property, this.file);
-        await this.controller.addDataviewField(property.key, property.content, this.file);
+        await this.controller.addDataviewField(
+            property.key,
+            // @ts-ignore
+            property.content,
+            this.file,
+        );
     }
 
-    private createButton(el: HTMLElement, content: string, callback: (evt: MouseEvent) => void) {
-        const itemButton = el.createEl("button");
+    private createButton(
+        el: HTMLElement,
+        content: string,
+        callback: (evt: MouseEvent) => void,
+    ) {
+        const itemButton = el.createEl('button');
         itemButton.textContent = content;
-        itemButton.classList.add("not-a-button");
-        itemButton.style.float = "right";
-        itemButton.style.marginRight = "4px";
-        itemButton.addEventListener("click", callback);
+        itemButton.classList.add('not-a-button');
+        itemButton.style.float = 'right';
+        itemButton.style.marginRight = '4px';
+        itemButton.addEventListener('click', callback);
     }
 
     private removeIgnored(data: Property[]): Property[] {
+        // @ts-ignore
         const ignored = this.plugin.settings.IgnoredProperties.properties;
-        let purged: Property[] = [];
+        const purged: Property[] = [];
 
-        for (let item in data) {
-            if (!ignored.contains(data[item].key))
-                purged.push(data[item]);
+        for (const item in data) {
+            if (!ignored.contains(data[item].key)) purged.push(data[item]);
         }
 
         return purged;
     }
 
     private setSuggestValues() {
+        // @ts-ignore
         const autoProps = this.plugin.settings.AutoProperties.properties;
 
-        this.suggestValues = autoProps.reduce((arr: string[], val: AutoProperty) => {
-            if (!this.data.find(prop => val.name === prop.key || val.name.startsWith('#'))) {
-                arr.push(val.name);
-            }
+        this.suggestValues = autoProps.reduce(
+            (arr: string[], val: AutoProperty) => {
+                if (
+                    !this.data.find(
+                        (prop) =>
+                            val.name === prop.key || val.name.startsWith('#'),
+                    )
+                ) {
+                    arr.push(val.name);
+                }
 
-            return arr;
-        }, []);
+                return arr;
+            },
+            [],
+        );
     }
 }

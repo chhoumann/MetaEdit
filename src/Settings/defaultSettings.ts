@@ -1,18 +1,18 @@
-import type {MetaEditSettings} from "./metaEditSettings";
-import {EditMode} from "../Types/editMode";
+import { EditMode } from '../Types/editMode';
+import type { MetaEditSettings } from './metaEditSettings';
 
 export const DEFAULT_SETTINGS: MetaEditSettings = Object.freeze({
     ProgressProperties: {
         enabled: false,
-        properties: []
+        properties: [],
     },
     IgnoredProperties: {
         enabled: false,
-        properties: []
+        properties: [],
     },
     AutoProperties: {
         enabled: false,
-        properties: []
+        properties: [],
     },
     EditMode: {
         mode: EditMode.AllSingle,
@@ -20,9 +20,9 @@ export const DEFAULT_SETTINGS: MetaEditSettings = Object.freeze({
     },
     KanbanHelper: {
         enabled: false,
-        boards: []
+        boards: [],
     },
     UIElements: {
-        enabled: true
-    }
+        enabled: true,
+    },
 });

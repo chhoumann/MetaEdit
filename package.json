@@ -8,7 +8,7 @@
     "build": "node esbuild.config.mjs production",
     "test": "jest --ci",
     "test:dev": "jest --watch",
-    "lint": "eslint ./src --fix && eslint ./tests --fix && tsc --noEmit --pretty && svelte-check"
+    "lint": "eslint ./src --fix && eslint ./tests --fix"
   },
   "keywords": [],
   "author": "Christian B. B. Houmann",
@@ -34,7 +34,8 @@
     "svelte-preprocess": "^4.7.0",
     "ts-jest": "27.0.0",
     "tslib": "^2.2.0",
-    "typescript": "^4.2.4"
+    "typescript": "^4.2.4",
+    "@typescript-eslint/eslint-plugin": "^5.20.0"
   },
   "dependencies": {
     "@popperjs/core": "^2.9.2"

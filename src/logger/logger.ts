@@ -1,9 +1,9 @@
-import type {ILogger} from "./ilogger";
-import type {ErrorLevel} from "./errorLevel";
-import type {MetaEditError} from "./metaEditError";
+import type { ILogger } from './ilogger';
+import type { ErrorLevel } from './errorLevel';
+import type { MetaEditError } from './metaEditError';
 
-export abstract class MetaEditLogger implements ILogger{
-     abstract logError(msg: string): void;
+export abstract class MetaEditLogger implements ILogger {
+    abstract logError(msg: string): void;
 
     abstract logMessage(msg: string): void;
 
@@ -13,7 +13,10 @@ export abstract class MetaEditLogger implements ILogger{
         return `MetaEdit: (${error.level}) ${error.message}`;
     }
 
-    protected getMetaEditError(message: string, level: ErrorLevel): MetaEditError {
-        return {message, level, time: Date.now()};
+    protected getMetaEditError(
+        message: string,
+        level: ErrorLevel,
+    ): MetaEditError {
+        return { message, level, time: Date.now() };
     }
 }

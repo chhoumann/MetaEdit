@@ -1,6 +1,6 @@
-import type {ProgressPropertyOptions} from "./progressPropertyOptions";
+import type { ProgressPropertyOptions } from './progressPropertyOptions';
 
 export interface ProgressProperty {
     name: string;
-    type: ProgressPropertyOptions
+    type: ProgressPropertyOptions;
 }

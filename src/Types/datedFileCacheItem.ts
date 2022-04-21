@@ -1,4 +1,4 @@
 export interface DatedFileCacheItem {
-    content: string,
-    updateTime: number
+    content: string;
+    updateTime: number;
 }

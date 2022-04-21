@@ -1,5 +1,5 @@
-import type IUpdater from "./IUpdater";
-import type {TFile, App} from "obsidian";
+import type { App, TFile } from 'obsidian';
+import type IUpdater from './IUpdater';
 
 export abstract class Updater implements IUpdater {
     protected app: App;

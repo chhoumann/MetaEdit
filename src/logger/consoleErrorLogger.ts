@@ -1,6 +1,6 @@
-import {ErrorLevel} from "./errorLevel";
-import {MetaEditLogger} from "./logger";
-import type {MetaEditError} from "./metaEditError";
+import { ErrorLevel } from './errorLevel';
+import { MetaEditLogger } from './logger';
+import type { MetaEditError } from './metaEditError';
 
 export class ConsoleErrorLogger extends MetaEditLogger {
     public ErrorLog: MetaEditError[] = [];

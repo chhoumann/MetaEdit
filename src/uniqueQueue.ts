@@ -6,7 +6,7 @@ export class UniqueQueue<T> {
     }
 
     public enqueue(item: T): boolean {
-        if (this.elements.find(i => i === item)) {
+        if (this.elements.find((i) => i === item)) {
             return false;
         }
 
@@ -18,7 +18,7 @@ export class UniqueQueue<T> {
         return this.elements.shift();
     }
 
-    public peek(): T | undefined{
+    public peek(): T | undefined {
         return this.elements[0];
     }
 

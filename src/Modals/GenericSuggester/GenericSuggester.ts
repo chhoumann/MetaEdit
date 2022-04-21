@@ -1,7 +1,7 @@
-import {App, FuzzySuggestModal} from "obsidian";
+import { App, FuzzySuggestModal } from 'obsidian';
 
-export default class GenericSuggester extends FuzzySuggestModal<string>{
-    private resolvePromise: (value: string) => void;
+export default class GenericSuggester extends FuzzySuggestModal<string> {
+    private resolvePromise: ((value: string) => void) | undefined;
     private promise: Promise<string>;
 
     public static Suggest(app: App, displayItems: string[], items: string[]) {
@@ -9,11 +9,15 @@ export default class GenericSuggester extends FuzzySuggestModal<string>{
         return newSuggester.promise;
     }
 
-    private constructor(app: App, private displayItems: string[], private items: string[]) {
+    private constructor(
+        app: App,
+        private displayItems: string[],
+        private items: string[],
+    ) {
         super(app);
 
         this.promise = new Promise<string>(
-            (resolve) => (this.resolvePromise = resolve)
+            (resolve) => (this.resolvePromise = resolve),
         );
 
         this.open();
@@ -27,8 +31,9 @@ export default class GenericSuggester extends FuzzySuggestModal<string>{
         return this.items;
     }
 
-    onChooseItem(item: string, evt: MouseEvent | KeyboardEvent): void {
-        this.resolvePromise(item);
+    onChooseItem(item: string): void {
+        if (this.resolvePromise) {
+            this.resolvePromise(item);
+        }
     }
-    
 }

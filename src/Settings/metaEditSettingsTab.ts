@@ -1,21 +1,20 @@
-import {PluginSettingTab, Setting} from "obsidian";
-import type MetaEdit from "../main";
-import {EditMode} from "../Types/editMode";
-import ProgressPropertiesModalContent
-    from "../Modals/ProgressPropertiesSettingModal/ProgressPropertiesModalContent.svelte";
-import AutoPropertiesModalContent from "../Modals/AutoPropertiesSettingModal/AutoPropertiesModalContent.svelte";
-import KanbanHelperSettingContent from "../Modals/KanbanHelperSetting/KanbanHelperSettingContent.svelte";
-import SingleValueTableEditorContent from "../Modals/shared/SingleValueTableEditorContent.svelte";
-import type {ProgressProperty} from "../Types/progressProperty";
-import type {AutoProperty} from "../Types/autoProperty";
-import type {KanbanProperty} from "../Types/kanbanProperty";
+import { ExtraButtonComponent, PluginSettingTab, Setting } from 'obsidian';
+import type MetaEdit from '../main';
+import { EditMode } from '../Types/editMode';
+import ProgressPropertiesModalContent from '../Modals/ProgressPropertiesSettingModal/ProgressPropertiesModalContent.svelte';
+import AutoPropertiesModalContent from '../Modals/AutoPropertiesSettingModal/AutoPropertiesModalContent.svelte';
+import KanbanHelperSettingContent from '../Modals/KanbanHelperSetting/KanbanHelperSettingContent.svelte';
+import SingleValueTableEditorContent from '../Modals/shared/SingleValueTableEditorContent.svelte';
+import type { ProgressProperty } from '../Types/progressProperty';
+import type { AutoProperty } from '../Types/autoProperty';
+import type { KanbanProperty } from '../Types/kanbanProperty';
 
 function toggleHiddenEl(el: HTMLElement, bShow: boolean) {
     if (el && !bShow) {
-        el.style.display = "none";
+        el.style.display = 'none';
         return true;
     } else if (el && bShow) {
-        el.style.display = "block";
+        el.style.display = 'block';
         return false;
     }
     return bShow;
@@ -23,7 +22,12 @@ function toggleHiddenEl(el: HTMLElement, bShow: boolean) {
 
 export class MetaEditSettingsTab extends PluginSettingTab {
     plugin: MetaEdit;
-    private svelteElements: (SingleValueTableEditorContent | AutoPropertiesModalContent | ProgressPropertiesModalContent | KanbanHelperSettingContent)[] = [];
+    private svelteElements: (
+        | SingleValueTableEditorContent
+        | AutoPropertiesModalContent
+        | ProgressPropertiesModalContent
+        | KanbanHelperSettingContent
+    )[] = [];
 
     constructor(plugin: MetaEdit) {
         super(app, plugin);
@@ -31,11 +35,11 @@ export class MetaEditSettingsTab extends PluginSettingTab {
     }
 
     display(): void {
-        let {containerEl} = this;
+        const { containerEl } = this;
 
         containerEl.empty();
 
-        containerEl.createEl('h2', {text: 'MetaEdit Settings'});
+        containerEl.createEl('h2', { text: 'MetaEdit Settings' });
 
         this.addProgressPropertiesSetting(containerEl);
         this.addAutoPropertiesSetting(containerEl);
@@ -46,37 +50,48 @@ export class MetaEditSettingsTab extends PluginSettingTab {
     }
 
     private addProgressPropertiesSetting(containerEl: HTMLElement) {
-        let modal: ProgressPropertiesModalContent, div: HTMLDivElement, hidden: boolean = true;
+        let hidden: boolean = true;
         const setting = new Setting(containerEl)
-            .setName("Progress Properties")
-            .setDesc("Update properties automatically.")
-            .addToggle(toggle => {
+            .setDesc('Update properties automatically.')
+            .addToggle((toggle) => {
                 toggle
-                    .setTooltip("Toggle Progress Properties")
+                    .setTooltip('Toggle Progress Properties')
+                    // @ts-ignore
                     .setValue(this.plugin.settings.ProgressProperties.enabled)
-                    .onChange(async value => {
-                        if (value === this.plugin.settings.ProgressProperties.enabled) return;
+                    .onChange(async (value) => {
+                        if (
+                            value ===
+                            // @ts-ignore
+                            this.plugin.settings.ProgressProperties.enabled
+                        )
+                            return;
 
+                        // @ts-ignore
                         this.plugin.settings.ProgressProperties.enabled = value;
                         this.plugin.toggleAutomators();
 
                         await this.plugin.saveSettings();
                     });
             })
-            .addExtraButton(button => button.onClick(() => hidden = toggleHiddenEl(div, hidden)))
+            .addExtraButton((button: ExtraButtonComponent) =>
+                button.onClick(() => (hidden = toggleHiddenEl(div, hidden))),
+            );
 
-        div = setting.settingEl.createDiv();
-        setting.settingEl.style.display = "block";
-        div.style.display = "none";
+        const div = setting.settingEl.createDiv();
+        setting.settingEl.style.display = 'block';
+        div.style.display = 'none';
 
-        modal = new ProgressPropertiesModalContent({
+        const modal = new ProgressPropertiesModalContent({
             target: div,
             props: {
+                // @ts-ignore
                 properties: this.plugin.settings.ProgressProperties.properties,
                 save: async (progressProperties: ProgressProperty[]) => {
-                    this.plugin.settings.ProgressProperties.properties = progressProperties;
+                    // @ts-ignore
+                    this.plugin.settings.ProgressProperties.properties =
+                        progressProperties;
                     await this.plugin.saveSettings();
-                }
+                },
             },
         });
 
@@ -84,36 +99,48 @@ export class MetaEditSettingsTab extends PluginSettingTab {
     }
 
     private addAutoPropertiesSetting(containerEl: HTMLElement) {
-        let modal: AutoPropertiesModalContent, div: HTMLDivElement, hidden: boolean = true;
+        let hidden: boolean = true;
         const setting = new Setting(containerEl)
-            .setName("Auto Properties")
-            .setDesc("Quick switch for values you know the value of.")
-            .addToggle(toggle => {
+            .setName('Auto Properties')
+            .setDesc('Quick switch for values you know the value of.')
+            .addToggle((toggle) => {
                 toggle
-                    .setTooltip("Toggle Auto Properties")
+                    .setTooltip('Toggle Auto Properties')
+                    // @ts-ignore
                     .setValue(this.plugin.settings.AutoProperties.enabled)
-                    .onChange(async value => {
-                        if (value === this.plugin.settings.AutoProperties.enabled) return;
+                    .onChange(async (value) => {
+                        if (
+                            value ===
+                            // @ts-ignore
+                            this.plugin.settings.AutoProperties.enabled
+                        )
+                            return;
 
+                        // @ts-ignore
                         this.plugin.settings.AutoProperties.enabled = value;
 
                         await this.plugin.saveSettings();
                     });
             })
-            .addExtraButton(b => b.onClick(() => hidden = toggleHiddenEl(div, hidden)));
+            .addExtraButton((b) =>
+                b.onClick(() => (hidden = toggleHiddenEl(div, hidden))),
+            );
 
-        div = setting.settingEl.createDiv();
-        setting.settingEl.style.display = "block";
-        div.style.display = "none";
+        const div = setting.settingEl.createDiv();
+        setting.settingEl.style.display = 'block';
+        div.style.display = 'none';
 
-        modal = new AutoPropertiesModalContent({
+        const modal = new AutoPropertiesModalContent({
             target: div,
             props: {
+                // @ts-ignore
                 autoProperties: this.plugin.settings.AutoProperties.properties,
                 save: async (autoProperties: AutoProperty[]) => {
-                    this.plugin.settings.AutoProperties.properties = autoProperties;
+                    // @ts-ignore
+                    this.plugin.settings.AutoProperties.properties =
+                        autoProperties;
                     await this.plugin.saveSettings();
-                }
+                },
             },
         });
 
@@ -121,37 +148,54 @@ export class MetaEditSettingsTab extends PluginSettingTab {
     }
 
     private addIgnorePropertiesSetting(containerEl: HTMLElement) {
-        let modal: SingleValueTableEditorContent, div: HTMLDivElement, hidden = true;
+        let modal: SingleValueTableEditorContent,
+            div: HTMLDivElement,
+            hidden = true;
         const setting = new Setting(containerEl)
-            .setName("Ignore Properties")
-            .setDesc("Hide these properties from the menu.")
-            .addToggle(toggle => {
+            .setName('Ignore Properties')
+            .setDesc('Hide these properties from the menu.')
+            .addToggle((toggle) => {
                 toggle
-                    .setTooltip("Toggle Ignored Properties")
+                    .setTooltip('Toggle Ignored Properties')
+                    // @ts-ignore
                     .setValue(this.plugin.settings.IgnoredProperties.enabled)
-                    .onChange(async value => {
-                        if (value === this.plugin.settings.IgnoredProperties.enabled) return;
+                    .onChange(async (value) => {
+                        if (
+                            value ===
+                            // @ts-ignore
+                            this.plugin.settings.IgnoredProperties.enabled
+                        )
+                            return;
 
+                        // @ts-ignore
                         this.plugin.settings.IgnoredProperties.enabled = value;
 
                         await this.plugin.saveSettings();
                         this.display();
                     });
-            }).addExtraButton(b => b.onClick(() => hidden = toggleHiddenEl(div, hidden)))
+            })
+            .addExtraButton((b) =>
+                b.onClick(() => (hidden = toggleHiddenEl(div, hidden))),
+            );
 
+        // @ts-ignore
         if (this.plugin.settings.IgnoredProperties.enabled) {
             div = setting.settingEl.createDiv();
-            setting.settingEl.style.display = "block";
-            div.style.display = "none";
+            setting.settingEl.style.display = 'block';
+            div.style.display = 'none';
 
             modal = new SingleValueTableEditorContent({
                 target: div,
                 props: {
-                    properties: this.plugin.settings.IgnoredProperties.properties,
+                    properties:
+                        // @ts-ignore
+                        this.plugin.settings.IgnoredProperties.properties,
                     save: async (ignoredProperties: string[]) => {
-                        this.plugin.settings.IgnoredProperties.properties = ignoredProperties;
+                        // @ts-ignore
+                        this.plugin.settings.IgnoredProperties.properties =
+                            ignoredProperties;
                         await this.plugin.saveSettings();
-                    }
+                    },
                 },
             });
 
@@ -160,66 +204,74 @@ export class MetaEditSettingsTab extends PluginSettingTab {
     }
 
     private addEditModeSetting(containerEl: HTMLElement) {
-        let modal: any, div: HTMLDivElement, bDivToggle: boolean = true, extraButtonEl, bExtraButtonToggle: boolean = true;
+        let bDivToggle: boolean = true;
 
         // For linebreaks
         const df = new DocumentFragment();
-        df.createEl('p', {text: "Single: property values are just one value. "});
-        df.createEl('p', {text: "Multi: properties are arrays. "})
-        df.createEl('p', {text: "Some Multi: all options are single, except those specified in the settings (click button)."});
+        df.createEl('p', {
+            text: 'Single: property values are just one value. ',
+        });
+        df.createEl('p', { text: 'Multi: properties are arrays. ' });
+        df.createEl('p', {
+            text: 'Some Multi: all options are single, except those specified in the settings (click button).',
+        });
 
         const setting = new Setting(containerEl)
-            .setName("Edit Mode")
+            .setName('Edit Mode')
             .setDesc(df)
-            .addDropdown(dropdown => {
+            .addDropdown((dropdown) => {
                 dropdown
                     .addOption(EditMode.AllSingle, EditMode.AllSingle)
                     .addOption(EditMode.AllMulti, EditMode.AllMulti)
                     .addOption(EditMode.SomeMulti, EditMode.SomeMulti)
+                    // @ts-ignore
                     .setValue(this.plugin.settings.EditMode.mode)
-                    .onChange(async value => {
+                    .onChange(async (value) => {
                         switch (value) {
                             case EditMode.AllMulti:
-                                this.plugin.settings.EditMode.mode = EditMode.AllMulti;
-                                bExtraButtonToggle = toggleHiddenEl(extraButtonEl, false);
+                                // @ts-ignore
+                                this.plugin.settings.EditMode.mode =
+                                    EditMode.AllMulti;
                                 bDivToggle = toggleHiddenEl(div, false);
                                 break;
                             case EditMode.AllSingle:
-                                this.plugin.settings.EditMode.mode = EditMode.AllSingle;
-                                bExtraButtonToggle = toggleHiddenEl(extraButtonEl, false);
+                                // @ts-ignore
+                                this.plugin.settings.EditMode.mode =
+                                    EditMode.AllSingle;
                                 bDivToggle = toggleHiddenEl(div, false);
                                 break;
                             case EditMode.SomeMulti:
-                                this.plugin.settings.EditMode.mode = EditMode.SomeMulti;
-                                bExtraButtonToggle = toggleHiddenEl(extraButtonEl, true);
+                                // @ts-ignore
+                                this.plugin.settings.EditMode.mode =
+                                    EditMode.SomeMulti;
                                 break;
                         }
 
+                        // @ts-ignore
                         await this.plugin.saveSettings();
-                    })
+                    });
             })
-            .addExtraButton(b => {
-                extraButtonEl = b.extraSettingsEl;
-                b.setTooltip("Configure which properties are Multi.")
-                return b.onClick(() => bDivToggle = toggleHiddenEl(div, bDivToggle));
+            .addExtraButton((b) => {
+                b.setTooltip('Configure which properties are Multi.');
+                return b.onClick(
+                    () => (bDivToggle = toggleHiddenEl(div, bDivToggle)),
+                );
             });
 
-        if (this.plugin.settings.EditMode.mode != EditMode.SomeMulti) {
-            bExtraButtonToggle = toggleHiddenEl(extraButtonEl, false);
-        }
+        const div = setting.settingEl.createDiv();
+        setting.settingEl.style.display = 'block';
+        div.style.display = 'none';
 
-        div = setting.settingEl.createDiv();
-        setting.settingEl.style.display = "block";
-        div.style.display = "none";
-
-        modal = new SingleValueTableEditorContent({
+        const modal = new SingleValueTableEditorContent({
             target: div,
             props: {
+                // @ts-ignore
                 properties: this.plugin.settings.EditMode.properties,
                 save: async (properties: string[]) => {
+                    // @ts-ignore
                     this.plugin.settings.EditMode.properties = properties;
                     await this.plugin.saveSettings();
-                }
+                },
             },
         });
 
@@ -227,44 +279,54 @@ export class MetaEditSettingsTab extends PluginSettingTab {
     }
 
     hide(): any {
-        this.svelteElements.forEach(el => el.$destroy());
+        this.svelteElements.forEach((el) => el.$destroy());
         return super.hide();
     }
 
     private addKanbanHelperSetting(containerEl: HTMLElement) {
-        let modal: KanbanHelperSettingContent, div: HTMLDivElement, hidden: boolean = true;
+        let hidden: boolean = true;
         const setting = new Setting(containerEl)
-            .setName("Kanban Board Helper")
-            .setDesc("Update properties in links in kanban boards automatically when a card is moved to a new lane.")
-            .addToggle(toggle => {
+            .setName('Kanban Board Helper')
+            .setDesc(
+                'Update properties in links in kanban boards automatically when a card is moved to a new lane.',
+            )
+            .addToggle((toggle) => {
                 toggle
-                    .setTooltip("Toggle Kanban Helper")
+                    .setTooltip('Toggle Kanban Helper')
+                    // @ts-ignore
                     .setValue(this.plugin.settings.KanbanHelper.enabled)
-                    .onChange(async value => {
-                        if (value === this.plugin.settings.KanbanHelper.enabled) return;
+                    .onChange(async (value) => {
+                        // @ts-ignore
+                        if (value === this.plugin.settings.KanbanHelper.enabled)
+                            return;
 
+                        // @ts-ignore
                         this.plugin.settings.KanbanHelper.enabled = value;
                         this.plugin.toggleAutomators();
 
                         await this.plugin.saveSettings();
                     });
             })
-            .addExtraButton(button => button.onClick(() => hidden = toggleHiddenEl(div, hidden)))
+            .addExtraButton((button) =>
+                button.onClick(() => (hidden = toggleHiddenEl(div, hidden))),
+            );
 
-        div = setting.settingEl.createDiv();
-        setting.settingEl.style.display = "block";
-        div.style.display = "none";
+        const div = setting.settingEl.createDiv();
+        setting.settingEl.style.display = 'block';
+        div.style.display = 'none';
 
-        modal = new KanbanHelperSettingContent({
+        const modal = new KanbanHelperSettingContent({
             target: div,
             props: {
+                // @ts-ignore
                 kanbanProperties: this.plugin.settings.KanbanHelper.boards,
-                boards: this.plugin.getFilesWithProperty("kanban-plugin"),
+                boards: this.plugin.getFilesWithProperty('kanban-plugin'),
                 app,
                 save: async (kanbanProperties: KanbanProperty[]) => {
+                    // @ts-ignore
                     this.plugin.settings.KanbanHelper.boards = kanbanProperties;
                     await this.plugin.saveSettings();
-                }
+                },
             },
         });
 
@@ -273,20 +335,30 @@ export class MetaEditSettingsTab extends PluginSettingTab {
 
     private addUIElementsSetting(containerEl: HTMLElement) {
         new Setting(containerEl)
-            .setName("UI Elements")
-            .setDesc("Toggle UI elements: the 'Edit Meta' right-click menu option.")
-            .addToggle(toggle => {
+            .setName('UI Elements')
+            .setDesc(
+                "Toggle UI elements: the 'Edit Meta' right-click menu option.",
+            )
+            .addToggle((toggle) => {
                 toggle
-                    .setTooltip("Toggle UI elements")
+                    .setTooltip('Toggle UI elements')
+                    // @ts-ignore
                     .setValue(this.plugin.settings.UIElements.enabled)
-                    .onChange(async value => {
-                        if (value === this.plugin.settings.UIElements.enabled) return;
+                    .onChange(async (value) => {
+                        // @ts-ignore
+                        if (value === this.plugin.settings.UIElements.enabled)
+                            return;
 
+                        // @ts-ignore
                         this.plugin.settings.UIElements.enabled = value;
-                        value ? this.plugin.linkMenu.registerEvent() : this.plugin.linkMenu.unregisterEvent();
+                        value
+                            ? // @ts-ignore
+                              this.plugin.linkMenu.registerEvent()
+                            : // @ts-ignore
+                              this.plugin.linkMenu.unregisterEvent();
 
                         await this.plugin.saveSettings();
                     });
-            })
+            });
     }
 }

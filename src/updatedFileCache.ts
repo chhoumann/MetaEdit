@@ -1,4 +1,4 @@
-import type {DatedFileCacheItem} from "./Types/datedFileCacheItem";
+import type { DatedFileCacheItem } from './Types/datedFileCacheItem';
 
 export class UpdatedFileCache {
     private map: Map<string, DatedFileCacheItem>;
@@ -12,10 +12,10 @@ export class UpdatedFileCache {
     }
 
     public set(key: string, content: string): boolean {
-        if (this.map.has(key) && this.map.get(key).content === content)
+        if (this.map.has(key) && this.map.get(key)?.content === content)
             return false;
 
-        this.map.set(key, {content, updateTime: Date.now()});
+        this.map.set(key, { content, updateTime: Date.now() });
         this.clean();
 
         return true;

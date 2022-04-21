@@ -1,6 +1,5 @@
-import {TextInputSuggest} from "../../suggest";
-import type {App} from "obsidian";
-import type {TFile} from "obsidian";
+import type { App, TFile } from 'obsidian';
+import { TextInputSuggest } from '../../suggest';
 
 export class KanbanHelperSettingSuggester extends TextInputSuggest<TFile> {
     public app: App;
@@ -16,20 +15,18 @@ export class KanbanHelperSettingSuggester extends TextInputSuggest<TFile> {
 
     getSuggestions(inputStr: string): TFile[] {
         const inputLowerCase: string = inputStr.toLowerCase();
-        return this.boards.map(board => {
-            if (board.basename.toLowerCase().contains(inputLowerCase))
-                return board;
-        });
+        return this.boards.filter((board) =>
+            board.basename.toLowerCase().contains(inputLowerCase),
+        );
     }
 
     selectSuggestion(item: TFile): void {
         this.inputEl.value = item.basename;
-        this.inputEl.trigger("input");
+        this.inputEl.trigger('input');
         this.close();
     }
 
     renderSuggestion(value: TFile, el: HTMLElement): void {
-        if (value)
-            el.setText(value.basename);
+        if (value) el.setText(value.basename);
     }
 }

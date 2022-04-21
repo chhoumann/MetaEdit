@@ -1,4 +1,3 @@
-import type { MetaType } from "./metaType";
+import type { MetaType } from './metaType';
 
-
-export type Property = { key: string; content: unknown; type: MetaType; };
+export type Property = { key: string; content: unknown; type: MetaType };

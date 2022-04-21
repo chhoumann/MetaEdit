@@ -1,4 +1,4 @@
 export interface AutoProperty {
-    name: string,
-    choices: string[]
+    name: string;
+    choices: string[];
 }
