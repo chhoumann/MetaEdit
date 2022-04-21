@@ -1,0 +1,19 @@
+pre-push:
+  parallel: true
+  commands:
+    build:
+      run: npm run build
+    lint:
+      run: npm run lint
+    test:
+      run: npm run test
+
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      glob: '**/*.ts'
+      run: npm run lint {staged_files} && git add {staged_files}
+    test:
+      glob: '**/*.ts'
+      run: npm run test {staged_files} --findRelatedTests --passWithNoTests
