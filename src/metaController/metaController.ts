@@ -1,6 +1,6 @@
 import type { TFile } from 'obsidian';
 import { Notice } from 'obsidian';
-import MetaEditParser from '../parser';
+import MetaEditParser from '../parser/parser';
 import type { Property } from '../types/Property';
 import GenericPrompt from '../Modals/GenericPrompt/GenericPrompt';
 import { EditMode } from '../types/editMode';

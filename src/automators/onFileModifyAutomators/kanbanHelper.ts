@@ -4,7 +4,7 @@ import type { KanbanProperty } from '../../types/kanbanProperty';
 import { abstractFileToMarkdownTFile } from '../../utility';
 import { log } from '../../logger/logManager';
 import type { Property } from '../../types/Property';
-import MetaEditParser from '../../parser';
+import MetaEditParser from '../../parser/parser';
 import { OnFileModifyAutomator } from './onFileModifyAutomator';
 import { OnModifyAutomatorType } from './onModifyAutomatorType';
 

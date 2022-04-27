@@ -1,6 +1,6 @@
 import type { TFile } from 'obsidian';
 import type MetaEdit from '../../main';
-import MetaEditParser from '../../parser';
+import MetaEditParser from '../../parser/parser';
 import { OnFileModifyAutomator } from './onFileModifyAutomator';
 import { OnModifyAutomatorType } from './onModifyAutomatorType';
 

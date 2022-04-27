@@ -18,7 +18,7 @@ import { KanbanHelper } from './automators/onFileModifyAutomators/kanbanHelper';
 import { ProgressPropertyHelper } from './automators/onFileModifyAutomators/progressPropertyHelper';
 import { OnModifyAutomatorType } from './automators/onFileModifyAutomators/onModifyAutomatorType';
 import MetaController from './metaController/metaController';
-import MetaEditParser from './parser';
+import MetaEditParser from './parser/parser';
 
 export default class MetaEdit extends Plugin {
     public settings: MetaEditSettings | undefined;

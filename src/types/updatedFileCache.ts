@@ -1,4 +1,4 @@
-import type { DatedFileCacheItem } from './types/datedFileCacheItem';
+import type { DatedFileCacheItem } from './datedFileCacheItem';
 
 export class UpdatedFileCache {
     private map: Map<string, DatedFileCacheItem>;

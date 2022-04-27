@@ -1,4 +1,4 @@
-import { UniqueQueue } from '../src/uniqueQueue';
+import { UniqueQueue } from '../src/types/uniqueQueue';
 
 export {};
 

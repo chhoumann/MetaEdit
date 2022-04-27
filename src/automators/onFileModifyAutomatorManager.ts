@@ -1,7 +1,7 @@
 import type { App, TAbstractFile, TFile } from 'obsidian';
 import { debounce } from 'obsidian';
-import { UniqueQueue } from '../uniqueQueue';
-import { UpdatedFileCache } from '../updatedFileCache';
+import { UniqueQueue } from '../types/uniqueQueue';
+import { UpdatedFileCache } from '../types/updatedFileCache';
 import { log } from '../logger/logManager';
 import type MetaEdit from '../main';
 import { abstractFileToMarkdownTFile } from '../utility';

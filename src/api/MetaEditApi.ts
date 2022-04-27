@@ -3,7 +3,7 @@ import type MetaEdit from '../main';
 import type { IMetaEditApi } from './IMetaEditApi';
 import type { Property } from '../types/Property';
 import MetaController from '../metaController/metaController';
-import MetaEditParser from '../parser';
+import MetaEditParser from '../parser/parser';
 
 export class MetaEditApi {
     constructor(private plugin: MetaEdit) {}
