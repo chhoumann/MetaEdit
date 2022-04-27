@@ -1,25 +1,36 @@
-import { stringifyYaml } from 'obsidian';
-import type { Property } from '../Types/Property';
-import propertiesToObject from './propertiesToObject';
-import { Updater } from './Updater';
+import {stringifyYaml, TFile} from 'obsidian';
+import type {Property} from '../types/Property';
+import propertiesToObject from './functions/propertiesToObject';
+import {Updater} from './Updater';
+import {MetaType} from "../types/metaType";
 
 export default class YamlUpdater extends Updater {
-    // @ts-ignore
+    private readonly properties: Property[];
+
+    constructor(properties: Property[], file: TFile) {
+        super(file);
+        this.properties = properties;
+    }
     add(propertyName: string, value: unknown): string {
-        return '';
+        const newProperties = [...this.properties, {key: propertyName, content: value, type: MetaType.YAML}];
+
+        return this.getStringifiedYaml(newProperties);
     }
 
-    // @ts-ignore
     remove(propertyName: string): string {
-        return '';
+        const newProperties = this.properties.filter(property => property.key !== propertyName);
+
+        return this.getStringifiedYaml(newProperties);
     }
 
-    // @ts-ignore
     update(propertyName: string, newValue: unknown): string {
-        return '';
+        const propertyIndex = this.properties.findIndex(property => property.key === propertyName);
+        const newProperties = [...this.properties];
+        newProperties[propertyIndex].content = newValue;
+
+        return this.getStringifiedYaml(newProperties);
     }
 
-    // @ts-ignore
     private getStringifiedYaml(properties: Property[]): string {
         const yamlObj = propertiesToObject(properties);
         return stringifyYaml(yamlObj);

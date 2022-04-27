@@ -1,5 +1,5 @@
 import { App, Modal } from 'obsidian';
-import type { ProgressProperty } from '../../Types/progressProperty';
+import type { ProgressProperty } from '../../types/progressProperty';
 import ProgressPropertiesModalContent from './ProgressPropertiesModalContent.svelte';
 
 export default class ProgressPropertiesModal extends Modal {

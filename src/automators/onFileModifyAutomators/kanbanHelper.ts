@@ -1,9 +1,9 @@
 import { CachedMetadata, LinkCache, Notice, TFile } from 'obsidian';
 import type MetaEdit from '../../main';
-import type { KanbanProperty } from '../../Types/kanbanProperty';
+import type { KanbanProperty } from '../../types/kanbanProperty';
 import { abstractFileToMarkdownTFile } from '../../utility';
 import { log } from '../../logger/logManager';
-import type { Property } from '../../Types/Property';
+import type { Property } from '../../types/Property';
 import MetaEditParser from '../../parser';
 import { OnFileModifyAutomator } from './onFileModifyAutomator';
 import { OnModifyAutomatorType } from './onModifyAutomatorType';

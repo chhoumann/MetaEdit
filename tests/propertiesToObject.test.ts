@@ -1,6 +1,6 @@
-import type { Property } from '../src/Types/Property';
-import propertiesToObject from '../src/updaters/propertiesToObject';
-import { MetaType } from '../src/Types/metaType';
+import type { Property } from '../src/types/Property';
+import propertiesToObject from '../src/updaters/functions/propertiesToObject';
+import { MetaType } from '../src/types/metaType';
 
 describe('Properties to object', () => {
     it('should convert properties to object', () => {

@@ -2,10 +2,10 @@ import { App, FuzzyMatch, FuzzySuggestModal, TFile } from 'obsidian';
 import { concat } from 'svelte-preprocess/dist/modules/utils';
 import type MetaEdit from '../main';
 import type MetaController from '../metaController/metaController';
-import type { Property } from '../Types/Property';
+import type { Property } from '../types/Property';
 import { MAIN_SUGGESTER_OPTIONS, newDataView, newYaml } from '../constants';
-import { MetaType } from '../Types/metaType';
-import type { AutoProperty } from '../Types/autoProperty';
+import { MetaType } from '../types/metaType';
+import type { AutoProperty } from '../types/autoProperty';
 
 export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     public app: App;

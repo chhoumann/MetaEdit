@@ -1,4 +1,4 @@
-import { EditMode } from '../Types/editMode';
+import { EditMode } from '../types/editMode';
 import type { MetaEditSettings } from './metaEditSettings';
 
 export const DEFAULT_SETTINGS: MetaEditSettings = Object.freeze({

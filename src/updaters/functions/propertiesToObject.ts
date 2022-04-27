@@ -1,4 +1,4 @@
-import type { Property } from '../Types/Property';
+import type { Property } from '../../types/Property';
 
 export default function propertiesToObject(properties: Property[]): {
     [key: string]: unknown;

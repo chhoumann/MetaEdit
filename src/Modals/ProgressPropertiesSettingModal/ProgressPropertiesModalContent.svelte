@@ -1,6 +1,6 @@
 <script lang="ts">
-    import {ProgressPropertyOptions} from "../../Types/progressPropertyOptions";
-    import type {ProgressProperty} from "../../Types/progressProperty";
+    import {ProgressPropertyOptions} from "../../types/progressPropertyOptions";
+    import type {ProgressProperty} from "../../types/progressProperty";
 
     const options: string[] = Object.keys(ProgressPropertyOptions)
         .map(k => ProgressPropertyOptions[k]);

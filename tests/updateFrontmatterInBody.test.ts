@@ -1,4 +1,4 @@
-import updateFrontmatterInBody from '../src/updaters/updateFrontmatterInBody';
+import updateFrontmatterInBody from '../src/updaters/functions/updateFrontmatterInBody';
 
 describe('update frontmatter in body string', () => {
     it('adds frontmatter to empty body', () => {

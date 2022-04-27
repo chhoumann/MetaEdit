@@ -1,7 +1,7 @@
 import type { TFile } from 'obsidian';
 import { parseYaml } from 'obsidian';
-import type { Property } from './Types/Property';
-import { MetaType } from './Types/metaType';
+import type { Property } from './types/Property';
+import { MetaType } from './types/metaType';
 
 export default class MetaEditParser {
     public async getFileMetadata(file: TFile): Promise<Property[]> {

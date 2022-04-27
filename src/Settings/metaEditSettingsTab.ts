@@ -1,13 +1,13 @@
 import { ExtraButtonComponent, PluginSettingTab, Setting } from 'obsidian';
 import type MetaEdit from '../main';
-import { EditMode } from '../Types/editMode';
+import { EditMode } from '../types/editMode';
 import ProgressPropertiesModalContent from '../Modals/ProgressPropertiesSettingModal/ProgressPropertiesModalContent.svelte';
 import AutoPropertiesModalContent from '../Modals/AutoPropertiesSettingModal/AutoPropertiesModalContent.svelte';
 import KanbanHelperSettingContent from '../Modals/KanbanHelperSetting/KanbanHelperSettingContent.svelte';
 import SingleValueTableEditorContent from '../Modals/shared/SingleValueTableEditorContent.svelte';
-import type { ProgressProperty } from '../Types/progressProperty';
-import type { AutoProperty } from '../Types/autoProperty';
-import type { KanbanProperty } from '../Types/kanbanProperty';
+import type { ProgressProperty } from '../types/progressProperty';
+import type { AutoProperty } from '../types/autoProperty';
+import type { KanbanProperty } from '../types/kanbanProperty';
 
 function toggleHiddenEl(el: HTMLElement, bShow: boolean) {
     if (el && !bShow) {

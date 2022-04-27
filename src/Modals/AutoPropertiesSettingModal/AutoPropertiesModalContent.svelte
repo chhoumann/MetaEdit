@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type {AutoProperty} from "../../Types/autoProperty";
+    import type {AutoProperty} from "../../types/autoProperty";
 
     export let save: (autoProperties: AutoProperty[]) => void;
     export let autoProperties: AutoProperty[] = [];

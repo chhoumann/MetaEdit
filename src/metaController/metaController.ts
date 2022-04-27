@@ -1,15 +1,15 @@
 import type { TFile } from 'obsidian';
 import { Notice } from 'obsidian';
 import MetaEditParser from '../parser';
-import type { Property } from '../Types/Property';
+import type { Property } from '../types/Property';
 import GenericPrompt from '../Modals/GenericPrompt/GenericPrompt';
-import { EditMode } from '../Types/editMode';
+import { EditMode } from '../types/editMode';
 import GenericSuggester from '../Modals/GenericSuggester/GenericSuggester';
 import type { MetaEditSettings } from '../Settings/metaEditSettings';
 import { ADD_FIRST_ELEMENT, ADD_TO_BEGINNING, ADD_TO_END } from '../constants';
-import type { ProgressProperty } from '../Types/progressProperty';
-import { ProgressPropertyOptions } from '../Types/progressPropertyOptions';
-import { MetaType } from '../Types/metaType';
+import type { ProgressProperty } from '../types/progressProperty';
+import { ProgressPropertyOptions } from '../types/progressPropertyOptions';
+import { MetaType } from '../types/metaType';
 import { log } from '../logger/logManager';
 import type MetaEdit from '../main';
 

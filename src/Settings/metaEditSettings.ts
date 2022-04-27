@@ -1,7 +1,7 @@
-import type { EditMode } from '../Types/editMode';
-import type { ProgressProperty } from '../Types/progressProperty';
-import type { AutoProperty } from '../Types/autoProperty';
-import type { KanbanProperty } from '../Types/kanbanProperty';
+import type { EditMode } from '../types/editMode';
+import type { ProgressProperty } from '../types/progressProperty';
+import type { AutoProperty } from '../types/autoProperty';
+import type { KanbanProperty } from '../types/kanbanProperty';
 
 export interface MetaEditSettings {
     ProgressProperties: {

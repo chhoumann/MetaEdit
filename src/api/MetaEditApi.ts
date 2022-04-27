@@ -1,9 +1,9 @@
 import { TFile } from 'obsidian';
-import type MetaEdit from './main';
+import type MetaEdit from '../main';
 import type { IMetaEditApi } from './IMetaEditApi';
-import type { Property } from './Types/Property';
-import MetaController from './metaController/metaController';
-import MetaEditParser from './parser';
+import type { Property } from '../types/Property';
+import MetaController from '../metaController/metaController';
+import MetaEditParser from '../parser';
 
 export class MetaEditApi {
     constructor(private plugin: MetaEdit) {}

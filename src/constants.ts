@@ -1,5 +1,5 @@
-import type { Property } from './Types/Property';
-import { MetaType } from './Types/metaType';
+import type { Property } from './types/Property';
+import { MetaType } from './types/metaType';
 
 export const ADD_FIRST_ELEMENT: string = 'cmd:addfirst';
 export const ADD_TO_BEGINNING: string = 'cmd:beg';

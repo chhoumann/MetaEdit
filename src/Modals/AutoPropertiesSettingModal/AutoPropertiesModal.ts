@@ -1,5 +1,5 @@
 import { App, Modal } from 'obsidian';
-import type { AutoProperty } from '../../Types/autoProperty';
+import type { AutoProperty } from '../../types/autoProperty';
 import AutoPropertiesModalContent from './AutoPropertiesModalContent.svelte';
 
 export default class AutoPropertiesModal extends Modal {
