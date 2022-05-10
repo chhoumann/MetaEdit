@@ -55,7 +55,7 @@ export default class MetaController {
     ): Promise<void> {
         const fileContent: string = await app.vault.read(file);
         const frontmatter: Property[] = await this.parser.parseFrontmatter(
-            file,
+            fileContent,
         );
         const isYamlEmpty: boolean =
             (!frontmatter || frontmatter.length === 0) &&
