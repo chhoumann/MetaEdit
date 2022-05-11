@@ -11,7 +11,7 @@ const TAG_SYNTAX = ["tag", "tags"];
  * @param mode The syntax mode.
  * @returns The new value for the property with the special syntax handled.
  */
-export default function obsidianFrontmatterSpecialSyntaxHandler(key: string, value: unknown, mode: ObsidianFrontmatterSyntaxMode): unknown {
+export default function obsidianFrontmatterSpecialSyntaxFormatter(key: string, value: unknown, mode: ObsidianFrontmatterSyntaxMode): unknown {
     const isAlias = ALIAS_SYNTAX.includes(key.toLowerCase());
     const isCssClass = CSS_CLASS_SYNTAX.includes(key.toLowerCase());
     const isTag = TAG_SYNTAX.includes(key.toLowerCase());
