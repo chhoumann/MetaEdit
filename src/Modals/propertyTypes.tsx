@@ -1,71 +1,17 @@
 import {Fragment, h} from 'preact';
-import {Component, DropdownComponent, MarkdownRenderer} from "obsidian";
+import {DropdownComponent} from "obsidian";
 import {useLayoutEffect, useRef} from "preact/compat";
 import {ListType} from "../types/listType";
+import {MetaEditSettings} from "../Settings/metaEditSettings";
+import MetaEdit from "../main";
 
 export function PropertyTypes() {
-    const listExample = useRef<HTMLDivElement>(null);
-    const whitespaceExample = useRef<HTMLDivElement>(null);
-    const commaExample = useRef<HTMLDivElement>(null);
-    const arrayExample = useRef<HTMLDivElement>(null);
-
-    useLayoutEffect(() => {
-        if (listExample.current) {
-            MarkdownRenderer.renderMarkdown(
-                "aliases:\n  - item1\n  - item 2\n  - item 3\n",
-                listExample.current,
-                "",
-                new Component()
-            );
-        }
-
-        if (whitespaceExample.current) {
-            MarkdownRenderer.renderMarkdown(
-                "tags: atomic published/blog",
-                whitespaceExample.current,
-                "",
-                new Component()
-            );
-        }
-
-        if (commaExample.current) {
-            MarkdownRenderer.renderMarkdown(
-                "key: 1, 2, 3, 4",
-                commaExample.current,
-                "",
-                new Component()
-            );
-        }
-
-        if (arrayExample.current) {
-            MarkdownRenderer.renderMarkdown(
-                "key: [1, 2, 3, 4]",
-                arrayExample.current,
-                "",
-                new Component()
-            );
-        }
-    }, []);
+    const userSettings: MetaEditSettings = MetaEdit.getSettings();
+    const propertyTypes = userSettings.PropertyTypes.userDefined;
 
     return (
         <Fragment>
             <h3>Property Types</h3>
-            <div
-                style={{
-                    display: "flex",
-                    flexDirection: "row",
-                    flexWrap: "wrap",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "1rem"
-                }}
-            >
-                <div ref={listExample} />
-                <div ref={whitespaceExample} />
-                <div ref={commaExample} />
-                <div ref={arrayExample} />
-            </div>
-
             <div
                 style={{
                     display: 'flex',
@@ -74,15 +20,18 @@ export function PropertyTypes() {
                     marginBottom: '1rem',
                 }}
             >
-                <PropertyTypeItem name="Aliases" />
-                <PropertyTypeItem name="CssClasses" />
-                <PropertyTypeItem name="Tags" />
+                <PropertyTypeItem name="Aliases" type={userSettings.PropertyTypes.aliases} />
+                <PropertyTypeItem name="CssClasses" type={userSettings.PropertyTypes.cssClasses} />
+                <PropertyTypeItem name="Tags" type={userSettings.PropertyTypes.tags}/>
+                {[...propertyTypes.entries()].map(([propertyKey, propertyType]) => (
+                    <PropertyTypeItem name={propertyKey} type={propertyType}/>
+                ))}
             </div>
         </Fragment>
     );
 }
 
-function PropertyTypeItem({name}: {name: string}) {
+function PropertyTypeItem({name, type}: {name: string, type: ListType}) {
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     useLayoutEffect(() => {
@@ -92,6 +41,7 @@ function PropertyTypeItem({name}: {name: string}) {
             dropdown.addOption(ListType.WhitespaceSeparated.toString(), "Whitespace");
             dropdown.addOption(ListType.CommaSeparated.toString(), "Comma");
             dropdown.addOption(ListType.SquareBracket.toString(), "Array");
+            dropdown.setValue(type.toString());
         }
     }, []);
 

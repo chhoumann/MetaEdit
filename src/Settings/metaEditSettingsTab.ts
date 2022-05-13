@@ -1,4 +1,4 @@
-import {Component, MarkdownRenderer, PluginSettingTab, Setting} from 'obsidian';
+import {PluginSettingTab, Setting} from 'obsidian';
 import type MetaEdit from '../main';
 import { PropertyTypes } from "../Modals/propertyTypes";
 import {render, h} from "preact";
