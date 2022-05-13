@@ -1,5 +1,4 @@
 import { App, FuzzyMatch, FuzzySuggestModal, TFile } from 'obsidian';
-import { concat } from 'svelte-preprocess/dist/modules/utils';
 import type MetaEdit from '../main';
 import type MetaController from '../metaController/metaController';
 import type { Property } from '../types/Property';
@@ -55,7 +54,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     }
 
     getItems(): Property[] {
-        return concat(this.options, this.data);
+        return [...this.options, ...this.data];
     }
 
     async onChooseItem(
