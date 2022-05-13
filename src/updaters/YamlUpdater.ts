@@ -11,6 +11,7 @@ export default class YamlUpdater extends Updater {
         super(file);
         this.properties = properties;
     }
+
     add(propertyName: string, value: unknown): string {
         const newProperties = [...this.properties, {key: propertyName, content: value, type: MetaType.YAML}];
 
@@ -33,6 +34,6 @@ export default class YamlUpdater extends Updater {
 
     private getStringifiedYaml(properties: Property[]): string {
         const yamlObj = propertiesToObject(properties);
-        return stringifyYaml(yamlObj);
+        return stringifyYaml(yamlObj).trim();
     }
 }

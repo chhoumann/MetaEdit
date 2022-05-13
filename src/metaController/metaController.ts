@@ -1,22 +1,49 @@
-import type { TFile } from 'obsidian';
-import { Notice } from 'obsidian';
+import type {TFile} from 'obsidian';
+import {Notice} from 'obsidian';
 import MetaEditParser from '../parser/parser';
-import type { Property } from '../types/Property';
+import type {Property} from '../types/Property';
 import GenericPrompt from '../Modals/GenericPrompt/GenericPrompt';
-import { EditMode } from '../types/editMode';
+import {EditMode} from '../types/editMode';
 import GenericSuggester from '../Modals/GenericSuggester/GenericSuggester';
-import type { MetaEditSettings } from '../Settings/metaEditSettings';
-import { ADD_FIRST_ELEMENT, ADD_TO_BEGINNING, ADD_TO_END } from '../constants';
-import type { ProgressProperty } from '../types/progressProperty';
-import { ProgressPropertyOptions } from '../types/progressPropertyOptions';
-import { MetaType } from '../types/metaType';
-import { log } from '../logger/logManager';
+import type {MetaEditSettings} from '../Settings/metaEditSettings';
+import {ADD_FIRST_ELEMENT, ADD_TO_BEGINNING, ADD_TO_END} from '../constants';
+import type {ProgressProperty} from '../types/progressProperty';
+import {ProgressPropertyOptions} from '../types/progressPropertyOptions';
+import {MetaType} from '../types/metaType';
+import {log} from '../logger/logManager';
 import type MetaEdit from '../main';
+import YamlUpdater from "../updaters/YamlUpdater";
+import obsidianFrontmatterSpecialSyntaxFormatter from "../updaters/functions/obsidianFrontmatterSpecialSyntaxFormatter";
+import {ListType} from "../types/listType";
+import updateFrontmatterInBody from "../updaters/functions/updateFrontmatterInBody";
 
 interface IMetaController {
     addProperty(property: Property, file: TFile): void;
     removeProperty(property: Property, file: TFile): void;
     editProperty(property: Property, file: TFile): void;
+}
+
+interface Command {
+    execute(): void;
+}
+
+class EditYamlCommand implements Command {
+    private file: TFile;
+    private property: Property;
+
+    constructor(file: TFile, property: Property) {
+        this.file = file;
+        this.property = property;
+    }
+
+    async execute(): Promise<void> {
+        const fileContent = await app.vault.read(this.file);
+        const properties = await new MetaEditParser().parseFrontmatter(fileContent);
+        const propertyValue = obsidianFrontmatterSpecialSyntaxFormatter(this.property.key, this.property.content, ListType.CommaSeparated);
+        const yaml = new YamlUpdater(properties, this.file).update(this.property.key, propertyValue);
+        const body = updateFrontmatterInBody(fileContent, yaml);
+        await app.vault.modify(this.file, body);
+    }
 }
 
 export class MetaController_NEW implements IMetaController {
@@ -32,8 +59,8 @@ export class MetaController_NEW implements IMetaController {
     }
 
     // @ts-ignore
-    editProperty(property: Property, file: TFile): void {
-        throw new Error('Method not implemented.');
+    async editProperty(property: Property, file: TFile): void {
+        await new EditYamlCommand(file, property).execute();
     }
 }
 

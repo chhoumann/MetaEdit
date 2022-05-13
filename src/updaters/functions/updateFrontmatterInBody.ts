@@ -1,19 +1,14 @@
-const FRONTMATTER_REGEXP = new RegExp(/^-{3}\s*\n*\r*-{3}/);
+import {extractFrontmatterString} from "../../parser/extractFrontmatterString";
 
 export default function updateFrontmatterInBody(
     body: string,
     newFrontmatter: string,
 ): string {
-    const isFrontmatterEmpty = !FRONTMATTER_REGEXP.test(body);
+    const frontmatter = extractFrontmatterString(body);
 
-    const linesInBody = body.split('\n');
-    if (isFrontmatterEmpty) {
-        linesInBody.unshift('---');
-        linesInBody.unshift(newFrontmatter);
-        linesInBody.unshift('---');
-    } else {
-        linesInBody.splice(1, 0, newFrontmatter);
+    if (!frontmatter) {
+        return `---\n${newFrontmatter}---${body}`;
     }
 
-    return linesInBody.join('\n');
+    return body.replace(frontmatter, newFrontmatter);
 }

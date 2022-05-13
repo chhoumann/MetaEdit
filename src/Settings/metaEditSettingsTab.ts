@@ -41,11 +41,12 @@ export class MetaEditSettingsTab extends PluginSettingTab {
 
         containerEl.createEl('h2', { text: 'MetaEdit Settings' });
 
-        this.addProgressPropertiesSetting(containerEl);
-        this.addAutoPropertiesSetting(containerEl);
-        this.addIgnorePropertiesSetting(containerEl);
-        this.addEditModeSetting(containerEl);
-        this.addKanbanHelperSetting(containerEl);
+        this.addPropertyTypeSettings(containerEl);
+        //this.addProgressPropertiesSetting(containerEl);
+        //this.addAutoPropertiesSetting(containerEl);
+        //this.addIgnorePropertiesSetting(containerEl);
+        //this.addEditModeSetting(containerEl);
+        //this.addKanbanHelperSetting(containerEl);
         this.addUIElementsSetting(containerEl);
     }
 
@@ -360,5 +361,18 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
             });
+    }
+
+    private addPropertyTypeSettings(container: HTMLElement) {
+        const setting = new Setting(container)
+            .setName('Property Types')
+            .setDesc("Manage handling for properties.");
+
+        setting.settingEl.createDiv().innerHTML = `
+            <p> Manage handling for properties. </p>
+            <p> You can add, remove, and edit property types. </p>
+            <p> You can also set the default property type for new files. </p>
+        `;
+
     }
 }

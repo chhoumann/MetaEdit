@@ -1,34 +1,51 @@
-import { Plugin, TFile, TFolder } from 'obsidian';
-import { MetaEditSettingsTab } from './Settings/metaEditSettingsTab';
+import {Plugin, TFile, TFolder} from 'obsidian';
+import {MetaEditSettingsTab} from './Settings/metaEditSettingsTab';
 import MetaEditSuggester from './Modals/metaEditSuggester';
-import type { MetaEditSettings } from './Settings/metaEditSettings';
-import { DEFAULT_SETTINGS } from './Settings/defaultSettings';
-import { LinkMenu } from './Modals/LinkMenu';
-import type { Property } from './types/Property';
-import type { IMetaEditApi } from './api/IMetaEditApi';
-import { MetaEditApi } from './api/MetaEditApi';
+import type {MetaEditSettings} from './Settings/metaEditSettings';
+import {DEFAULT_SETTINGS} from './Settings/defaultSettings';
+import {LinkMenu} from './Modals/LinkMenu';
+import type {Property} from './types/Property';
+import type {IMetaEditApi} from './api/IMetaEditApi';
+import {MetaEditApi} from './api/MetaEditApi';
 import GenericPrompt from './Modals/GenericPrompt/GenericPrompt';
-import { getActiveMarkdownFile } from './utility';
-import { ConsoleErrorLogger } from './logger/consoleErrorLogger';
-import { GuiLogger } from './logger/guiLogger';
-import { log } from './logger/logManager';
-import { OnFileModifyAutomatorManager } from './automators/onFileModifyAutomatorManager';
-import type { IAutomatorManager } from './automators/IAutomatorManager';
-import { KanbanHelper } from './automators/onFileModifyAutomators/kanbanHelper';
-import { ProgressPropertyHelper } from './automators/onFileModifyAutomators/progressPropertyHelper';
-import { OnModifyAutomatorType } from './automators/onFileModifyAutomators/onModifyAutomatorType';
-import MetaController from './metaController/metaController';
+import {getActiveMarkdownFile} from './utility';
+import {ConsoleErrorLogger} from './logger/consoleErrorLogger';
+import {GuiLogger} from './logger/guiLogger';
+import {log} from './logger/logManager';
+import {OnFileModifyAutomatorManager} from './automators/onFileModifyAutomatorManager';
+import type {IAutomatorManager} from './automators/IAutomatorManager';
+import {KanbanHelper} from './automators/onFileModifyAutomators/kanbanHelper';
+import {ProgressPropertyHelper} from './automators/onFileModifyAutomators/progressPropertyHelper';
+import {OnModifyAutomatorType} from './automators/onFileModifyAutomators/onModifyAutomatorType';
+import MetaController, {MetaController_NEW} from './metaController/metaController';
 import MetaEditParser from './parser/parser';
+import {MetaType} from "./types/metaType";
 
 export default class MetaEdit extends Plugin {
+    private static instance: MetaEdit;
+
     public settings: MetaEditSettings | undefined;
     public linkMenu: LinkMenu | undefined;
     public api: IMetaEditApi | undefined;
     public controller: MetaController | undefined;
+
     private automatorManager: IAutomatorManager | undefined;
+
+    public static getSettings(): MetaEditSettings {
+        if (!MetaEdit.instance) {
+            throw new Error('MetaEdit is not initialized.');
+        }
+
+        if (!MetaEdit.instance.settings) {
+            throw new Error('MetaEdit settings are not initialized.');
+        }
+
+        return MetaEdit.instance.settings;
+    }
 
     async onload() {
         console.log('Loading MetaEdit');
+        MetaEdit.instance = this;
 
         this.controller = new MetaController(this);
 
@@ -56,6 +73,17 @@ export default class MetaEdit extends Plugin {
 
                 await this.runMetaEditForFile(file);
             },
+        });
+
+        this.addCommand({
+            id: 'metaEditTest',
+            name: 'Test MetaEdit',
+            callback: async () => {
+                new MetaController_NEW().editProperty(
+                    {key: 'test', content: [1,2,3,4,5], type: MetaType.YAML},
+                    app.workspace.getActiveFile()!
+                );
+            }
         });
 
         this.addSettingTab(new MetaEditSettingsTab(this));

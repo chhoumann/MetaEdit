@@ -6,6 +6,14 @@ describe('update frontmatter in body string', () => {
         const newFrontmatter = 'title: test\ndescription: test';
 
         const result = updateFrontmatterInBody(body, newFrontmatter);
+        expect(result).toBe(`---\n${newFrontmatter}---`);
+    });
+
+    it('adds frontmatter to body with frontmatter', () => {
+        const body = `---\ntitle: test\ndescription: test\n---\n`;
+        const newFrontmatter = 'title: bee\ndescription: battle';
+
+        const result = updateFrontmatterInBody(body, newFrontmatter);
         expect(result).toBe(`---\n${newFrontmatter}\n---\n`);
     });
 });

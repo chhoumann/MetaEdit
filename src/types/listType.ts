@@ -1,4 +1,4 @@
-export enum ObsidianFrontmatterSyntaxMode {
+export enum ListType {
     SquareBracket, // Supported everywhere
     /** This method is automatically handled by the YAML stringifier. */
     List, // Supported everywhere
