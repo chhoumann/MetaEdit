@@ -53,6 +53,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
 
     private addPropertyTypeSettings(container: HTMLElement) {
         const rc = h(PropertyTypes, {});
-        render(rc, container);
+        const propertyTypesDiv = container.createDiv();
+        render(rc, propertyTypesDiv);
     }
 }
