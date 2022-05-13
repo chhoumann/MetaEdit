@@ -15,13 +15,16 @@
     "noImplicitAny": true,
     "moduleResolution": "node",
     "importHelpers": true,
+    "jsx": "preserve",
+    "jsxFactory": "h",
+    "jsxFragmentFactory": "Fragment",
     "paths": {
       "src": ["src/*", "tests/*"]
     },
     "types": [
       "jest",
       "node",
-      "svelte"
+      "react"
     ],
     "lib": [
       "dom",

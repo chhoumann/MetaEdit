@@ -1,8 +1,6 @@
 import { App, Modal } from 'obsidian';
-import GenericPromptContent from './GenericPromptContent.svelte';
 
 export default class GenericPrompt extends Modal {
-    private modalContent: GenericPromptContent;
     private resolvePromise: ((input: string) => void) | undefined;
     private input: string | undefined;
     public waitForClose: Promise<string>;
@@ -11,45 +9,18 @@ export default class GenericPrompt extends Modal {
 
     public static Prompt(
         app: App,
-        header: string,
-        placeholder?: string,
-        value?: string,
-        suggestValues?: string[],
     ): Promise<string> {
         const newPromptModal = new GenericPrompt(
             app,
-            header,
-            placeholder,
-            value,
-            suggestValues,
         );
         return newPromptModal.waitForClose;
     }
 
     private constructor(
         app: App,
-        header: string,
-        placeholder?: string,
-        value?: string,
-        suggestValues?: string[],
     ) {
         super(app);
 
-        this.modalContent = new GenericPromptContent({
-            target: this.contentEl,
-            props: {
-                app,
-                header,
-                placeholder,
-                value,
-                suggestValues,
-                onSubmit: (input: string) => {
-                    this.input = input;
-                    this.didSubmit = true;
-                    this.close();
-                },
-            },
-        });
 
         this.waitForClose = new Promise<string>((resolve, reject) => {
             this.resolvePromise = resolve;
@@ -77,7 +48,6 @@ export default class GenericPrompt extends Modal {
 
     onClose() {
         super.onClose();
-        this.modalContent.$destroy();
 
         if (!this.rejectPromise || !this.resolvePromise) return;
 

@@ -39,7 +39,7 @@ class EditYamlCommand implements Command {
     async execute(): Promise<void> {
         const fileContent = await app.vault.read(this.file);
         const properties = await new MetaEditParser().parseFrontmatter(fileContent);
-        const propertyValue = obsidianFrontmatterSpecialSyntaxFormatter(this.property.key, this.property.content, ListType.CommaSeparated);
+        const propertyValue = obsidianFrontmatterSpecialSyntaxFormatter(this.property.key, this.property.content as string, ListType.CommaSeparated);
         const yaml = new YamlUpdater(properties, this.file).update(this.property.key, propertyValue);
         const body = updateFrontmatterInBody(fileContent, yaml);
         await app.vault.modify(this.file, body);
