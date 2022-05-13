@@ -11,7 +11,6 @@ export function PropertyTypes() {
 
     return (
         <Fragment>
-            <h3>Property Types</h3>
             <div
                 style={{
                     display: 'flex',

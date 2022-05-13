@@ -52,6 +52,9 @@ export class MetaEditSettingsTab extends PluginSettingTab {
     }
 
     private addPropertyTypeSettings(container: HTMLElement) {
+        new Setting(container).setName('Property Types').setDesc(
+            'Configure how MetaEdit should handle multiple values in properties.',
+        );
         const rc = h(PropertyTypes, {});
         const propertyTypesDiv = container.createDiv();
         render(rc, propertyTypesDiv);
