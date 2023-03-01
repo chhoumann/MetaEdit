@@ -309,7 +309,7 @@ export default class MetaController {
 
         const newFileContent = fileContent.split("\n").map(line => {
             if (this.lineMatch(property, line)) {
-                return this.updatePropertyLine(property, newValue);
+                return this.updatePropertyLine(property, newValue, line);
             }
 
             return line;
@@ -319,7 +319,7 @@ export default class MetaController {
     }
 
     private lineMatch(property: Partial<Property>, line: string): boolean {
-        const propertyRegex = new RegExp(`^\s*${property.key}\:{1,2}`);
+        const propertyRegex = new RegExp(`\s*${property.key}\:{1,2}`);
         const tagRegex = new RegExp(`^\s*${property.key}`);
 
         if (property.key.contains('#')) {
@@ -329,11 +329,12 @@ export default class MetaController {
         return propertyRegex.test(line);
     }
 
-    private updatePropertyLine(property: Partial<Property>, newValue: string) {
+    private updatePropertyLine(property: Partial<Property>, newValue: string, line: string) {
         let newLine: string;
         switch (property.type) {
             case MetaType.Dataview:
-                newLine = `${property.key}:: ${newValue}`;
+                const propertyRegex = new RegExp(`${property.key}::\\s*([^\\)\\]\n\r]*)`, 'g');
+                newLine = line.replace(propertyRegex, `${property.key}:: ${newValue}`);
                 break;
             case MetaType.YAML:
                 newLine = `${property.key}: ${newValue}`;
@@ -367,7 +368,7 @@ export default class MetaController {
             fileContent = fileContent.map(line => {
 
                 if (this.lineMatch(prop, line)) {
-                    return this.updatePropertyLine(prop, prop.content)
+                    return this.updatePropertyLine(prop, prop.content, line)
                 }
 
                 return line;

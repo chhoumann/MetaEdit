@@ -42,20 +42,18 @@ export default class MetaEditParser {
 
     public async parseInlineFields(file: TFile): Promise<Property[]> {
         const content = await this.app.vault.cachedRead(file);
-
-        return content.split("\n").reduce((obj: Property[], str: string) => {
-            let parts = str.split("::");
-
-            if (parts[0] && parts[1]) {
-                obj.push({key: parts[0], content: parts[1].trim(), type: MetaType.Dataview});
-            }
-            else if (str.includes("::")) {
-                const key: string = str.replace("::",'');
-                obj.push({key, content: "", type: MetaType.Dataview});
-            }
-
-            return obj;
-        },  []);
+        const regex = /([^\n\r\(\[]*)::\s?([^\)\]\n\r]*)/g;
+        const properties: Property[] = [];
+    
+        let match;
+        while ((match = regex.exec(content)) !== null) {
+            const key: string = match[1].trim();
+            const value: string = match[2].trim();
+    
+            properties.push({key, content: value, type: MetaType.Dataview});
+        }
+    
+        return properties;
     }
 
 }
