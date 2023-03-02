@@ -318,9 +318,13 @@ export default class MetaController {
         await this.app.vault.modify(file, newFileContent);
     }
 
+    private escapeSpecialCharacters(text: string): string{
+        return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+    }
+
     private lineMatch(property: Partial<Property>, line: string): boolean {
-        const propertyRegex = new RegExp(`\s*${property.key}\:{1,2}`);
-        const tagRegex = new RegExp(`^\s*${property.key}`);
+        const propertyRegex = new RegExp(`${this.escapeSpecialCharacters(property.key)}\:{1,2}`);
+        const tagRegex = new RegExp(`^\s*${this.escapeSpecialCharacters(property.key)}`);
 
         if (property.key.contains('#')) {
             return tagRegex.test(line);
@@ -333,8 +337,8 @@ export default class MetaController {
         let newLine: string;
         switch (property.type) {
             case MetaType.Dataview:
-                const propertyRegex = new RegExp(`${property.key}::\\s*([^\\)\\]\n\r]*)`, 'g');
-                newLine = line.replace(propertyRegex, `${property.key}:: ${newValue}`);
+                const propertyRegex = new RegExp(`([\\(\\[]?)${this.escapeSpecialCharacters(property.key)}::[ ]*[^\\)\\]\n\r]*([\\]\\)]?)`, 'g');
+                newLine = line.replace(propertyRegex, `$1${property.key}:: ${newValue}$2`);
                 break;
             case MetaType.YAML:
                 newLine = `${property.key}: ${newValue}`;

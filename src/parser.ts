@@ -42,9 +42,9 @@ export default class MetaEditParser {
 
     public async parseInlineFields(file: TFile): Promise<Property[]> {
         const content = await this.app.vault.cachedRead(file);
-        const regex = /([^\n\r\(\[]*)::\s?([^\)\]\n\r]*)/g;
+        const regex = /[\[\(]?([^\n\r\(\[]*)::[ ]*([^\)\]\n\r]*)[\]\)]?/g;
         const properties: Property[] = [];
-    
+
         let match;
         while ((match = regex.exec(content)) !== null) {
             const key: string = match[1].trim();
