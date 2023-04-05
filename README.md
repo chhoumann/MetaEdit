@@ -65,11 +65,12 @@ This is an asynchronous function, so you should `await` it.
 ```
 <%*
 const {autoprop} = this.app.plugins.plugins["metaedit"].api;
-tR = `#tasks 
+_%>
+#tasks 
 Complete:: 0
 Project::
-Status:: ${await autoprop("Status")}
-Priority:: ${await autoprop("Priority")}
+Status:: <% await autoprop("Status") %>
+Priority:: <% await autoprop("Priority") %>
 Due Date::
 
 Complete:: 0
@@ -82,8 +83,7 @@ Incomplete:: 1
 
 ---
 
-- [ ] <% tp.file.cursor() %>`
- %>
+- [ ] <% tp.file.cursor() %>
 ```
 ![3EfcPLYkj6](https://user-images.githubusercontent.com/29108628/119262986-85175f00-bbdd-11eb-8073-424fe9ec93c2.gif)
 #### Complete Task in Dataview Table (Buttons version)
