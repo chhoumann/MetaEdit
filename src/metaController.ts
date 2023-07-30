@@ -361,7 +361,7 @@ export default class MetaController {
         let newLine: string;
         switch (property.type) {
             case MetaType.Dataview:
-                const propertyRegex = new RegExp(`([\\(\\[]?)${this.escapeSpecialCharacters(property.key)}::[ ]*[^\\)\\]\n\r]*([\\]\\)]?)`, 'g');
+                const propertyRegex = new RegExp(`([\\(\\[]?)${this.escapeSpecialCharacters(property.key)}::[ ]*[^\\)\\]\n\r]*(?:\\]\])?([\\]\\)]?)`, 'g');
                 newLine = line.replace(propertyRegex, `$1${property.key}:: ${newValue}$2`);
                 break;
             case MetaType.YAML:
