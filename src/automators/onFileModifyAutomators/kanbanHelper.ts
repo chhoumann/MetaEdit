@@ -41,7 +41,7 @@ export class KanbanHelper extends OnFileModifyAutomator {
             const linkIsMarkdownFile: boolean = !!abstractFileToMarkdownTFile(linkFile);
             if (!linkFile || !linkIsMarkdownFile) {
                 log.logMessage(`${link.link} is not updatable for the KanbanHelper.`);
-                return;
+                continue;
             }
 
             await this.updateFileInBoard(link, linkFile, board, kanbanBoardFileContent);
@@ -53,7 +53,7 @@ export class KanbanHelper extends OnFileModifyAutomator {
     {
         const heading: string = this.getTaskHeading(link.original, kanbanBoardFileContent);
         if (!heading) {
-            log.logWarning("found linked file but could not get heading for task.");
+            log.logMessage(`found linked file ${link.link} but could not get heading for task.`);
             return;
         }
 
