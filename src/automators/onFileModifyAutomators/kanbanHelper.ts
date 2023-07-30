@@ -32,7 +32,7 @@ export class KanbanHelper extends OnFileModifyAutomator {
 
     private getLinkFile(link: LinkCache): TFile {
         const markdownFiles: TFile[] = this.app.vault.getMarkdownFiles();
-        return markdownFiles.find(f => f.path.includes(`${link.link}.md`));
+        return markdownFiles.find(f => f.path.endsWith(`/${link.link}.md`) || f.path === `${link.link}.md`);
     }
 
     private async updateFilesInBoard(links: LinkCache[], board: KanbanProperty, kanbanBoardFileContent: string) {
