@@ -9,7 +9,7 @@ import {ADD_FIRST_ELEMENT, ADD_TO_BEGINNING, ADD_TO_END} from "./constants";
 import type {ProgressProperty} from "./Types/progressProperty";
 import {ProgressPropertyOptions} from "./Types/progressPropertyOptions";
 import {MetaType} from "./Types/metaType";
-import {Notice} from "obsidian";
+import {Notice, stringifyYaml} from "obsidian";
 import {log} from "./logger/logManager";
 
 export default class MetaController {
@@ -304,7 +304,31 @@ export default class MetaController {
         return null;
     }
 
+    private updateYamlProperty(property: Partial<Property>, newValue: string, file: TFile): string {
+        const fileCache = this.app.metadataCache.getFileCache(file);
+        const frontMatter = fileCache.frontmatter;
+        frontMatter[property.key] = newValue;
+        return stringifyYaml(frontMatter);
+    }
+
     public async updatePropertyInFile(property: Partial<Property>, newValue: string, file: TFile): Promise<void> {
+        // I'm aware this is hacky. Didn't want to spend a bunch of time rewriting old logic.
+        // This uses the new frontmatter API to update the frontmatter. Later TODO: rewrite old logic to just do this & clean.
+        if (property.type === MetaType.YAML) {
+            const updatedMetaData = `---\n${this.updateYamlProperty(property, newValue, file)}\n---`;
+            //@ts-ignore
+            const frontmatterPosition = this.app.metadataCache.getFileCache(file).frontmatterPosition;
+            const fileContents = await this.app.vault.read(file);
+
+            const deleteFrom = frontmatterPosition.start.offset;
+            const deleteTo = frontmatterPosition.end.offset;
+
+            const newFileContents = fileContents.substring(0, deleteFrom) + updatedMetaData + fileContents.substring(deleteTo);
+
+            await this.app.vault.modify(file, newFileContents);
+            return;
+        }
+
         const fileContent = await this.app.vault.read(file);
 
         const newFileContent = fileContent.split("\n").map(line => {

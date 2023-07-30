@@ -23,9 +23,12 @@ export default class MetaEditParser {
     }
 
     public async parseFrontmatter(file: TFile): Promise<Property[]> {
-        const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
+        const fileCache = this.app.metadataCache.getFileCache(file);
+        const frontmatter = fileCache?.frontmatter;
         if (!frontmatter) return [];
-        const {position: {start, end}} = frontmatter;
+
+        //@ts-ignore - this is part of the new Obsidian API as of v1.4.1
+        const {start, end} = fileCache?.frontmatterPosition;
         const filecontent = await this.app.vault.cachedRead(file);
 
         const yamlContent: string = filecontent.split("\n").slice(start.line, end.line).join("\n");
