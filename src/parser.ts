@@ -28,7 +28,7 @@ export default class MetaEditParser {
         if (!frontmatter) return [];
 
         //@ts-ignore - this is part of the new Obsidian API as of v1.4.1
-        const {start, end} = fileCache?.frontmatterPosition;
+        const {start, end} = fileCache?.frontmatterPosition ?? fileCache?.frontmatter?.position;
         const filecontent = await this.app.vault.cachedRead(file);
 
         const yamlContent: string = filecontent.split("\n").slice(start.line, end.line).join("\n");

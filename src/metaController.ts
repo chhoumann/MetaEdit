@@ -314,10 +314,11 @@ export default class MetaController {
     public async updatePropertyInFile(property: Partial<Property>, newValue: string, file: TFile): Promise<void> {
         // I'm aware this is hacky. Didn't want to spend a bunch of time rewriting old logic.
         // This uses the new frontmatter API to update the frontmatter. Later TODO: rewrite old logic to just do this & clean.
-        if (property.type === MetaType.YAML) {
+        //@ts-ignore
+        const frontmatterPosition = this.app.metadataCache.getFileCache(file).frontmatterPosition;
+
+        if (property.type === MetaType.YAML && frontmatterPosition) {
             const updatedMetaData = `---\n${this.updateYamlProperty(property, newValue, file)}\n---`;
-            //@ts-ignore
-            const frontmatterPosition = this.app.metadataCache.getFileCache(file).frontmatterPosition;
             const fileContents = await this.app.vault.read(file);
 
             const deleteFrom = frontmatterPosition.start.offset;
