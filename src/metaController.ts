@@ -316,8 +316,9 @@ export default class MetaController {
         // This uses the new frontmatter API to update the frontmatter. Later TODO: rewrite old logic to just do this & clean.
         if (property.type === MetaType.YAML) {
             const updatedMetaData = `---\n${this.updateYamlProperty(property, newValue, file)}\n---`;
+            const fileCache = this.app.metadataCache.getFileCache(file);
             //@ts-ignore
-            const frontmatterPosition = this.app.metadataCache.getFileCache(file).frontmatterPosition;
+            const frontmatterPosition = fileCache.frontmatterPosition ?? fileCache.frontmatter.position;
             const fileContents = await this.app.vault.read(file);
 
             const deleteFrom = frontmatterPosition.start.offset;
