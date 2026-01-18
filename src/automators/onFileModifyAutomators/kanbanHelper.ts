@@ -95,6 +95,7 @@ export class KanbanHelper extends OnFileModifyAutomator {
     private resolveByBasenameCandidates(candidates: string[]): TFile | null {
         const markdownFiles: TFile[] = this.app.vault.getMarkdownFiles();
         for (const candidate of candidates) {
+            if (candidate.includes("/")) continue;
             const basename = this.stripMarkdownExtension(candidate.split("/").pop() ?? "");
             if (!basename) continue;
             const found = markdownFiles.find(f => f.basename === basename);

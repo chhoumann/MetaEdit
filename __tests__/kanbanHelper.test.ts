@@ -96,7 +96,7 @@ describe("KanbanHelper link resolution", () => {
     expect(app.vault.getAbstractFileByPath).toHaveBeenCalledWith("Note.md");
   });
 
-  it("falls back to basename match when direct path lookup fails", () => {
+  it("falls back to basename match when direct path lookup fails for basename-only links", () => {
     const app = createApp();
     const plugin = createPlugin(app);
     const helper = new KanbanHelper(plugin as any);
@@ -106,10 +106,26 @@ describe("KanbanHelper link resolution", () => {
     app.vault.getAbstractFileByPath.mockReturnValue(null);
     app.vault.getMarkdownFiles.mockReturnValue([targetFile]);
 
-    const link = {link: "Folder/Note", original: "[[Folder/Note]]"};
+    const link = {link: "Note", original: "[[Note]]"};
     const resolved = (helper as any).resolveLinkFile(link, "Board.md");
 
     expect(resolved).toBe(targetFile);
+  });
+
+  it("does not fallback to basename when link includes a folder", () => {
+    const app = createApp();
+    const plugin = createPlugin(app);
+    const helper = new KanbanHelper(plugin as any);
+
+    const unrelatedFile = new TFile("Other/Note.md");
+    app.metadataCache.getFirstLinkpathDest.mockReturnValue(null);
+    app.vault.getAbstractFileByPath.mockReturnValue(null);
+    app.vault.getMarkdownFiles.mockReturnValue([unrelatedFile]);
+
+    const link = {link: "Missing/Note", original: "[[Missing/Note]]"};
+    const resolved = (helper as any).resolveLinkFile(link, "Board.md");
+
+    expect(resolved).toBeNull();
   });
 });
 
