@@ -46,8 +46,8 @@ importers:
         specifier: ^3.3.0
         version: 3.3.0(@types/node@14.17.1)(typescript@4.9.5)
       obsidian:
-        specifier: ^0.13.20
-        version: 0.13.30
+        specifier: 1.4.4
+        version: 1.4.4(@codemirror/state@0.19.9)(@codemirror/view@0.19.48)
       rollup:
         specifier: ^2.32.1
         version: 2.79.2
@@ -1182,8 +1182,8 @@ packages:
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
 
-  '@types/codemirror@0.0.108':
-    resolution: {integrity: sha512-3FGFcus0P7C2UOGCNUVENqObEb4SFk+S8Dnxq7K6aIsLVs/vDtlangl3PEO0ykaKXyK56swVF6Nho7VsA44uhw==}
+  '@types/codemirror@5.60.8':
+    resolution: {integrity: sha512-VjFgDF/eB+Aklcy15TtOTLQeMjTo07k7KAjql8OK5Dirr7a6sJY4T1uVBDuTVG9VEmn1uUsohOpYnVfgC6/jyw==}
 
   '@types/conventional-commits-parser@5.0.2':
     resolution: {integrity: sha512-BgT2szDXnVypgpNxOK8aL5SGjUdaQbC++WZNjF1Qge3Og2+zhHj+RWhmehLhYyvQwqAmvezruVfOf8+3m74W+g==}
@@ -2371,8 +2371,8 @@ packages:
     resolution: {integrity: sha512-xV2bxeN6F7oYjZWTe/YPAy6MN2M+sL4u/Rlm2AHCIVGfo2p1yGmBHQ6vHehl4bRTZBdHu3TSkWdYgkwpYzAGSw==}
     engines: {node: '>=0.10.0'}
 
-  moment@2.29.1:
-    resolution: {integrity: sha512-kHmoybcPV8Sqy59DwNDY3Jefr64lK/by/da0ViFcuA4DH0vQg5Q6Ze5VimxkfQNSC+Mls/Kx53s7TjP1RhFEDQ==}
+  moment@2.29.4:
+    resolution: {integrity: sha512-5LC9SOxjSc2HF6vO2CyuTDNivEdoz2IvyJJGj6X8DJ0eFyfszE0QiEd+iXmBvUP3WHxSjFH/vIsA0EN00cgr8w==}
 
   mri@1.2.0:
     resolution: {integrity: sha512-tzzskb3bG8LvYGFF/mDTpq3jpI6Q9wc3LEmBaghu+DdCssd1FakN7Bc0hVNmEyGq1bq3RgfkCb3cmQLpNPOroA==}
@@ -2518,8 +2518,11 @@ packages:
       - which
       - write-file-atomic
 
-  obsidian@0.13.30:
-    resolution: {integrity: sha512-uAOrIyeHE9qYzg1Qjfpy/qlyLUFX9oyKWeHYO8NVDoI+pm5VUTMe7XWcsXPwb9iVsVmggVJcdV15Vqm9bljhxQ==}
+  obsidian@1.4.4:
+    resolution: {integrity: sha512-q2V5GNT/M40uYOENdVw5kovPSoaO6vppiiyBCkIqWgKp4oN654jA/GQ0OaNBA7p5NdfS245QCeRgCFQ42wOZiw==}
+    peerDependencies:
+      '@codemirror/state': ^6.0.0
+      '@codemirror/view': ^6.0.0
 
   once@1.4.0:
     resolution: {integrity: sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==}
@@ -4633,7 +4636,7 @@ snapshots:
       '@types/deep-eql': 4.0.2
       assertion-error: 2.0.1
 
-  '@types/codemirror@0.0.108':
+  '@types/codemirror@5.60.8':
     dependencies:
       '@types/tern': 0.23.9
 
@@ -5914,7 +5917,7 @@ snapshots:
 
   modify-values@1.0.1: {}
 
-  moment@2.29.1: {}
+  moment@2.29.4: {}
 
   mri@1.2.0: {}
 
@@ -5971,12 +5974,12 @@ snapshots:
 
   npm@8.19.4: {}
 
-  obsidian@0.13.30:
+  obsidian@1.4.4(@codemirror/state@0.19.9)(@codemirror/view@0.19.48):
     dependencies:
       '@codemirror/state': 0.19.9
       '@codemirror/view': 0.19.48
-      '@types/codemirror': 0.0.108
-      moment: 2.29.1
+      '@types/codemirror': 5.60.8
+      moment: 2.29.4
 
   once@1.4.0:
     dependencies:
