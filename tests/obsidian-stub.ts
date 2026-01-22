@@ -29,7 +29,22 @@ export class Notice {
 }
 
 export function normalizePath(path: string): string {
-  return path.replace(/\\/g, "/").replace(/\/{2,}/g, "/").replace(/^\/+/, "");
+  const normalized = path.replace(/\\/g, "/");
+  const parts = normalized.split("/");
+  const resolved: string[] = [];
+
+  for (const part of parts) {
+    if (!part || part === ".") continue;
+    if (part === "..") {
+      if (resolved.length > 0) {
+        resolved.pop();
+      }
+      continue;
+    }
+    resolved.push(part);
+  }
+
+  return resolved.join("/");
 }
 
 export function getLinkpath(linktext: string): string {

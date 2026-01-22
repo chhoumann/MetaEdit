@@ -169,7 +169,7 @@ export class KanbanHelper extends OnFileModifyAutomator {
                 const taskContent = taskMatch[3];
 
                 if (taskContent.includes(targetTaskContent)) {
-                    return lastHeading;
+                    return lastHeading || null;
                 }
             }
         }

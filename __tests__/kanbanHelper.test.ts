@@ -172,6 +172,25 @@ describe("KanbanHelper updates linked file properties", () => {
     expect(plugin.controller.updatePropertyInFile).not.toHaveBeenCalled();
   });
 
+  it("skips tasks that appear before any heading", async () => {
+    const app = createApp();
+    const plugin = createPlugin(app, [{boardName: "Board", property: "status"}]);
+    const helper = new KanbanHelper(plugin as any);
+
+    const noteFile = new TFile("Notes/Note.md");
+    const boardFile = new TFile("Board.md");
+    const link = {link: "Notes/Note", original: "[[Notes/Note]]"};
+
+    app.metadataCache.getFileCache.mockReturnValue({links: [link]});
+    app.metadataCache.getFirstLinkpathDest.mockReturnValue(noteFile);
+    app.vault.cachedRead.mockResolvedValue(`- [ ] [[Notes/Note]]\n# Idea\n- [ ] [[Notes/Other]]\n`);
+    plugin.controller.getPropertiesInFile.mockResolvedValue([{key: "status", content: "Draft"}]);
+
+    await helper.onFileModify(boardFile);
+
+    expect(plugin.controller.updatePropertyInFile).not.toHaveBeenCalled();
+  });
+
   it("processes a realistic board with mixed link types and skips invalid links", async () => {
     const app = createApp();
     const plugin = createPlugin(app, [{boardName: "Roadmap", property: "status"}]);
