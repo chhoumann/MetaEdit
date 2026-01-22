@@ -26,7 +26,7 @@
     "@types/node": "14.17.1",
     "babel-core": "6.26.3",
     "cz-conventional-changelog": "^3.3.0",
-    "obsidian": "^0.13.20",
+    "obsidian": "1.4.4",
     "rollup": "^2.32.1",
     "rollup-plugin-strip-code": "0.2.7",
     "rollup-plugin-svelte": "^7.1.0",
@@ -73,7 +73,7 @@
         {
           "assets": [
             "package.json",
-            "package-lock.json",
+            "pnpm-lock.yaml",
             "manifest.json",
             "versions.json"
           ],
