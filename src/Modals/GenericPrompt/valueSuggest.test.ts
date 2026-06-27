@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vitest";
 import {TFile} from "obsidian";
-import {getDateInputType, getValueSuggestions} from "./valueSuggest";
+import {filterSuggestions, getDateInputType, getValueSuggestions} from "./valueSuggest";
 import {MetaType} from "../../Types/metaType";
 
 type FileCache = {frontmatter?: Record<string, unknown>};
@@ -114,6 +114,29 @@ describe("getValueSuggestions - tags", () => {
         });
 
         expect(getValueSuggestions(app, "#a/draft", MetaType.Tag)).toEqual(["draft"]);
+    });
+});
+
+describe("filterSuggestions", () => {
+    const items = ["reading", "finished", "to-read"];
+
+    it("returns case-insensitive substring matches", () => {
+        expect(filterSuggestions(items, "re")).toEqual(["reading", "to-read"]);
+        expect(filterSuggestions(items, "FIN")).toEqual(["finished"]);
+    });
+
+    it("returns all items for an empty query (discovery)", () => {
+        expect(filterSuggestions(items, "")).toEqual(items);
+    });
+
+    it("returns nothing when there are no matches", () => {
+        expect(filterSuggestions(items, "zzz")).toEqual([]);
+    });
+
+    it("hides the dropdown when the only match equals the input exactly", () => {
+        expect(filterSuggestions(items, "finished")).toEqual([]);
+        // ...but still shows it while the input is a strict prefix.
+        expect(filterSuggestions(items, "finishe")).toEqual(["finished"]);
     });
 });
 

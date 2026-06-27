@@ -57,9 +57,26 @@ export function getDateInputType(
     return null;
 }
 
+/**
+ * Filter known values against the current input for the dropdown. Hides the
+ * dropdown when it has nothing useful to add: no matches, or a single match
+ * identical to what the user already typed.
+ */
+export function filterSuggestions(items: string[], inputStr: string): string[] {
+    const query = inputStr.toLowerCase();
+    const filtered = items.filter(item => item.toLowerCase().includes(query));
+
+    if (filtered.length === 0) return [];
+    if (filtered.length === 1 && filtered[0] === inputStr) return [];
+
+    return filtered;
+}
+
 function collectTagLeafCounts(app: App): Map<string, number> {
     const counts = new Map<string, number>();
-    const tags: Record<string, number> = app.metadataCache.getTags?.() ?? {};
+    // getTags() is present at runtime but missing from the pinned obsidian typings.
+    const metadataCache = app.metadataCache as unknown as {getTags?: () => Record<string, number>};
+    const tags: Record<string, number> = metadataCache.getTags?.() ?? {};
 
     for (const [tag, count] of Object.entries(tags)) {
         const leaf = tag.replace(/^#/, "").split("/").pop()?.trim();

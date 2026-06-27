@@ -1,22 +1,18 @@
 import {TextInputSuggest} from "../../suggest";
+import {filterSuggestions} from "./valueSuggest";
 import type {App} from "obsidian";
 
 export class GenericTextSuggester extends TextInputSuggest<string> {
 
     constructor(public app: App, public inputEl: HTMLInputElement, private items: string[]) {
-        super(app, inputEl);
+        // The prompt seeds the input with the current value, so opening on focus
+        // would pre-highlight a suggestion and make a bare Enter overwrite that
+        // value. Only open once the user actually types.
+        super(app, inputEl, {openOnFocus: false});
     }
 
     getSuggestions(inputStr: string): string[] {
-        const inputLowerCase: string = inputStr.toLowerCase();
-        const filtered = this.items.filter(item => {
-            if (item.toLowerCase().contains(inputLowerCase))
-                return item;
-        });
-
-        if (!filtered) this.close();
-        if (filtered?.length === 1) return [...filtered, inputStr];
-        if (filtered?.length > 1) return filtered;
+        return filterSuggestions(this.items, inputStr);
     }
 
     selectSuggestion(item: string): void {

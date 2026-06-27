@@ -6,6 +6,7 @@ import {MAIN_SUGGESTER_OPTIONS, newDataView, newYaml} from "../constants";
 import {MetaType} from "../Types/metaType";
 import {concat} from "svelte-preprocess/dist/modules/utils";
 import type {AutoProperty} from "../Types/autoProperty";
+import {setPendingValueContext} from "./GenericPrompt/promptValueContext";
 
 export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     public app: App;
@@ -52,7 +53,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
         return concat(this.options, this.data);
     }
 
-    async onChooseItem(item: Property, evt: MouseEvent | KeyboardEvent): Promise<void> {
+    async onChooseItem(item: Property, _evt: MouseEvent | KeyboardEvent): Promise<void> {
         if (item.content === newYaml) {
             const newProperty = await this.controller.createNewProperty(this.suggestValues);
             if (!newProperty) return null;
@@ -71,7 +72,15 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
             return;
         }
 
-        await this.controller.editMetaElement(item, this.data, this.file);
+        // Hand the prompt the property it is editing so it can offer value
+        // autocomplete and a native date picker. Cleared in finally so it never
+        // outlives this edit. The controller is an untouched pass-through.
+        setPendingValueContext({app: this.app, key: item.key, type: item.type});
+        try {
+            await this.controller.editMetaElement(item, this.data, this.file);
+        } finally {
+            setPendingValueContext(null);
+        }
     }
 
     private deleteItem(item: FuzzyMatch<Property>) {
