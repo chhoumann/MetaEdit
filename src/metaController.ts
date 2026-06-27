@@ -13,7 +13,7 @@ import AutoPropertyValueModal from "./Modals/AutoPropertyValueModal/AutoProperty
 import type {AutoProperty} from "./Types/autoProperty";
 import {findAutoProperty, isMultiAutoProperty, toValueArray, withChoiceAdded} from "./autoProperties";
 import {applyMultiValueEdit, isMultiValueYamlProperty, shouldUseMultiValueEditor, type MultiValueEdit} from "./multiValue";
-import {getYamlPath, parseYamlPath, setYamlPath, YamlPathError, type SetYamlPathOptions, type YamlPathSegment} from "./yamlPath";
+import {getYamlPath, isPlainYamlObject, parseYamlPath, setYamlPath, YamlPathError, type SetYamlPathOptions, type YamlPathSegment} from "./yamlPath";
 
 const fileWriteQueues: Map<string, Promise<unknown>> = new Map();
 const ADD_FIRST_SELECTION = "metaedit:multi-value:add-first";
@@ -96,6 +96,11 @@ export default class MetaController {
     public async editMetaElement(property: Property, meta: Property[], file: TFile): Promise<void> {
         if (property.type === MetaType.Tag) {
             await this.editTag(property, file);
+            return;
+        }
+
+        if (this.isYamlParentContainer(property)) {
+            new Notice(`Nested YAML parent '${property.key}' cannot be edited as a text value.`);
             return;
         }
 
@@ -188,7 +193,7 @@ export default class MetaController {
     }
 
     public async deleteProperty(property: Property, file: TFile): Promise<void> {
-        if (property.type === MetaType.YAML && property.isNested) {
+        if (property.type === MetaType.YAML && (property.isNested || property.isVirtual)) {
             new Notice(`Nested YAML property '${property.key}' cannot be deleted by MetaEdit yet.`);
             return;
         }
@@ -483,6 +488,14 @@ export default class MetaController {
 
     private splitMultiValue(property: Partial<Property>): string[] {
         return toValueArray(property.content);
+    }
+
+    private isYamlParentContainer(property: Property): boolean {
+        if (property.type !== MetaType.YAML || property.isVirtual) return false;
+        if (isPlainYamlObject(property.content)) return true;
+        if (!Array.isArray(property.content)) return false;
+
+        return property.content.some(item => isPlainYamlObject(item) || Array.isArray(item));
     }
 
     public async getYamlPath(path: string | readonly YamlPathSegment[], file: TFile): Promise<unknown> {
