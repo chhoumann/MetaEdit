@@ -10,7 +10,8 @@ export interface MetaEditSettings {
     },
     IgnoredProperties: {
         enabled: boolean,
-        properties: string[]
+        properties: string[],
+        hideFileTags: boolean
     },
     AutoProperties: {
         enabled: boolean,

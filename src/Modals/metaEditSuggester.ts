@@ -4,10 +4,10 @@ import type MetaController from "../metaController";
 import type {Property} from "../parser";
 import {MAIN_SUGGESTER_OPTIONS, newDataView, newYaml} from "../constants";
 import {MetaType} from "../Types/metaType";
-import {concat} from "svelte-preprocess/dist/modules/utils";
 import type {AutoProperty} from "../Types/autoProperty";
 import {getKnownPropertyNames} from "./GenericPrompt/valueSuggest";
 import {setPendingValueContext} from "./GenericPrompt/promptValueContext";
+import {filterMenuItems} from "./menuFilter";
 
 export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     public app: App;
@@ -23,7 +23,12 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
         this.file = file;
         this.app = app;
         this.plugin = plugin;
-        this.data = this.removeIgnored(data);
+        const ignored = plugin.settings.IgnoredProperties;
+        this.data = filterMenuItems(data, {
+            enabled: ignored.enabled,
+            ignoredProperties: ignored.properties,
+            hideFileTags: ignored.hideFileTags,
+        });
         this.controller = controller;
         this.options = MAIN_SUGGESTER_OPTIONS;
 
@@ -51,7 +56,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     }
 
     getItems(): Property[] {
-        return concat(this.options, this.data);
+        return [...this.options, ...this.data];
     }
 
     async onChooseItem(item: Property, _evt: MouseEvent | KeyboardEvent): Promise<void> {
@@ -124,18 +129,6 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
         itemButton.style.float = "right";
         itemButton.style.marginRight = "4px";
         itemButton.addEventListener("click", callback);
-    }
-
-    private removeIgnored(data: Property[]): Property[] {
-        const ignored = this.plugin.settings.IgnoredProperties.properties;
-        const purged: Property[] = [];
-
-        for (const item in data) {
-            if (!ignored.contains(data[item].key))
-                purged.push(data[item]);
-        }
-
-        return purged;
     }
 
     private setSuggestValues() {

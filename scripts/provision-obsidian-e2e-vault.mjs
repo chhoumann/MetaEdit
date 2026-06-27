@@ -22,7 +22,7 @@ export const METAEDIT_READY_EVAL = `Boolean(app.plugins.plugins[${JSON.stringify
 // string value of the EditMode.AllSingle enum ("All Single").
 export const DEFAULT_METAEDIT_DATA = {
 	ProgressProperties: { enabled: false, properties: [] },
-	IgnoredProperties: { enabled: false, properties: [] },
+	IgnoredProperties: { enabled: false, properties: [], hideFileTags: false },
 	AutoProperties: { enabled: false, properties: [] },
 	EditMode: { mode: "All Single", properties: [] },
 	KanbanHelper: { enabled: false, boards: [] },
