@@ -27,11 +27,15 @@ describe("MetaEdit runtime", () => {
 
 		expect(state.hasRunCommand).toBe(true);
 		expect(state.apiMethods).toEqual([
+			"addOrUpdateProperty",
 			"autoprop",
 			"createYamlProperty",
+			"getAutoProperties",
 			"getFilesWithProperty",
 			"getPropertiesInFile",
 			"getPropertyValue",
+			"onMetadataChange",
+			"setAutoProperties",
 			"update",
 		]);
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
@@ -81,6 +85,196 @@ describe("MetaEdit runtime", () => {
 		]);
 		expect(String(updated)).toBe("published");
 
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("adds and updates properties through the public API", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("property-helpers.md");
+		await writeLiveFile(
+			obsidian,
+			notePath,
+			"---\nstatus: draft\n---\nowner:: old\n\nBody text.\n",
+		);
+
+		await callApi(obsidian, "addOrUpdateProperty", [
+			"priority",
+			1,
+			notePath,
+		]);
+		await callApi(obsidian, "addOrUpdateProperty", [
+			"status",
+			"published",
+			notePath,
+		]);
+
+		const content = await sandbox.waitForContent(
+			"property-helpers.md",
+			(value) =>
+				value.includes("priority: 1") &&
+				value.includes("status: published"),
+			WAIT_OPTS,
+		);
+
+		expect(content).toContain("priority: 1");
+		expect(content).toContain("status: published");
+		expect(content).toContain("owner:: old");
+		expect(content).toContain("\n\nBody text.");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("updates one numeric YAML property without changing its sibling", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("numeric-frontmatter.md");
+		await writeLiveFile(
+			obsidian,
+			notePath,
+			"---\noutdoor: 0\nreading: 0\n---\n# Baseline\n",
+		);
+
+		await callApi(obsidian, "update", ["outdoor", 1, notePath]);
+
+		const content = await sandbox.waitForContent(
+			"numeric-frontmatter.md",
+			(value) => value.includes("outdoor: 1") && value.includes("reading: 0"),
+			WAIT_OPTS,
+		);
+
+		expect(content).toContain("outdoor: 1");
+		expect(content).toContain("reading: 0");
+		expect(content).not.toContain("reading: 1");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("sets Auto Properties through the public API without exposing mutable settings", async () => {
+		const { obsidian } = getContext();
+
+		const state = await evalJsonAsync<{
+			returnedChoices: string[];
+			savedChoices: string[];
+			invalidMessage: string;
+			settingsAfterInvalid: { name: string; choices: string[] }[];
+		}>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const api = plugin?.api;
+				if (!api) throw new Error("MetaEdit API is not available.");
+
+				await api.setAutoProperties([
+					{ name: "", choices: [""] },
+					{ name: "Status", choices: ["Draft", "Done"] },
+					{ name: "Status", choices: ["Duplicate"] },
+				]);
+
+				const returned = api.getAutoProperties();
+				returned[1].choices.push("Leaked");
+
+				let invalidMessage = "";
+				try {
+					await api.setAutoProperties([
+						{ name: "Broken", choices: "not-an-array" },
+					]);
+				}
+				catch (error) {
+					invalidMessage = error.message;
+				}
+
+				const saved = await plugin.loadData();
+
+				return {
+					returnedChoices: api.getAutoProperties()[1].choices,
+					savedChoices: saved.AutoProperties.properties[1].choices,
+					invalidMessage,
+					settingsAfterInvalid: plugin.settings.AutoProperties.properties,
+				};
+			})()
+		`,
+		);
+
+		expect(state.returnedChoices).toEqual(["Draft", "Done"]);
+		expect(state.savedChoices).toEqual(["Draft", "Done"]);
+		expect(state.invalidMessage).toContain("choices must be an array of strings");
+		expect(state.settingsAfterInvalid).toEqual([
+			{ name: "", choices: [""] },
+			{ name: "Status", choices: ["Draft", "Done"] },
+			{ name: "Status", choices: ["Duplicate"] },
+		]);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("notifies metadata changes with parsed properties and cleans up subscriptions", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("metadata-listener.md");
+		await writeLiveFile(
+			obsidian,
+			notePath,
+			"---\nstatus: draft\n---\ninline:: one\n",
+		);
+
+		const state = await evalJsonAsync<{
+			events: {
+				status: unknown;
+				inline: unknown;
+				previousProperties: number | null;
+			}[];
+			countBeforeUnsubscribe: number;
+			countAfterUnsubscribe: number;
+		}>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const api = plugin?.api;
+				if (!api) throw new Error("MetaEdit API is not available.");
+
+				const notePath = ${JSON.stringify(notePath)};
+				const file = app.vault.getAbstractFileByPath(notePath);
+				const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+				const waitFor = async (predicate) => {
+					const started = Date.now();
+					while (Date.now() - started < 5000) {
+						if (predicate()) return;
+						await sleep(100);
+					}
+					throw new Error("Timed out waiting for metadata listener.");
+				};
+				const events = [];
+				const unsubscribe = api.onMetadataChange((change) => {
+					if (change.file.path !== notePath) return;
+
+					const status = change.properties.find((property) => property.key === "status");
+					const inline = change.properties.find((property) => property.key === "inline");
+					events.push({
+						status: status?.content,
+						inline: inline?.content,
+						previousProperties: change.previousProperties?.length ?? null,
+					});
+				});
+
+				await api.update("status", "done", notePath);
+				await waitFor(() => events.some((event) => event.status === "done" && event.inline === "one"));
+
+				const countBeforeUnsubscribe = events.length;
+				unsubscribe();
+				await api.update("status", "closed", notePath);
+				await sleep(800);
+
+				return {
+					events,
+					countBeforeUnsubscribe,
+					countAfterUnsubscribe: events.length,
+				};
+			})()
+		`,
+		);
+
+		expect(state.events.some(event => event.status === "done" && event.inline === "one")).toBe(true);
+		expect(state.countAfterUnsubscribe).toBe(state.countBeforeUnsubscribe);
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
@@ -322,7 +516,14 @@ async function writeLiveFile(
 			for (const part of parts.slice(0, -1)) {
 				current = current ? current + "/" + part : part;
 				if (!app.vault.getAbstractFileByPath(current)) {
-					await app.vault.createFolder(current);
+					try {
+						await app.vault.createFolder(current);
+					}
+					catch (error) {
+						if (!String(error.message).includes("Folder already exists")) {
+							throw error;
+						}
+					}
 				}
 			}
 

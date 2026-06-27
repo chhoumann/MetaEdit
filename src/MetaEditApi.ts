@@ -1,10 +1,19 @@
 import type MetaEdit from "./main";
-import MetaController from "./metaController";
-import type {IMetaEditApi} from "./IMetaEditApi";
+import type {
+    IMetaEditApi,
+    MetaEditMetadataChangeCallback,
+    MetaEditPropertyValue,
+    MetaEditUnsubscribe,
+} from "./IMetaEditApi";
 import type {Property} from "./parser";
 import {TFile} from "obsidian";
+import type {CachedMetadata} from "obsidian";
+import {MetaType} from "./Types/metaType";
+import type {AutoProperty} from "./Types/autoProperty";
 
 export class MetaEditApi {
+    private settingsWriteQueue: Promise<unknown> = Promise.resolve();
+
     constructor(private plugin: MetaEdit) {
     }
 
@@ -15,26 +24,27 @@ export class MetaEditApi {
             getPropertyValue: this.getGetPropertyValueFunction(),
             getFilesWithProperty: this.getGetFilesWithPropertyFunction(),
             createYamlProperty: this.getCreateYamlPropertyFunction(),
+            addOrUpdateProperty: this.getAddOrUpdatePropertyFunction(),
             getPropertiesInFile: this.getGetPropertiesInFile(),
+            getAutoProperties: this.getGetAutoPropertiesFunction(),
+            setAutoProperties: this.getSetAutoPropertiesFunction(),
+            onMetadataChange: this.getOnMetadataChangeFunction(),
         };
     }
 
     private getAutopropFunction() {
-        return (propertyName: string) => new MetaController(this.plugin.app, this.plugin).handleAutoProperties(propertyName);
+        return (propertyName: string) => this.plugin.controller.handleAutoProperties(propertyName);
      }
 
-    private getUpdateFunction(): (propertyName: string, propertyValue: string, file: (TFile | string)) => Promise<undefined | void> {
-        return async (propertyName: string, propertyValue: string, file: TFile | string) => {
+    private getUpdateFunction(): (propertyName: string, propertyValue: MetaEditPropertyValue, file: (TFile | string)) => Promise<undefined | void> {
+        return async (propertyName: string, propertyValue: MetaEditPropertyValue, file: TFile | string) => {
             const targetFile = this.getFileFromTFileOrPath(file);
             if (!targetFile) return;
 
-            const controller: MetaController = new MetaController(this.plugin.app, this.plugin);
-            const propsInFile: Property[] = await controller.getPropertiesInFile(targetFile);
-
-            const targetProperty = propsInFile.find(prop => prop.key === propertyName);
+            const targetProperty = await this.getPropertyInFile(propertyName, targetFile);
             if (!targetProperty) return;
 
-            return controller.updatePropertyInFile(targetProperty, propertyValue, targetFile);
+            return this.plugin.controller.updatePropertyInFile(targetProperty, propertyValue, targetFile);
         }
     }
 
@@ -59,10 +69,7 @@ export class MetaEditApi {
             const targetFile = this.getFileFromTFileOrPath(file);
             if (!targetFile) return;
 
-            const controller: MetaController = new MetaController(this.plugin.app, this.plugin);
-            const propsInFile: Property[] = await controller.getPropertiesInFile(targetFile);
-
-            const targetProperty = propsInFile.find(prop => prop.key === propertyName);
+            const targetProperty = await this.getPropertyInFile(propertyName, targetFile);
             if (!targetProperty) return;
 
             return targetProperty.content;
@@ -76,12 +83,29 @@ export class MetaEditApi {
     }
 
     private getCreateYamlPropertyFunction() {
-        return async (propertyName: string, propertyValue: string, file: TFile | string) => {
+        return async (propertyName: string, propertyValue: MetaEditPropertyValue, file: TFile | string) => {
             const targetFile = this.getFileFromTFileOrPath(file);
             if (!targetFile) return;
 
-            const controller: MetaController = new MetaController(this.plugin.app, this.plugin);
-            await controller.addYamlProp(propertyName, propertyValue, targetFile);
+            await this.plugin.controller.addYamlProp(propertyName, propertyValue, targetFile);
+        }
+    }
+
+    private getAddOrUpdatePropertyFunction() {
+        return async (propertyName: string, propertyValue: MetaEditPropertyValue, file: TFile | string) => {
+            const targetFile = this.getFileFromTFileOrPath(file);
+            if (!targetFile) return;
+
+            const targetProperty = await this.getPropertyInFile(propertyName, targetFile);
+            if (targetProperty) {
+                await this.plugin.controller.updatePropertyInFile(targetProperty, propertyValue, targetFile);
+                return;
+            }
+
+            await this.plugin.controller.updatePropertyInFile({
+                key: propertyName,
+                type: MetaType.YAML,
+            }, propertyValue, targetFile);
         }
     }
 
@@ -90,8 +114,183 @@ export class MetaEditApi {
             const targetFile = this.getFileFromTFileOrPath(file);
             if (!targetFile) return;
 
-            const controller: MetaController = new MetaController(this.plugin.app, this.plugin);
-            return await controller.getPropertiesInFile(targetFile);
+            return await this.plugin.controller.getPropertiesInFile(targetFile);
         }
+    }
+
+    private getGetAutoPropertiesFunction() {
+        return (): AutoProperty[] => {
+            return this.cloneAutoProperties(this.plugin.settings.AutoProperties.properties);
+        }
+    }
+
+    private getSetAutoPropertiesFunction() {
+        return async (autoProperties: AutoProperty[]): Promise<void> => {
+            await this.enqueueSettingsWrite(async () => {
+                const nextAutoProperties = this.validateAutoProperties(autoProperties);
+                const previousAutoProperties = this.cloneAutoProperties(this.plugin.settings.AutoProperties.properties);
+
+                this.plugin.settings.AutoProperties.properties = nextAutoProperties;
+
+                try {
+                    await this.plugin.saveSettings();
+                }
+                catch (error) {
+                    this.plugin.settings.AutoProperties.properties = previousAutoProperties;
+                    throw error;
+                }
+            });
+        }
+    }
+
+    private getOnMetadataChangeFunction() {
+        return (callback: MetaEditMetadataChangeCallback): MetaEditUnsubscribe => {
+            let unsubscribed = false;
+            const previousPropertiesByPath = new Map<string, Property[]>();
+            const eventQueues = new Map<string, Promise<void>>();
+            const handleChange = async (file: TFile, data: string, cache: CachedMetadata) => {
+                if (unsubscribed) return;
+
+                const previousProperties = previousPropertiesByPath.get(file.path) ?? null;
+                const properties = this.cloneProperties(await this.plugin.controller.getPropertiesInFile(file));
+                if (unsubscribed) return;
+
+                if (previousProperties && this.propertiesSignature(previousProperties) === this.propertiesSignature(properties)) {
+                    return;
+                }
+
+                previousPropertiesByPath.set(file.path, this.cloneProperties(properties));
+
+                try {
+                    await callback({
+                        file,
+                        data,
+                        cache,
+                        properties: this.cloneProperties(properties),
+                        previousProperties: previousProperties ? this.cloneProperties(previousProperties) : null,
+                    });
+                }
+                catch (error) {
+                    console.error("MetaEdit metadata change callback failed.", error);
+                }
+            };
+            const eventRef = this.plugin.app.metadataCache.on("changed", (file, data, cache) => {
+                const previousTask = eventQueues.get(file.path) ?? Promise.resolve();
+                const queuedTask = previousTask.catch(() => undefined).then(() => handleChange(file, data, cache));
+
+                eventQueues.set(file.path, queuedTask);
+                void queuedTask.finally(() => {
+                    if (eventQueues.get(file.path) === queuedTask) {
+                        eventQueues.delete(file.path);
+                    }
+                });
+            });
+            const deletedEventRef = this.plugin.app.metadataCache.on("deleted", (file) => {
+                previousPropertiesByPath.delete(file.path);
+                eventQueues.delete(file.path);
+            });
+            const renameEventRef = this.plugin.app.vault.on("rename", (file, oldPath) => {
+                if (!(file instanceof TFile)) return;
+
+                const previousProperties = previousPropertiesByPath.get(oldPath);
+                previousPropertiesByPath.delete(oldPath);
+
+                if (previousProperties) {
+                    previousPropertiesByPath.set(file.path, previousProperties);
+                }
+            });
+
+            const unsubscribe = () => {
+                if (unsubscribed) return;
+
+                unsubscribed = true;
+                previousPropertiesByPath.clear();
+                eventQueues.clear();
+                this.plugin.app.metadataCache.offref(eventRef);
+                this.plugin.app.metadataCache.offref(deletedEventRef);
+                this.plugin.app.vault.offref(renameEventRef);
+            };
+
+            this.plugin.register(unsubscribe);
+            return unsubscribe;
+        }
+    }
+
+    private async getPropertyInFile(propertyName: string, file: TFile): Promise<Property | undefined> {
+        const propsInFile: Property[] = await this.plugin.controller.getPropertiesInFile(file);
+        return propsInFile.find(prop => prop.key === propertyName);
+    }
+
+    private cloneAutoProperties(autoProperties: AutoProperty[]): AutoProperty[] {
+        return autoProperties.map(autoProperty => ({
+            name: autoProperty.name,
+            choices: [...autoProperty.choices],
+        }));
+    }
+
+    private validateAutoProperties(autoProperties: AutoProperty[]): AutoProperty[] {
+        if (!Array.isArray(autoProperties)) {
+            throw new TypeError("Auto Properties must be an array.");
+        }
+
+        return autoProperties.map((autoProperty, index) => {
+            if (!autoProperty || typeof autoProperty !== "object") {
+                throw new TypeError(`Auto Property at index ${index} must be an object.`);
+            }
+
+            if (!Array.isArray(autoProperty.choices) || !autoProperty.choices.every(choice => typeof choice === "string")) {
+                throw new TypeError(`Auto Property at index ${index} choices must be an array of strings.`);
+            }
+
+            if (typeof autoProperty.name !== "string") {
+                throw new TypeError(`Auto Property at index ${index} must have a string name.`);
+            }
+
+            return {
+                name: autoProperty.name,
+                choices: [...autoProperty.choices],
+            };
+        });
+    }
+
+    private enqueueSettingsWrite<T>(task: () => Promise<T>): Promise<T> {
+        const queued = this.settingsWriteQueue.catch(() => undefined).then(task);
+        this.settingsWriteQueue = queued.catch(() => undefined);
+        return queued;
+    }
+
+    private cloneProperties(properties: Property[]): Property[] {
+        return properties.map(property => ({
+            key: property.key,
+            type: property.type,
+            content: this.cloneValue(property.content),
+        }));
+    }
+
+    private cloneValue(value: unknown): unknown {
+        if (value instanceof Date) {
+            return new Date(value.getTime());
+        }
+
+        if (Array.isArray(value)) {
+            return value.map(item => this.cloneValue(item));
+        }
+
+        if (value && typeof value === "object") {
+            return Object.entries(value as Record<string, unknown>).reduce((clone, [key, item]) => {
+                clone[key] = this.cloneValue(item);
+                return clone;
+            }, {} as Record<string, unknown>);
+        }
+
+        return value;
+    }
+
+    private propertiesSignature(properties: Property[]): string {
+        return JSON.stringify(properties.map(property => ({
+            key: property.key,
+            type: property.type,
+            content: property.content,
+        })));
     }
 }
