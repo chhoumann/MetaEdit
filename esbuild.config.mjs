@@ -1,10 +1,14 @@
 import {builtinModules} from "node:module";
 import {readFile} from "node:fs/promises";
+import {dirname, join, sep} from "node:path";
+import {fileURLToPath} from "node:url";
 import esbuild from "esbuild";
 import esbuildSvelte from "esbuild-svelte";
 import sveltePreprocess from "svelte-preprocess";
 
 const isProduction = process.argv.includes("production");
+const projectSrcDir = `${join(dirname(fileURLToPath(import.meta.url)), "src")}${sep}`;
+const devCommandBlockPattern = /\/\*\s*START\.DEVCMD\s*\*\/[\s\S]*?\/\*\s*END\.DEVCMD\s*\*\//g;
 
 const external = [
 	"obsidian",
@@ -26,18 +30,19 @@ function stripDevCommandBlocks() {
 	return {
 		name: "strip-dev-command-blocks",
 		setup(build) {
-			build.onLoad({filter: /\/src\/.*\.[cm]?[jt]sx?$/}, async (args) => {
+			build.onLoad({filter: /\.(?:[cm]?[jt]sx?|svelte)$/}, async (args) => {
+				if (!args.path.startsWith(projectSrcDir)) return null;
+
 				const contents = await readFile(args.path, "utf8");
-				if (!contents.includes("START.DEVCMD") && !contents.includes("END.DEVCMD")) {
-					return null;
+				if (!contents.includes("DEVCMD")) return null;
+
+				if (args.path.endsWith(".svelte")) {
+					throw new Error(`DEVCMD markers are only supported in TypeScript/JavaScript source files: ${args.path}`);
 				}
 
-				const stripped = contents.replace(
-					/\/\*START\.DEVCMD\*\/[\s\S]*?\/\*END\.DEVCMD\*\//g,
-					"",
-				);
+				const stripped = contents.replace(devCommandBlockPattern, "");
 
-				if (/\/\*(START|END)\.DEVCMD\*\//.test(stripped)) {
+				if (stripped.includes("DEVCMD")) {
 					throw new Error(`Unmatched START.DEVCMD/END.DEVCMD block in ${args.path}`);
 				}
 

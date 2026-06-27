@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "pnpm run typecheck && node esbuild.config.mjs production",
-    "typecheck": "tsc --noEmit -p tsconfig.src.json",
+    "typecheck": "tsc --noEmit -p tsconfig.src.json && svelte-check --tsconfig ./tsconfig.src.json --threshold error",
     "lint": "eslint .",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
