@@ -614,7 +614,10 @@ describe("MetaEdit runtime", () => {
 				for (const button of Array.from(document.querySelectorAll(".modal-close-button"))) {
 					button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 				}
-				await sleep(150);
+				for (const element of Array.from(document.querySelectorAll(".suggestion-container, .suggestion-item"))) {
+					element.remove();
+				}
+				await sleep(50);
 
 				return {
 					keys,
