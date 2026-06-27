@@ -1,4 +1,4 @@
-import {App, Modal} from "obsidian";
+import {type App, Modal} from "obsidian";
 import type MetaEdit from "../../main";
 import IgnoredPropertiesModalContent from "./IgnoredPropertiesModalContent.svelte";
 

@@ -1,4 +1,4 @@
-import {App, PluginSettingTab, Setting} from "obsidian";
+import {type App, PluginSettingTab, Setting} from "obsidian";
 import type MetaEdit from "../main";
 import {EditMode} from "../Types/editMode";
 import ProgressPropertiesModalContent
@@ -31,7 +31,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
     }
 
     display(): void {
-        let {containerEl} = this;
+        const {containerEl} = this;
 
         containerEl.empty();
 
@@ -283,7 +283,11 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                         if (value === this.plugin.settings.UIElements.enabled) return;
 
                         this.plugin.settings.UIElements.enabled = value;
-                        value ? this.plugin.linkMenu.registerEvent() : this.plugin.linkMenu.unregisterEvent();
+                        if (value) {
+                            this.plugin.linkMenu.registerEvent();
+                        } else {
+                            this.plugin.linkMenu.unregisterEvent();
+                        }
 
                         await this.plugin.saveSettings();
                     });

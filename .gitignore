@@ -15,3 +15,15 @@ main.js
 # obsidian
 data.json
 /coverage/
+
+# Obsidian E2E harness (isolated per-worktree vaults, instances, failure artifacts)
+.obsidian-e2e-vaults
+.obsidian-e2e-instances
+.obsidian-e2e-artifacts
+
+# macOS
+.DS_Store
+
+# Claude Code session/runtime state (ephemeral, machine-local)
+.claude/scheduled_tasks.lock
+.claude/scheduled_tasks.json

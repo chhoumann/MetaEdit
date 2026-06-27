@@ -1,4 +1,4 @@
-import {App, FuzzyMatch, FuzzySuggestModal, TFile} from "obsidian";
+import {type App, type FuzzyMatch, FuzzySuggestModal, type TFile} from "obsidian";
 import type MetaEdit from "../main";
 import type MetaController from "../metaController";
 import type {Property} from "../parser";
@@ -117,9 +117,9 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
 
     private removeIgnored(data: Property[]): Property[] {
         const ignored = this.plugin.settings.IgnoredProperties.properties;
-        let purged: Property[] = [];
+        const purged: Property[] = [];
 
-        for (let item in data) {
+        for (const item in data) {
             if (!ignored.contains(data[item].key))
                 purged.push(data[item]);
         }

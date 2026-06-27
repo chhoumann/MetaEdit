@@ -17,7 +17,7 @@ export default class MetaEditParser {
         const tags = cache.tags;
         if (!tags) return [];
 
-        let mTags: Property[] = [];
+        const mTags: Property[] = [];
         tags.forEach(tag => mTags.push({key: tag.tag, content: tag.tag, type: MetaType.Tag}));
         return mTags;
     }
@@ -27,14 +27,13 @@ export default class MetaEditParser {
         const frontmatter = fileCache?.frontmatter;
         if (!frontmatter) return [];
 
-        //@ts-ignore - this is part of the new Obsidian API as of v1.4.1
         const {start, end} = fileCache?.frontmatterPosition;
         const filecontent = await this.app.vault.cachedRead(file);
 
         const yamlContent: string = filecontent.split("\n").slice(start.line, end.line).join("\n");
         const parsedYaml = parseYaml(yamlContent);
 
-        let metaYaml: Property[] = [];
+        const metaYaml: Property[] = [];
 
         for (const key in parsedYaml) {
             metaYaml.push({key, content: parsedYaml[key], type: MetaType.YAML});

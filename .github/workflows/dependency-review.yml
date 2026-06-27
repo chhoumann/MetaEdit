@@ -1,0 +1,39 @@
+name: Dependency Review
+
+# Reviews dependency changes on every PR and blocks newly-introduced advisories
+# before they land. No paths-ignore, so lockfile bumps are always scanned.
+on:
+    pull_request:
+        branches: [master]
+
+concurrency:
+    group: dep-review-${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+permissions:
+    contents: read
+
+jobs:
+    dependency-review:
+        name: Dependency Review
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            pull-requests: write
+        steps:
+            - name: Harden Runner
+              uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+              with:
+                  egress-policy: audit
+            - name: Checkout
+              uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+              with:
+                  persist-credentials: false
+            - name: Dependency Review
+              uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+              with:
+                  comment-summary-in-pr: on-failure
+                  # Block newly-introduced moderate+ advisories in both runtime
+                  # AND development scopes (the default only fails on runtime/high).
+                  fail-on-severity: moderate
+                  fail-on-scopes: runtime, development

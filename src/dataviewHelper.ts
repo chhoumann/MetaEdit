@@ -52,7 +52,7 @@ export class DataviewHelper {
         dataviewBlocks.forEach(block => {
             const tables = block.querySelectorAll("table");
             tables.forEach(table => {
-                let headers: string[] = [];
+                const headers: string[] = [];
 
                 for (let h = 0; h < table.tHead.rows[0].cells.length; h++) {
                     headers.push(table.tHead.rows[0].cells[h].textContent);
@@ -62,7 +62,7 @@ export class DataviewHelper {
                     const item = table.rows.item(i);
                     const newCell = item.insertCell(0);
 
-                    let valuesInRow: {[key: string]: string} = {};
+                    const valuesInRow: {[key: string]: string} = {};
                     for (let h = 0; h < item.cells.length; h++) {
                         valuesInRow[headers[h - 1]] = item.cells[h].textContent;
                     }

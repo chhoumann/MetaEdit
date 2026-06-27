@@ -1,4 +1,4 @@
-import {CachedMetadata, LinkCache, Notice, TFile, getLinkpath, normalizePath} from "obsidian";
+import {type CachedMetadata, type LinkCache, Notice, type TFile, getLinkpath, normalizePath} from "obsidian";
 import type MetaEdit from "../../main";
 import type {KanbanProperty} from "../../Types/kanbanProperty";
 import {abstractFileToMarkdownTFile} from "../../utility";
