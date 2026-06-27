@@ -1,20 +1,27 @@
 import {type App, Modal} from "obsidian";
 import GenericPromptContent from "./GenericPromptContent.svelte"
+import type {PromptValueContext} from "./promptValueContext";
+
+export interface PromptOptions {
+    placeholder?: string;
+    value?: string;
+    suggestValues?: string[];
+    valueContext?: PromptValueContext;
+}
 
 export default class GenericPrompt extends Modal {
     private modalContent: GenericPromptContent;
-    private resolvePromise: (input: string) => void;
+    private resolvePromise: (input: string | null) => void;
     private input: string;
-    public waitForClose: Promise<string>;
-    private rejectPromise: (reason?: any) => void;
+    public waitForClose: Promise<string | null>;
     private didSubmit: boolean = false;
 
-    public static Prompt(app: App, header: string, placeholder?: string, value?: string, suggestValues?: string[]): Promise<string> {
-        const newPromptModal = new GenericPrompt(app, header, placeholder, value, suggestValues);
+    public static Prompt(app: App, header: string, options?: PromptOptions): Promise<string | null> {
+        const newPromptModal = new GenericPrompt(app, header, options);
         return newPromptModal.waitForClose;
     }
 
-    private constructor(app: App, header: string, placeholder?: string, value?: string, suggestValues?: string[]) {
+    private constructor(app: App, header: string, options: PromptOptions = {}) {
         super(app);
 
         this.modalContent = new GenericPromptContent({
@@ -22,9 +29,10 @@ export default class GenericPrompt extends Modal {
             props: {
                 app,
                 header,
-                placeholder,
-                value,
-                suggestValues,
+                placeholder: options.placeholder,
+                value: options.value,
+                suggestValues: options.suggestValues,
+                valueContext: options.valueContext ?? null,
                 onSubmit: (input: string) => {
                     this.input = input;
                     this.didSubmit = true;
@@ -33,10 +41,9 @@ export default class GenericPrompt extends Modal {
             }
         });
 
-        this.waitForClose = new Promise<string>(
-            (resolve, reject) => {
+        this.waitForClose = new Promise<string | null>(
+            (resolve) => {
                 this.resolvePromise = resolve;
-                this.rejectPromise = reject;
             }
         );
 
@@ -58,7 +65,9 @@ export default class GenericPrompt extends Modal {
         super.onClose();
         this.modalContent.$destroy();
 
-        if(!this.didSubmit) this.rejectPromise("No input given.");
+        // Cancelling (Escape/close without submitting) resolves to null rather than
+        // rejecting, so a normal cancel never surfaces as an unhandled rejection.
+        if (!this.didSubmit) this.resolvePromise(null);
         else this.resolvePromise(this.input);
     }
 }

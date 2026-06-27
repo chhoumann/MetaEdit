@@ -4,7 +4,7 @@ import {MetaType} from "../../Types/metaType";
 export type DateInputType = "date" | "datetime";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/;
 
 // Cap the rendered dropdown so a property with thousands of distinct values
 // cannot build an unbounded list. Filtering runs over the full set first, so a
@@ -20,15 +20,29 @@ const MAX_RENDERED_SUGGESTIONS = 100;
  * full `topic/science` path while editing `#topic/science` would write
  * `#topic/topic/science`. Leaf segments are the only values that round-trip
  * safely through the tag writer.
+ *
+ * Inline Dataview (`key:: value`) fields are not in the metadata cache, so
+ * sourcing their values would mean a full-text scan that duplicates the parser;
+ * that is a deliberate follow-up, so Dataview keys return nothing for now.
  */
 export function getValueSuggestions(app: App, key: string, type: MetaType): string[] {
     if (!key) return [];
 
-    if (type === MetaType.Tag) {
-        return rankByCount(collectTagLeafCounts(app));
-    }
+    // These read untyped runtime APIs (getTags, metadataCache); never let a
+    // sourcing failure break the prompt - degrade to no suggestions.
+    try {
+        if (type === MetaType.Tag) {
+            return rankByCount(collectTagLeafCounts(app));
+        }
 
-    return rankByCount(collectFrontmatterValueCounts(app, key));
+        if (type === MetaType.YAML) {
+            return rankByCount(collectFrontmatterValueCounts(app, key));
+        }
+
+        return [];
+    } catch {
+        return [];
+    }
 }
 
 /**
@@ -50,7 +64,12 @@ export function getDateInputType(
 ): DateInputType | null {
     if (type !== MetaType.YAML || !key) return null;
 
-    const obsidianType = readObsidianType(app, key);
+    let obsidianType: string | null;
+    try {
+        obsidianType = readObsidianType(app, key);
+    } catch {
+        return null;
+    }
     if (obsidianType !== "date" && obsidianType !== "datetime") return null;
 
     const value = currentValue === null || currentValue === undefined ? "" : String(currentValue).trim();
@@ -67,16 +86,20 @@ export function getDateInputType(
  * can autocomplete known keys instead of free-typing them.
  */
 export function getKnownPropertyNames(app: App): string[] {
-    const typeManager = (app as unknown as {
-        metadataTypeManager?: {getAllProperties?: () => Record<string, {name?: string}>};
-    }).metadataTypeManager;
+    try {
+        const typeManager = (app as unknown as {
+            metadataTypeManager?: {getAllProperties?: () => Record<string, {name?: string}>};
+        }).metadataTypeManager;
 
-    const all = typeManager?.getAllProperties?.();
-    if (!all) return [];
+        const all = typeManager?.getAllProperties?.();
+        if (!all) return [];
 
-    return Object.values(all)
-        .map(info => info?.name)
-        .filter((name): name is string => typeof name === "string" && name.length > 0);
+        return Object.values(all)
+            .map(info => info?.name)
+            .filter((name): name is string => typeof name === "string" && name.length > 0);
+    } catch {
+        return [];
+    }
 }
 
 /**

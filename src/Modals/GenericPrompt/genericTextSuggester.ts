@@ -4,11 +4,13 @@ import type {App} from "obsidian";
 
 export class GenericTextSuggester extends TextInputSuggest<string> {
 
-    constructor(public app: App, public inputEl: HTMLInputElement, private items: string[]) {
-        // The prompt seeds the input with the current value, so opening on focus
-        // would pre-highlight a suggestion and make a bare Enter overwrite that
-        // value. Only open once the user actually types.
-        super(app, inputEl, {openOnFocus: false});
+    constructor(
+        public app: App,
+        public inputEl: HTMLInputElement,
+        private items: string[],
+        options?: {openOnFocus?: boolean},
+    ) {
+        super(app, inputEl, options);
     }
 
     getSuggestions(inputStr: string): string[] {

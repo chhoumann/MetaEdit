@@ -82,6 +82,12 @@ describe("getValueSuggestions - frontmatter values", () => {
         expect(getValueSuggestions(app, "missing", MetaType.YAML)).toEqual([]);
         expect(getValueSuggestions(app, "", MetaType.YAML)).toEqual([]);
     });
+
+    it("does not source inline Dataview field values yet (deferred follow-up)", () => {
+        const app = makeApp({files: {"a.md": {frontmatter: {status: "reading"}}}});
+
+        expect(getValueSuggestions(app, "status", MetaType.Dataview)).toEqual([]);
+    });
 });
 
 describe("getValueSuggestions - tags", () => {
@@ -185,9 +191,10 @@ describe("getDateInputType", () => {
         expect(getDateInputType(dateApp(null, "date"), "due", "2026-07-01", MetaType.YAML)).toBe("date");
     });
 
-    it("returns 'datetime' only for a minute-precision ISO datetime value", () => {
+    it("returns 'datetime' for minute- and second-precision ISO datetime values", () => {
         expect(getDateInputType(dateApp("datetime"), "when", "2026-07-01T13:30", MetaType.YAML)).toBe("datetime");
-        expect(getDateInputType(dateApp("datetime"), "when", "2026-07-01T13:30:45", MetaType.YAML)).toBeNull();
+        expect(getDateInputType(dateApp("datetime"), "when", "2026-07-01T13:30:45", MetaType.YAML)).toBe("datetime");
+        // A date-only value on a datetime field is not representable, so fall back.
         expect(getDateInputType(dateApp("datetime"), "when", "2026-07-01", MetaType.YAML)).toBeNull();
     });
 

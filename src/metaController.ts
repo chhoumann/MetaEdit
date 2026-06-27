@@ -104,7 +104,7 @@ export default class MetaController {
         if (!method) return;
 
         if (method === trackerPluginMethod) {
-            newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`)
+            newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`, {valueContext: {key: property.key, type: property.type}})
             this.useTrackerPlugin = true;
         } else if (method === metaEditMethod) {
             const autoProp = await this.handleAutoProperties(allButLast);
@@ -112,7 +112,7 @@ export default class MetaController {
             if (autoProp)
                 newValue = autoProp;
             else
-                newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`);
+                newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`, {valueContext: {key: property.key, type: property.type}});
         }
 
         if (newValue) {
@@ -141,8 +141,8 @@ export default class MetaController {
         }
     }
 
-    public async createNewProperty(suggestValues?: string[]) {
-        const propName = await GenericPrompt.Prompt(this.app, "Enter a property name", "Property", "", suggestValues);
+    public async createNewProperty(suggestValues?: string[], valueType: MetaType = MetaType.YAML) {
+        const propName = await GenericPrompt.Prompt(this.app, "Enter a property name", {placeholder: "Property", suggestValues});
         if (!propName) return null;
 
         let propValue: string;
@@ -151,8 +151,10 @@ export default class MetaController {
         if (autoProp) {
             propValue = autoProp;
         } else {
-            propValue = await GenericPrompt.Prompt(this.app, "Enter a property value", "Value")
-                .catch(() => null);
+            propValue = await GenericPrompt.Prompt(this.app, "Enter a property value", {
+                placeholder: "Value",
+                valueContext: {key: propName, type: valueType},
+            });
         }
 
         if (propValue === null) return null;
@@ -202,7 +204,11 @@ export default class MetaController {
         if (autoProp)
             newValue = autoProp;
         else
-            newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`, property.content, property.content);
+            newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`, {
+                placeholder: property.content,
+                value: property.content,
+                valueContext: {key: property.key, type: property.type},
+            });
 
         if (newValue) {
             await this.updatePropertyInFile(property, newValue, file);
@@ -241,10 +247,13 @@ export default class MetaController {
         if (autoProp) {
             tempValue = autoProp;
         } else if (selectedOption.includes("cmd")) {
-            tempValue = await GenericPrompt.Prompt(this.app, "Enter a new value");
+            tempValue = await GenericPrompt.Prompt(this.app, "Enter a new value", {valueContext: {key: property.key, type: property.type}});
         } else {
             selectedIndex = splitValues.findIndex(el => el == selectedOption);
-            tempValue = await GenericPrompt.Prompt(this.app, `Change ${selectedOption} to`, selectedOption);
+            tempValue = await GenericPrompt.Prompt(this.app, `Change ${selectedOption} to`, {
+                placeholder: selectedOption,
+                valueContext: {key: property.key, type: property.type},
+            });
         }
 
         if (!tempValue) return;
@@ -283,7 +292,7 @@ export default class MetaController {
 
         if (this.plugin.settings.AutoProperties.enabled && autoProp) {
             const options = autoProp.choices;
-            return await GenericPrompt.Prompt(this.app, `Enter a new value for ${propertyName}`, '', '', options);
+            return await GenericPrompt.Prompt(this.app, `Enter a new value for ${propertyName}`, {suggestValues: options});
         }
 
         return null;

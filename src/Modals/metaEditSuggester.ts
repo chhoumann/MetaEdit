@@ -6,7 +6,6 @@ import {MAIN_SUGGESTER_OPTIONS, newDataView, newYaml} from "../constants";
 import {MetaType} from "../Types/metaType";
 import {concat} from "svelte-preprocess/dist/modules/utils";
 import type {AutoProperty} from "../Types/autoProperty";
-import {setPendingValueContext} from "./GenericPrompt/promptValueContext";
 import {getKnownPropertyNames} from "./GenericPrompt/valueSuggest";
 
 export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
@@ -56,7 +55,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
 
     async onChooseItem(item: Property, _evt: MouseEvent | KeyboardEvent): Promise<void> {
         if (item.content === newYaml) {
-            const newProperty = await this.controller.createNewProperty(this.suggestValues);
+            const newProperty = await this.controller.createNewProperty(this.suggestValues, MetaType.YAML);
             if (!newProperty) return null;
 
             const {propName, propValue} = newProperty;
@@ -65,7 +64,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
         }
 
         if (item.content === newDataView) {
-            const newProperty = await this.controller.createNewProperty(this.suggestValues);
+            const newProperty = await this.controller.createNewProperty(this.suggestValues, MetaType.Dataview);
             if (!newProperty) return null;
 
             const {propName, propValue} = newProperty;
@@ -73,15 +72,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
             return;
         }
 
-        // Hand the prompt the property it is editing so it can offer value
-        // autocomplete and a native date picker. Cleared in finally so it never
-        // outlives this edit. The controller is an untouched pass-through.
-        setPendingValueContext({app: this.app, key: item.key, type: item.type});
-        try {
-            await this.controller.editMetaElement(item, this.data, this.file);
-        } finally {
-            setPendingValueContext(null);
-        }
+        await this.controller.editMetaElement(item, this.data, this.file);
     }
 
     private deleteItem(item: FuzzyMatch<Property>) {
