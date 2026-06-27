@@ -2,11 +2,12 @@ import {type App, Modal} from "obsidian";
 import type MetaEdit from "../../main";
 import AutoPropertiesModalContent from "./AutoPropertiesModalContent.svelte";
 import type {AutoProperty} from "../../Types/autoProperty";
+import {type MountedSvelteComponent, mountSvelteComponent, unmountSvelteComponent} from "../../svelteMount";
 
 export default class AutoPropertiesModal extends Modal {
     public waitForResolve: Promise<AutoProperty[]>;
     private plugin: MetaEdit;
-    private content: AutoPropertiesModalContent;
+    private content: MountedSvelteComponent;
     private resolvePromise: (autoProperties: AutoProperty[]) => void;
     private autoProperties: AutoProperty[];
 
@@ -19,13 +20,14 @@ export default class AutoPropertiesModal extends Modal {
             (resolve) => (this.resolvePromise = resolve)
         );
 
-        this.content = new AutoPropertiesModalContent({
-            target: this.contentEl,
-            props: {
+        this.content = mountSvelteComponent(
+            AutoPropertiesModalContent,
+            this.contentEl,
+            {
                 save: (autoProperties: AutoProperty[]) => this.save(autoProperties),
                 autoProperties
             },
-        });
+        );
 
         this.open();
     }
@@ -37,7 +39,7 @@ export default class AutoPropertiesModal extends Modal {
 
     onClose() {
         super.onClose();
-        this.content.$destroy();
+        unmountSvelteComponent(this.content);
         this.resolvePromise(this.autoProperties);
     }
 }

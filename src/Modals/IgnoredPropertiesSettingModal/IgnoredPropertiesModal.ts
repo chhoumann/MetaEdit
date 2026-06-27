@@ -1,11 +1,12 @@
 import {type App, Modal} from "obsidian";
 import type MetaEdit from "../../main";
 import IgnoredPropertiesModalContent from "./IgnoredPropertiesModalContent.svelte";
+import {type MountedSvelteComponent, mountSvelteComponent, unmountSvelteComponent} from "../../svelteMount";
 
 export default class IgnoredPropertiesModal extends Modal{
     public waitForResolve: Promise<string[]>;
     private plugin: MetaEdit;
-    private content: IgnoredPropertiesModalContent;
+    private content: MountedSvelteComponent;
     private resolvePromise: (ignoredProperties: string[]) => void;
     private ignoredProperties: string[];
 
@@ -18,23 +19,24 @@ export default class IgnoredPropertiesModal extends Modal{
             (resolve) => (this.resolvePromise = resolve)
         );
 
-        this.content = new IgnoredPropertiesModalContent({
-            target: this.contentEl,
-            props: {
+        this.content = mountSvelteComponent(
+            IgnoredPropertiesModalContent,
+            this.contentEl,
+            {
                 ignoredProperties,
                 save: (ignoredProperties: string[]) => {
                     this.ignoredProperties = ignoredProperties;
                     this.close();
                 }
             },
-        });
+        );
 
         this.open();
     }
 
     onClose() {
         super.onClose();
-        this.content.$destroy();
+        unmountSvelteComponent(this.content);
         this.resolvePromise(this.ignoredProperties);
     }
 }

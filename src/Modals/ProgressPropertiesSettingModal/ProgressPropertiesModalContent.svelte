@@ -28,23 +28,25 @@
                 <th>Type</th>
             </tr>
         </thead>
-        {#each properties as property}
-            <tr>
-                <td>
-                    <input type="text" placeholder="Property name" bind:value={property.name} on:change={() => save(properties)}>
-                </td>
-                <td>
-                    <select bind:value={property.type} on:change={() => save(properties)}>
-                        {#each options as text}
-                        <option value={text} label={text}></option>
-                        {/each}
-                    </select>
-                </td>
-                <td>
-                    <input type="button" class="not-a-button" on:click={() => removeProperty(property)} value="❌"/>
-                </td>
-            </tr>
-        {/each}
+        <tbody>
+            {#each properties as property}
+                <tr>
+                    <td>
+                        <input type="text" placeholder="Property name" bind:value={property.name} on:change={() => save(properties)}>
+                    </td>
+                    <td>
+                        <select bind:value={property.type} on:change={() => save(properties)}>
+                            {#each options as text}
+                            <option value={text} label={text}></option>
+                            {/each}
+                        </select>
+                    </td>
+                    <td>
+                        <input type="button" class="not-a-button" on:click={() => removeProperty(property)} value="❌"/>
+                    </td>
+                </tr>
+            {/each}
+        </tbody>
     </table>
 
     <div class="buttonContainer">
