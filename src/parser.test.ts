@@ -97,6 +97,101 @@ describe("MetaEditParser frontmatter parsing", () => {
         ]);
     });
 
+    it("keeps root YAML rows and adds virtual nested scalar leaf rows", async () => {
+        const file = new TFile("nested.md");
+        const parser = createParser(
+            {
+                frontmatter: {
+                    metadata: {description: "old"},
+                    attributes: {one: "something", two: 12345},
+                    contributors: [
+                        {name: "Ada", role: "Writer"},
+                        {name: "Bob", role: "Editor"},
+                    ],
+                    tags: ["alpha", "beta"],
+                },
+            },
+            "",
+        );
+
+        await expect(parser.parseFrontmatter(file)).resolves.toEqual([
+            {key: "metadata", content: {description: "old"}, type: MetaType.YAML},
+            {key: "attributes", content: {one: "something", two: 12345}, type: MetaType.YAML},
+            {
+                key: "contributors",
+                content: [
+                    {name: "Ada", role: "Writer"},
+                    {name: "Bob", role: "Editor"},
+                ],
+                type: MetaType.YAML,
+            },
+            {key: "tags", content: ["alpha", "beta"], type: MetaType.YAML},
+            {
+                key: "metadata.description",
+                content: "old",
+                type: MetaType.YAML,
+                path: ["metadata", "description"],
+                rootKey: "metadata",
+                isNested: true,
+                isVirtual: true,
+            },
+            {
+                key: "attributes.one",
+                content: "something",
+                type: MetaType.YAML,
+                path: ["attributes", "one"],
+                rootKey: "attributes",
+                isNested: true,
+                isVirtual: true,
+            },
+            {
+                key: "attributes.two",
+                content: 12345,
+                type: MetaType.YAML,
+                path: ["attributes", "two"],
+                rootKey: "attributes",
+                isNested: true,
+                isVirtual: true,
+            },
+            {
+                key: "contributors[0].name",
+                content: "Ada",
+                type: MetaType.YAML,
+                path: ["contributors", 0, "name"],
+                rootKey: "contributors",
+                isNested: true,
+                isVirtual: true,
+            },
+            {
+                key: "contributors[0].role",
+                content: "Writer",
+                type: MetaType.YAML,
+                path: ["contributors", 0, "role"],
+                rootKey: "contributors",
+                isNested: true,
+                isVirtual: true,
+            },
+            {
+                key: "contributors[1].name",
+                content: "Bob",
+                type: MetaType.YAML,
+                path: ["contributors", 1, "name"],
+                rootKey: "contributors",
+                isNested: true,
+                isVirtual: true,
+            },
+            {
+                key: "contributors[1].role",
+                content: "Editor",
+                type: MetaType.YAML,
+                path: ["contributors", 1, "role"],
+                rootKey: "contributors",
+                isNested: true,
+                isVirtual: true,
+            },
+        ]);
+    });
+
     // #85: `tags:value` (and other non-mapping frontmatter) must not be walked
     // with `for..in`, which would surface string/array indices like `0:value`.
     it("ignores non-mapping frontmatter instead of emitting index keys (#85)", async () => {
@@ -177,6 +272,12 @@ describe("MetaEditParser inline field parsing", () => {
             {key: "progress (%)", content: "old", type: MetaType.Dataview},
             {key: "my-key", content: "value", type: MetaType.Dataview},
             {key: "status", content: "complete", type: MetaType.Dataview},
+        ]);
+    });
+
+    it("keeps dotted inline keys as exact Dataview keys, not YAML paths", () => {
+        expect(new MetaEditParser({} as any).parseInlineContent("author.name:: inline old")).toEqual([
+            {key: "author.name", content: "inline old", type: MetaType.Dataview},
         ]);
     });
 

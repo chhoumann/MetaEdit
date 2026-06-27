@@ -3,6 +3,8 @@ import type {
     IMetaEditApi,
     MetaEditMetadataChangeCallback,
     MetaEditPropertyValue,
+    MetaEditYamlPath,
+    MetaEditYamlPathOptions,
     MetaEditUnsubscribe,
 } from "./IMetaEditApi";
 import MetaEditParser, {type Property} from "./parser";
@@ -27,6 +29,9 @@ export class MetaEditApi {
             getFilesWithProperty: this.getGetFilesWithPropertyFunction(),
             createYamlProperty: this.getCreateYamlPropertyFunction(),
             addOrUpdateProperty: this.getAddOrUpdatePropertyFunction(),
+            getYamlPath: this.getGetYamlPathFunction(),
+            updateYamlPath: this.getUpdateYamlPathFunction(),
+            addOrUpdateYamlPath: this.getAddOrUpdateYamlPathFunction(),
             getPropertiesInFile: this.getGetPropertiesInFile(),
             getAutoProperties: this.getGetAutoPropertiesFunction(),
             setAutoProperties: this.getSetAutoPropertiesFunction(),
@@ -108,6 +113,38 @@ export class MetaEditApi {
                 key: propertyName,
                 type: MetaType.YAML,
             }, propertyValue, targetFile);
+        }
+    }
+
+    private getGetYamlPathFunction() {
+        return async (path: MetaEditYamlPath, file: TFile | string) => {
+            const targetFile = this.getFileFromTFileOrPath(file);
+            if (!targetFile) return;
+
+            return await this.plugin.controller.getYamlPath(path, targetFile);
+        }
+    }
+
+    private getUpdateYamlPathFunction() {
+        return async (path: MetaEditYamlPath, propertyValue: MetaEditPropertyValue, file: TFile | string) => {
+            const targetFile = this.getFileFromTFileOrPath(file);
+            if (!targetFile) return;
+
+            await this.plugin.controller.updateYamlPath(path, propertyValue, targetFile);
+        }
+    }
+
+    private getAddOrUpdateYamlPathFunction() {
+        return async (
+            path: MetaEditYamlPath,
+            propertyValue: MetaEditPropertyValue,
+            file: TFile | string,
+            options?: MetaEditYamlPathOptions,
+        ) => {
+            const targetFile = this.getFileFromTFileOrPath(file);
+            if (!targetFile) return;
+
+            await this.plugin.controller.addOrUpdateYamlPath(path, propertyValue, targetFile, options);
         }
     }
 
@@ -220,7 +257,8 @@ export class MetaEditApi {
 
     private async getPropertyInFile(propertyName: string, file: TFile): Promise<Property | undefined> {
         const propsInFile: Property[] = await this.plugin.controller.getPropertiesInFile(file);
-        return propsInFile.find(prop => prop.key === propertyName);
+        return propsInFile.find(prop => prop.key === propertyName && !prop.isVirtual) ??
+            propsInFile.find(prop => prop.key === propertyName && prop.isVirtual && prop.type === MetaType.YAML);
     }
 
     private cloneAutoProperties(autoProperties: AutoProperty[]): AutoProperty[] {
@@ -278,11 +316,18 @@ export class MetaEditApi {
     }
 
     private cloneProperties(properties: Property[]): Property[] {
-        return properties.map(property => ({
-            key: property.key,
-            type: property.type,
-            content: this.cloneValue(property.content),
-        }));
+        return properties.map(property => {
+            const clone: Property = {
+                key: property.key,
+                type: property.type,
+                content: this.cloneValue(property.content),
+            };
+            if (property.path) clone.path = [...property.path];
+            if (property.rootKey !== undefined) clone.rootKey = property.rootKey;
+            if (property.isNested !== undefined) clone.isNested = property.isNested;
+            if (property.isVirtual !== undefined) clone.isVirtual = property.isVirtual;
+            return clone;
+        });
     }
 
     private getPropertiesFromEvent(data: string, cache: CachedMetadata): Property[] {
@@ -325,6 +370,10 @@ export class MetaEditApi {
             key: property.key,
             type: property.type,
             content: property.content,
+            path: property.path,
+            rootKey: property.rootKey,
+            isNested: property.isNested,
+            isVirtual: property.isVirtual,
         })));
     }
 }

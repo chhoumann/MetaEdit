@@ -8,6 +8,7 @@ import type {AutoProperty} from "../Types/autoProperty";
 import {getKnownPropertyNames} from "./GenericPrompt/valueSuggest";
 import {setPendingValueContext} from "./GenericPrompt/promptValueContext";
 import {filterMenuItems} from "./menuFilter";
+import {isYamlParentContainerValue} from "../yamlPath";
 
 export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     public app: App;
@@ -28,7 +29,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
             enabled: ignored.enabled,
             ignoredProperties: ignored.properties,
             hideFileTags: ignored.hideFileTags,
-        });
+        }).filter(item => !MetaEditSuggester.isYamlParentContainer(item));
         this.controller = controller;
         this.options = MAIN_SUGGESTER_OPTIONS;
 
@@ -46,8 +47,10 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
         if (Object.values(this.options).find(v => v === item.item)) {
             el.style.fontWeight = "bold";
         } else {
-            this.createButton(el,"❌", this.deleteItem(item));
-            this.createButton(el, "🔃", this.transformProperty(item))
+            if (MetaEditSuggester.canStructureEdit(item.item)) {
+                this.createButton(el,"❌", this.deleteItem(item));
+                this.createButton(el, "🔃", this.transformProperty(item))
+            }
         }
     }
 
@@ -78,6 +81,8 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
             return;
         }
 
+        if (MetaEditSuggester.isYamlParentContainer(item)) return;
+
         // Hand the prompt the property it is editing so it can offer value
         // autocomplete and a native date picker, without routing UI concerns
         // through the controller's write/parse core. Cleared in finally so it
@@ -102,6 +107,8 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
         return async (evt: MouseEvent | KeyboardEvent) => {
             evt.stopPropagation();
             const {item: property} = item;
+            if (!MetaEditSuggester.canStructureEdit(property)) return;
+
             if (property.type === MetaType.YAML) {
                 await this.toDataview(property);
             } else {
@@ -129,6 +136,15 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
         itemButton.style.float = "right";
         itemButton.style.marginRight = "4px";
         itemButton.addEventListener("click", callback);
+    }
+
+    private static canStructureEdit(property: Property): boolean {
+        return !property.isNested && !property.isVirtual;
+    }
+
+    private static isYamlParentContainer(property: Property): boolean {
+        if (property.type !== MetaType.YAML || property.isVirtual) return false;
+        return isYamlParentContainerValue(property.content);
     }
 
     private setSuggestValues() {

@@ -115,7 +115,7 @@ export class KanbanHelper extends OnFileModifyAutomator {
 
     private async updateFileInBoard(linkFile: TFile, board: KanbanProperty, lane: string): Promise<void> {
         const fileProperties: Property[] = await this.plugin.controller.getPropertiesInFile(linkFile);
-        const targetProperty = fileProperties.find(prop => prop.key === board.property);
+        const targetProperty = fileProperties.find(prop => prop.key === board.property && !prop.isVirtual);
         if (!targetProperty) {
             // Only real card notes reach this point, so the warning is now actionable.
             const message = `'${board.property}' not found in "${linkFile.basename}" (Kanban board '${board.boardName}').`;

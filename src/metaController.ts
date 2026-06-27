@@ -13,6 +13,7 @@ import AutoPropertyValueModal from "./Modals/AutoPropertyValueModal/AutoProperty
 import type {AutoProperty} from "./Types/autoProperty";
 import {findAutoProperty, isMultiAutoProperty, toValueArray, withChoiceAdded} from "./autoProperties";
 import {applyMultiValueEdit, isMultiValueYamlProperty, shouldUseMultiValueEditor, type MultiValueEdit} from "./multiValue";
+import {getYamlPath, isYamlParentContainerValue, parseYamlPath, setYamlPath, YamlPathError, type SetYamlPathOptions, type YamlPathSegment} from "./yamlPath";
 
 const fileWriteQueues: Map<string, Promise<unknown>> = new Map();
 const ADD_FIRST_SELECTION = "metaedit:multi-value:add-first";
@@ -98,6 +99,11 @@ export default class MetaController {
             return;
         }
 
+        if (this.isYamlParentContainer(property)) {
+            new Notice(`Nested YAML parent '${property.key}' cannot be edited as a text value.`);
+            return;
+        }
+
         // Auto Properties own their value-entry UX (description, pick-or-create,
         // single/multi). They take precedence over the global EditMode flow.
         if (this.getActiveAutoProperty(property.key)) {
@@ -142,7 +148,7 @@ export default class MetaController {
         }
 
         if (newValue) {
-            await this.updatePropertyInFile(property, newValue, file);
+            await this.updatePropertyFromUi(property, newValue, file);
         }
     }
 
@@ -187,6 +193,11 @@ export default class MetaController {
     }
 
     public async deleteProperty(property: Property, file: TFile): Promise<void> {
+        if (property.type === MetaType.YAML && (property.isNested || property.isVirtual)) {
+            new Notice(`Nested YAML property '${property.key}' cannot be deleted by MetaEdit yet.`);
+            return;
+        }
+
         const fileContent = await this.app.vault.read(file);
         const splitContent = fileContent.split("\n");
         const regexp = new RegExp(`^\s*${property.key}:`);
@@ -227,7 +238,7 @@ export default class MetaController {
         const newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`, property.content, property.content);
 
         if (newValue) {
-            await this.updatePropertyInFile(property, newValue, file);
+            await this.updatePropertyFromUi(property, newValue, file);
         }
     }
 
@@ -298,8 +309,7 @@ export default class MetaController {
         // scalars routed here by EditMode stay scalar strings.
         const newValue: unknown = editsArray ? newList : newList.join(", ");
 
-        await this.updatePropertyInFile(property, newValue, file);
-        return true;
+        return await this.updatePropertyFromUi(property, newValue, file);
     }
 
     private getActiveAutoProperty(propertyName: string): AutoProperty | undefined {
@@ -333,7 +343,7 @@ export default class MetaController {
         const newValue: unknown =
             Array.isArray(result) && property.type !== MetaType.YAML ? result.join(", ") : result;
 
-        await this.updatePropertyInFile(property, newValue, file);
+        await this.updatePropertyFromUi(property, newValue, file);
     }
 
     private async persistAutoPropertyChoices(autoProp: AutoProperty, values: string[]): Promise<void> {
@@ -361,7 +371,16 @@ export default class MetaController {
         await this.enqueueFileWrite(file, async () => {
             if (property.type === MetaType.YAML) {
                 await this.processFrontMatter(file, (frontmatter) => {
-                    frontmatter[property.key] = newValue;
+                    if (property.path && property.path.length > 1) {
+                        setYamlPath(frontmatter, property.path, newValue, {
+                            createParents: false,
+                            createLeaf: false,
+                            expectedValue: property.content,
+                            validateExpectedValue: true,
+                        });
+                    } else {
+                        frontmatter[property.key] = newValue;
+                    }
                 });
                 return;
             }
@@ -436,13 +455,17 @@ export default class MetaController {
 
     private async updateMultipleInFile(properties: Property[], file: TFile): Promise<void> {
         await this.enqueueFileWrite(file, async () => {
-            const yamlProperties = properties.filter(prop => prop.type === MetaType.YAML);
+            const yamlProperties = properties.filter(prop => prop.type === MetaType.YAML && !prop.path);
+            const yamlPathProperties = properties.filter(prop => prop.type === MetaType.YAML && prop.path);
             const textProperties = properties.filter(prop => prop.type !== MetaType.YAML);
 
-            if (yamlProperties.length > 0) {
+            if (yamlProperties.length > 0 || yamlPathProperties.length > 0) {
                 await this.processFrontMatter(file, (frontmatter) => {
                     for (const prop of yamlProperties) {
                         frontmatter[prop.key] = prop.content;
+                    }
+                    for (const prop of yamlPathProperties) {
+                        setYamlPath(frontmatter, prop.path, prop.content, {createParents: false, createLeaf: false});
                     }
                 });
             }
@@ -473,6 +496,62 @@ export default class MetaController {
 
     private splitMultiValue(property: Partial<Property>): string[] {
         return toValueArray(property.content);
+    }
+
+    private async updatePropertyFromUi(property: Property, newValue: unknown, file: TFile): Promise<boolean> {
+        try {
+            await this.updatePropertyInFile(property, newValue, file);
+            return true;
+        } catch (error) {
+            const reason = error instanceof Error ? error.message : String(error);
+            new Notice(`MetaEdit could not update '${property.key}': ${reason}`);
+            log.logMessage(`MetaEdit could not update '${property.key}': ${reason}`);
+            return false;
+        }
+    }
+
+    private isYamlParentContainer(property: Property): boolean {
+        if (property.type !== MetaType.YAML || property.isVirtual) return false;
+        return isYamlParentContainerValue(property.content);
+    }
+
+    public async getYamlPath(path: string | readonly YamlPathSegment[], file: TFile): Promise<unknown> {
+        const resolvedPath = parseYamlPath(path);
+        const frontmatter = await this.parser.parseFrontmatterObject(file);
+        if (!frontmatter) return undefined;
+
+        try {
+            return getYamlPath(frontmatter, resolvedPath);
+        } catch (error) {
+            if (error instanceof YamlPathError) return undefined;
+            throw error;
+        }
+    }
+
+    public async updateYamlPath(path: string | readonly YamlPathSegment[], value: unknown, file: TFile): Promise<void> {
+        const resolvedPath = parseYamlPath(path);
+
+        await this.enqueueFileWrite(file, async () => {
+            await this.processFrontMatter(file, (frontmatter) => {
+                setYamlPath(frontmatter, resolvedPath, value, {createParents: false, createLeaf: false});
+            });
+        });
+    }
+
+    public async addOrUpdateYamlPath(
+        path: string | readonly YamlPathSegment[],
+        value: unknown,
+        file: TFile,
+        options: SetYamlPathOptions = {},
+    ): Promise<void> {
+        const resolvedPath = parseYamlPath(path);
+        const createParents = options.createParents ?? true;
+
+        await this.enqueueFileWrite(file, async () => {
+            await this.processFrontMatter(file, (frontmatter) => {
+                setYamlPath(frontmatter, resolvedPath, value, {createParents});
+            });
+        });
     }
 
     private async processFrontMatter(file: TFile, update: (frontmatter: Record<string, unknown>) => void): Promise<void> {
