@@ -6,6 +6,11 @@ export type DateInputType = "date" | "datetime";
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 
+// Cap the rendered dropdown so a property with thousands of distinct values
+// cannot build an unbounded list. Filtering runs over the full set first, so a
+// specific query still finds rare values; the cap only bounds broad queries.
+const MAX_RENDERED_SUGGESTIONS = 100;
+
 /**
  * Distinct values already used for a property across the vault, ranked so the
  * most frequently used values surface first.
@@ -86,7 +91,7 @@ export function filterSuggestions(items: string[], inputStr: string): string[] {
     if (filtered.length === 0) return [];
     if (filtered.length === 1 && filtered[0] === inputStr) return [];
 
-    return filtered;
+    return filtered.slice(0, MAX_RENDERED_SUGGESTIONS);
 }
 
 function collectTagLeafCounts(app: App): Map<string, number> {

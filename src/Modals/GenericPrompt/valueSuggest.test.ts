@@ -158,6 +158,11 @@ describe("filterSuggestions", () => {
         // ...but still shows it while the input is a strict prefix.
         expect(filterSuggestions(items, "finishe")).toEqual(["finished"]);
     });
+
+    it("caps the rendered list so a huge value set cannot build an unbounded dropdown", () => {
+        const many = Array.from({length: 250}, (_, i) => `value-${i}`);
+        expect(filterSuggestions(many, "value").length).toBe(100);
+    });
 });
 
 describe("getDateInputType", () => {
