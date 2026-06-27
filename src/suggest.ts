@@ -1,8 +1,8 @@
 // Sam stole all this from Liam's Periodic Notes Plugin: https://github.com/liamcain/obsidian-periodic-notes
 // And then I stole it from Sam's Buttons: https://github.com/shabegom/buttons
 
-import { App, ISuggestOwner, Scope, TFile, TAbstractFile } from "obsidian";
-import { createPopper, Instance as PopperInstance } from "@popperjs/core";
+import { type App, type ISuggestOwner, Scope, TFile, TAbstractFile } from "obsidian";
+import { createPopper, type Instance as PopperInstance } from "@popperjs/core";
 
 const wrapAround = (value: number, size: number): number => {
     return ((value % size) + size) % size;
@@ -146,7 +146,6 @@ export abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
 
         if (suggestions.length > 0) {
             this.suggest.setSuggestions(suggestions);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             this.open((<any>this.app).dom.appContainerEl, this.inputEl);
         } else {
             this.close()
@@ -154,7 +153,6 @@ export abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
     }
 
     open(container: HTMLElement, inputEl: HTMLElement): void {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (<any>this.app).keymap.pushScope(this.scope);
 
         container.appendChild(this.suggestEl);
@@ -184,7 +182,6 @@ export abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
     }
 
     close(): void {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (<any>this.app).keymap.popScope(this.scope);
 
         this.suggest.setSuggestions([]);

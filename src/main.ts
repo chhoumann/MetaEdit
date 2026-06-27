@@ -37,7 +37,7 @@ export default class MetaEdit extends Plugin {
         this.addCommand({
             id: 'reloadMetaEdit',
             name: 'Reload MetaEdit (dev)',
-            callback: () => { // @ts-ignore - for this.app.plugins
+            callback: () => { // @ts-expect-error - for this.app.plugins
                 const id: string = this.manifest.id, plugins = this.app.plugins;
                 plugins.disablePlugin(id).then(() => plugins.enablePlugin(id));
             },
@@ -106,7 +106,7 @@ export default class MetaEdit extends Plugin {
 
     public getFilesWithProperty(property: string): TFile[] {
         const markdownFiles = this.app.vault.getMarkdownFiles();
-        let files: TFile[] = [];
+        const files: TFile[] = [];
 
         markdownFiles.forEach(file => {
             const fileCache = this.app.metadataCache.getFileCache(file);

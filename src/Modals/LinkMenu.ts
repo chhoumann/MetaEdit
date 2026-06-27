@@ -1,5 +1,5 @@
 import type MetaEdit from "../main";
-import {EventRef, Menu, TAbstractFile, TFile, TFolder} from "obsidian";
+import {type EventRef, type Menu, type TAbstractFile, TFile, TFolder} from "obsidian";
 
 export class LinkMenu {
     private targetFile: TFile;

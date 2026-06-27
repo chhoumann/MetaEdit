@@ -1,4 +1,4 @@
-import MetaEditParser, {Property} from "./parser";
+import MetaEditParser, {type Property} from "./parser";
 import type {App, TFile} from "obsidian";
 import type MetaEdit from "./main";
 import GenericPrompt from "./Modals/GenericPrompt/GenericPrompt";
@@ -23,7 +23,7 @@ export default class MetaController {
         this.app = app;
         this.parser = new MetaEditParser(app);
         this.plugin = plugin;
-        // @ts-ignore
+        // @ts-expect-error - app.plugins is not part of the public Obsidian API
         this.hasTrackerPlugin = !!this.app.plugins.plugins["obsidian-tracker"];
     }
 
@@ -51,7 +51,7 @@ export default class MetaController {
             propValue = `[${propValue}]`;
         }
 
-        let splitContent = fileContent.split("\n");
+        const splitContent = fileContent.split("\n");
         if (isYamlEmpty) {
             splitContent.unshift("---");
             splitContent.unshift(`${propName}: ${propValue}`);
@@ -67,15 +67,15 @@ export default class MetaController {
 
     public async addDataviewField(propName: string, propValue: string, file: TFile): Promise<void> {
         const fileContent: string = await this.app.vault.read(file);
-        let lines = fileContent.split("\n").reduce((obj: {[key: string]: string}, line: string, idx: number) => {
+        const lines = fileContent.split("\n").reduce((obj: {[key: string]: string}, line: string, idx: number) => {
             obj[idx] = !!line ? line : "";
             return obj;
         }, {});
 
-        let appendAfter: string = await GenericSuggester.Suggest(this.app, Object.values(lines), Object.keys(lines));
+        const appendAfter: string = await GenericSuggester.Suggest(this.app, Object.values(lines), Object.keys(lines));
         if (!appendAfter) return;
 
-        let splitContent: string[] = fileContent.split("\n");
+        const splitContent: string[] = fileContent.split("\n");
         if (typeof appendAfter === "number" || parseInt(appendAfter)) {
             splitContent.splice(parseInt(appendAfter), 0, `${propName}:: ${propValue}`);
         }
@@ -146,7 +146,7 @@ export default class MetaController {
     }
 
     public async createNewProperty(suggestValues?: string[]) {
-        let propName = await GenericPrompt.Prompt(this.app, "Enter a property name", "Property", "", suggestValues);
+        const propName = await GenericPrompt.Prompt(this.app, "Enter a property name", "Property", "", suggestValues);
         if (!propName) return null;
 
         let propValue: string;
@@ -213,7 +213,7 @@ export default class MetaController {
         }
     }
 
-    private async multiValueMode(property: Property, file: TFile): Promise<Boolean> {
+    private async multiValueMode(property: Property, file: TFile): Promise<boolean> {
         const settings: MetaEditSettings = this.plugin.settings;
         let newValue: string;
 
@@ -316,7 +316,6 @@ export default class MetaController {
         // This uses the new frontmatter API to update the frontmatter. Later TODO: rewrite old logic to just do this & clean.
         if (property.type === MetaType.YAML) {
             const updatedMetaData = `---\n${this.updateYamlProperty(property, newValue, file)}\n---`;
-            //@ts-ignore
             const frontmatterPosition = this.app.metadataCache.getFileCache(file).frontmatterPosition;
             const fileContents = await this.app.vault.read(file);
 

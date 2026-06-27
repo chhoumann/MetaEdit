@@ -1,4 +1,4 @@
-import {App, FuzzySuggestModal} from "obsidian";
+import {type App, FuzzySuggestModal} from "obsidian";
 
 export default class GenericSuggester extends FuzzySuggestModal<string>{
     private resolvePromise: (value: string) => void;

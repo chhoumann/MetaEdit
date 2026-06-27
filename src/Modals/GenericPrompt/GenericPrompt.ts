@@ -1,4 +1,4 @@
-import {App, Modal} from "obsidian";
+import {type App, Modal} from "obsidian";
 import GenericPromptContent from "./GenericPromptContent.svelte"
 
 export default class GenericPrompt extends Modal {

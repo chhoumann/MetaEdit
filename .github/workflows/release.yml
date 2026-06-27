@@ -1,35 +1,51 @@
 name: Release
+
 on:
-  push:
-    branches:
-      - master
+    workflow_dispatch:
+
+concurrency:
+    group: release-${{ github.ref }}
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
 jobs:
-  release:
-    name: Release
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [18]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 7
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'pnpm'
-      - name: Install dependencies
-        run: pnpm install
-      - name: Build
-        run: pnpm build
-      - name: Run tests
-        run: |
-          pnpm test
-      - name: Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: pnpm semantic-release
+    release:
+        name: Release
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            issues: write # semantic-release success comments
+            pull-requests: write # semantic-release success comments
+        steps:
+            - name: Harden Runner
+              uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+              with:
+                  egress-policy: audit
+            - name: Checkout
+              uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+              with:
+                  # Full history + tags so semantic-release can compute the next version.
+                  fetch-depth: 0
+                  # semantic-release manages its own push auth via GITHUB_TOKEN; keep
+                  # the checkout token out of the git config.
+                  persist-credentials: false
+            - name: Setup pnpm
+              uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+            - name: Use Node.js 24
+              uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+              with:
+                  node-version: 24
+                  check-latest: true
+                  cache: pnpm
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+            - name: Build
+              run: pnpm run build
+            - name: Run tests
+              run: pnpm run test
+            - name: Release
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: pnpm semantic-release

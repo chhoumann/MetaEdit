@@ -1,4 +1,4 @@
-import {App, TAbstractFile, TFile} from "obsidian";
+import {type App, type TAbstractFile, TFile} from "obsidian";
 
 export function getActiveMarkdownFile(app: App): TFile {
     const activeFile: TFile = app.workspace.getActiveFile();

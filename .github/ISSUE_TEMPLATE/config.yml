@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & discussions
+    url: https://github.com/chhoumann/MetaEdit/discussions
+    about: Ask questions, share workflows, and get help from the community here.
+  - name: MetaEdit documentation
+    url: https://github.com/chhoumann/MetaEdit#readme
+    about: Read the README for MetaEdit's features and commands before filing an issue.
