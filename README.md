@@ -5,7 +5,10 @@
 ## Features
 - Add or update Yaml properties and Dataview fields easily
 - Ignore properties to hide them from the menu
-- Auto Properties that have customizable, pre-defined values selectable through a suggester
+- Auto Properties that have customizable, pre-defined values selectable through a prompt
+  - Add an optional description shown when you pick a value
+  - Choose a Single or Multi (multi-select) type per property
+  - Type a value that is not in the list to use it once, or save it as a new choice
 - Multi-Value Mode that allows you to detect and vectorize/create arrays from your values
 - Progress Properties that automatically update properties/fields
   - Works with total task, completed task, and incomplete task counts. Mark a task as completed (from anywhere), and the file will be updated with the new count.
@@ -40,9 +43,12 @@ const {autoprop} = this.app.plugins.plugins["metaedit"].api;
 ```
 
 ### `autoprop(propertyName: string)`
-Takes a string containing a property name. Looks for the property in user settings and will open a suggester with possible values for that property.
+Takes a string containing a property name. Looks for the property in user settings and will open a prompt with the possible values for that property (and its description, if set).
 
-Returns the selected value. If no value was selected, or if the property was not found in settings, it returns `null`.
+Returns the selected value: a `string` for a Single property, or a `string[]` for a Multi property. If nothing was selected, or the property was not found / Auto Properties are disabled, it returns `null`.
+
+For a Multi property used in a template, join the array yourself, e.g.
+`<% (await autoprop("Tags"))?.join(", ") %>`.
 
 This is an asynchronous function, so you should `await` it.
 
