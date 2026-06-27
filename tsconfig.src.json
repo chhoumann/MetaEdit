@@ -1,0 +1,9 @@
+{
+	"extends": "./tsconfig.json",
+	"include": ["src/**/*.ts", "src/**/*.svelte"],
+	"exclude": ["src/**/*.test.ts", "src/tests/**"],
+	"compilerOptions": {
+		"noEmit": true,
+		"types": ["node", "svelte"]
+	}
+}
