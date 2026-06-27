@@ -1,4 +1,4 @@
-import {type CachedMetadata, type LinkCache, Notice, type TFile, getLinkpath, normalizePath} from "obsidian";
+import {type CachedMetadata, type HeadingCache, type LinkCache, Notice, type TFile, getLinkpath, normalizePath} from "obsidian";
 import type MetaEdit from "../../main";
 import type {KanbanProperty} from "../../Types/kanbanProperty";
 import {abstractFileToMarkdownTFile} from "../../utility";
@@ -7,8 +7,14 @@ import type {Property} from "../../parser";
 import {OnFileModifyAutomator} from "./onFileModifyAutomator";
 import {OnModifyAutomatorType} from "./onModifyAutomatorType";
 
-const MARKDOWN_HEADING = /#+\s+(.+)/;
-const TASK_REGEX = /(\s*)-\s*\[([ Xx\.]?)\]\s*(.+)/i;
+// A Kanban card is a top-level task line whose content begins with the card's
+// link: "- [ ] [[Note]] ...". Only that leading link identifies the note to keep
+// in sync with the lane; any trailing links on the same line (Kanban "@[[date]]"
+// links, "see [[ref]]" references) belong to the card's text and must be ignored.
+// The prefix is everything before the link, so it may contain only the list
+// marker, the checkbox, and whitespace. Indented sub-checklist items are excluded
+// (no leading whitespace) because Kanban cards are always top-level.
+const CARD_LINK_PREFIX = /^-\s+\[[^\]]?\]\s+$/;
 
 export class KanbanHelper extends OnFileModifyAutomator {
     private get boards(): KanbanProperty[] { return this.plugin.settings.KanbanHelper.boards }
@@ -18,19 +24,105 @@ export class KanbanHelper extends OnFileModifyAutomator {
     }
 
     public async onFileModify(file: TFile): Promise<void> {
-        const kanbanBoardFileContent: string = await this.app.vault.cachedRead(file);
-        const kanbanBoardFileCache: CachedMetadata = this.app.metadataCache.getFileCache(file);
         const targetBoard = this.findBoardByName(file.basename);
-        if (!targetBoard || !kanbanBoardFileCache) return;
+        if (!targetBoard) return;
 
-        const {links} = kanbanBoardFileCache;
-        if (!links) return;
+        const kanbanBoardFileCache: CachedMetadata = this.app.metadataCache.getFileCache(file);
+        if (!kanbanBoardFileCache?.links) return;
 
-        await this.updateFilesInBoard(links, targetBoard, file.path, kanbanBoardFileContent);
+        const kanbanBoardFileContent: string = await this.app.vault.cachedRead(file);
+        const boardLines = kanbanBoardFileContent.split("\n");
+        const laneForLine = this.buildLaneResolver(kanbanBoardFileCache.headings);
+
+        await this.updateFilesInBoard(kanbanBoardFileCache.links, targetBoard, file.path, boardLines, laneForLine);
     }
 
     private findBoardByName(boardName: string): KanbanProperty {
         return this.boards.find(board => board.boardName === boardName);
+    }
+
+    private async updateFilesInBoard(
+        links: LinkCache[],
+        board: KanbanProperty,
+        sourcePath: string,
+        boardLines: string[],
+        laneForLine: (line: number) => string | null
+    ): Promise<void> {
+        for (const link of links) {
+            // Only the card's leading link is updatable; date/reference links are skipped.
+            if (!this.isCardLink(link, boardLines)) continue;
+
+            const lane = laneForLine(link.position.start.line);
+            // A card placed above any lane heading has no lane to write.
+            if (!lane) continue;
+
+            const linkFile = this.resolveLinkFile(link, sourcePath);
+            if (!this.isMarkdownFile(linkFile)) {
+                // Keep processing the remaining cards (issue #80: do not abort on a bad link).
+                log.logMessage(`${link.link} is not updatable for the KanbanHelper.`);
+                continue;
+            }
+
+            await this.updateFileInBoard(linkFile, board, lane);
+        }
+    }
+
+    // A card link is the leading link of a top-level task line. We verify against
+    // the freshly-read board content that the cached link still sits at its
+    // recorded position, which also guards against the metadata cache lagging the
+    // board edit: on any drift the link is skipped rather than written to a wrong
+    // lane.
+    private isCardLink(link: LinkCache, boardLines: string[]): boolean {
+        const start = link.position?.start;
+        if (!start) return false;
+
+        const line = boardLines[start.line];
+        if (line === undefined) return false;
+
+        if (!line.slice(start.col).startsWith(link.original)) return false;
+
+        return CARD_LINK_PREFIX.test(line.slice(0, start.col));
+    }
+
+    // Map any line to its lane: the text of the nearest heading at or above it.
+    // Headings come from the metadata cache so ATX-closed ("## Done ##") and
+    // setext headings resolve to their clean lane name, matching Obsidian.
+    private buildLaneResolver(headings?: HeadingCache[]): (line: number) => string | null {
+        const orderedHeadings = (headings ?? [])
+            .slice()
+            .sort((a, b) => a.position.start.line - b.position.start.line);
+
+        return (line: number) => {
+            let lane: string | null = null;
+            for (const heading of orderedHeadings) {
+                if (heading.position.start.line > line) break;
+                lane = heading.heading;
+            }
+            return lane;
+        };
+    }
+
+    private async updateFileInBoard(linkFile: TFile, board: KanbanProperty, lane: string): Promise<void> {
+        const fileProperties: Property[] = await this.plugin.controller.getPropertiesInFile(linkFile);
+        if (!fileProperties) {
+            log.logWarning(`No properties found in '${linkFile.basename}', cannot update '${board.property}'.`);
+            return;
+        }
+
+        const targetProperty = fileProperties.find(prop => prop.key === board.property);
+        if (!targetProperty) {
+            // Only real card notes reach this point, so the warning is now actionable.
+            const message = `'${board.property}' not found in "${linkFile.basename}" (Kanban board '${board.boardName}').`;
+            log.logWarning(message);
+            new Notice(message); // This notice helps users debug "property not found" errors.
+            return;
+        }
+
+        const propertyHasChanged = targetProperty.content !== lane;
+        if (propertyHasChanged) {
+            console.debug(`Updating ${targetProperty.key} of file ${linkFile.name} to ${lane}`);
+            await this.plugin.controller.updatePropertyInFile(targetProperty, lane, linkFile);
+        }
     }
 
     private resolveLinkFile(link: LinkCache, sourcePath: string): TFile | null {
@@ -106,74 +198,5 @@ export class KanbanHelper extends OnFileModifyAutomator {
 
     private isMarkdownFile(file: TFile | null): file is TFile {
         return !!file && file.extension === "md";
-    }
-
-    private async updateFilesInBoard(
-        links: LinkCache[],
-        board: KanbanProperty,
-        sourcePath: string,
-        kanbanBoardFileContent: string
-    ) {
-        for (const link of links) {
-            const linkFile = this.resolveLinkFile(link, sourcePath);
-            if (!this.isMarkdownFile(linkFile)) {
-                log.logMessage(`${link.link} is not updatable for the KanbanHelper.`);
-                continue;
-            }
-
-            await this.updateFileInBoard(link, linkFile, board, kanbanBoardFileContent);
-        }
-    }
-
-    private async updateFileInBoard(link: LinkCache, linkFile: TFile, board: KanbanProperty, kanbanBoardFileContent: string)
-        : Promise<void>
-    {
-        const heading: string = this.getTaskHeading(link.original, kanbanBoardFileContent);
-        if (!heading) {
-            log.logMessage(`found linked file ${link.link} but could not get heading for task.`);
-            return;
-        }
-
-        const fileProperties: Property[] = await this.plugin.controller.getPropertiesInFile(linkFile);
-        if (!fileProperties) {
-            log.logWarning(`No properties found in '${board.boardName}', cannot update '${board.property}'.`)
-            return;
-        }
-        const targetProperty = fileProperties.find(prop => prop.key === board.property);
-        if (!targetProperty) {
-            log.logWarning(`'${board.property}' not found in '${board.boardName}' for file "${linkFile.name}".`);
-            new Notice(`'${board.property}' not found in '${board.boardName}' for file "${linkFile.name}".`); // This notice will help users debug "Property not found in board" errors.
-            return;
-        }
-
-        const propertyHasChanged = targetProperty.content !== heading;
-        if (propertyHasChanged) {
-            console.debug(`Updating ${targetProperty.key} of file ${linkFile.name} to ${heading}`);
-            await this.plugin.controller.updatePropertyInFile(targetProperty, heading, linkFile);
-        }
-    }
-
-    private getTaskHeading(targetTaskContent: string, fileContent: string): string | null {
-        let lastHeading: string = "";
-        const contentLines = fileContent.split("\n");
-        for (const line of contentLines) {
-            const headingMatch = MARKDOWN_HEADING.exec(line);
-
-            if (headingMatch) {
-                const headingText = headingMatch[1];
-                lastHeading = headingText;
-            }
-
-            const taskMatch = TASK_REGEX.exec(line);
-            if (taskMatch) {
-                const taskContent = taskMatch[3];
-
-                if (taskContent.includes(targetTaskContent)) {
-                    return lastHeading || null;
-                }
-            }
-        }
-
-        return null;
     }
 }
