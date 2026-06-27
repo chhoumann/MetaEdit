@@ -22,7 +22,6 @@ export interface IMetaEditApi {
     getFilesWithProperty: (propertyName: string) => TFile[];
     createYamlProperty: (propertyName: string, propertyValue: MetaEditPropertyValue, file: TFile | string) => Promise<void>;
     addOrUpdateProperty: (propertyName: string, propertyValue: MetaEditPropertyValue, file: TFile | string) => Promise<void>;
-    deleteProperty: (propertyName: string, file: TFile | string) => Promise<void>;
     getPropertiesInFile: (file: TFile | string) => Promise<Property[]>;
     getAutoProperties: () => AutoProperty[];
     setAutoProperties: (autoProperties: AutoProperty[]) => Promise<void>;

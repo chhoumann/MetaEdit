@@ -7,6 +7,7 @@ import type {
 } from "./IMetaEditApi";
 import type {Property} from "./parser";
 import {TFile} from "obsidian";
+import type {CachedMetadata} from "obsidian";
 import {MetaType} from "./Types/metaType";
 import type {AutoProperty} from "./Types/autoProperty";
 
@@ -24,7 +25,6 @@ export class MetaEditApi {
             getFilesWithProperty: this.getGetFilesWithPropertyFunction(),
             createYamlProperty: this.getCreateYamlPropertyFunction(),
             addOrUpdateProperty: this.getAddOrUpdatePropertyFunction(),
-            deleteProperty: this.getDeletePropertyFunction(),
             getPropertiesInFile: this.getGetPropertiesInFile(),
             getAutoProperties: this.getGetAutoPropertiesFunction(),
             setAutoProperties: this.getSetAutoPropertiesFunction(),
@@ -102,28 +102,10 @@ export class MetaEditApi {
                 return;
             }
 
-            await this.plugin.controller.addYamlProp(propertyName, propertyValue, targetFile);
-        }
-    }
-
-    private getDeletePropertyFunction() {
-        return async (propertyName: string, file: TFile | string) => {
-            const targetFile = this.getFileFromTFileOrPath(file);
-            if (!targetFile) return;
-
-            const targetProperty = await this.getPropertyInFile(propertyName, targetFile);
-            if (!targetProperty) return;
-
-            if (targetProperty.type === MetaType.YAML) {
-                await this.plugin.app.fileManager.processFrontMatter(targetFile, (frontmatter) => {
-                    delete frontmatter[targetProperty.key];
-                });
-                return;
-            }
-
-            if (targetProperty.type === MetaType.Dataview) {
-                await this.deleteDataviewProperty(targetProperty, targetFile);
-            }
+            await this.plugin.controller.updatePropertyInFile({
+                key: propertyName,
+                type: MetaType.YAML,
+            }, propertyValue, targetFile);
         }
     }
 
@@ -165,11 +147,13 @@ export class MetaEditApi {
         return (callback: MetaEditMetadataChangeCallback): MetaEditUnsubscribe => {
             let unsubscribed = false;
             const previousPropertiesByPath = new Map<string, Property[]>();
-            const eventRef = this.plugin.app.metadataCache.on("changed", async (file, data, cache) => {
+            const eventQueues = new Map<string, Promise<void>>();
+            const handleChange = async (file: TFile, data: string, cache: CachedMetadata) => {
                 if (unsubscribed) return;
 
                 const previousProperties = previousPropertiesByPath.get(file.path) ?? null;
                 const properties = this.cloneProperties(await this.plugin.controller.getPropertiesInFile(file));
+                if (unsubscribed) return;
 
                 if (previousProperties && this.propertiesSignature(previousProperties) === this.propertiesSignature(properties)) {
                     return;
@@ -177,13 +161,43 @@ export class MetaEditApi {
 
                 previousPropertiesByPath.set(file.path, this.cloneProperties(properties));
 
-                await callback({
-                    file,
-                    data,
-                    cache,
-                    properties: this.cloneProperties(properties),
-                    previousProperties: previousProperties ? this.cloneProperties(previousProperties) : null,
+                try {
+                    await callback({
+                        file,
+                        data,
+                        cache,
+                        properties: this.cloneProperties(properties),
+                        previousProperties: previousProperties ? this.cloneProperties(previousProperties) : null,
+                    });
+                }
+                catch (error) {
+                    console.error("MetaEdit metadata change callback failed.", error);
+                }
+            };
+            const eventRef = this.plugin.app.metadataCache.on("changed", (file, data, cache) => {
+                const previousTask = eventQueues.get(file.path) ?? Promise.resolve();
+                const queuedTask = previousTask.catch(() => undefined).then(() => handleChange(file, data, cache));
+
+                eventQueues.set(file.path, queuedTask);
+                void queuedTask.finally(() => {
+                    if (eventQueues.get(file.path) === queuedTask) {
+                        eventQueues.delete(file.path);
+                    }
                 });
+            });
+            const deletedEventRef = this.plugin.app.metadataCache.on("deleted", (file) => {
+                previousPropertiesByPath.delete(file.path);
+                eventQueues.delete(file.path);
+            });
+            const renameEventRef = this.plugin.app.vault.on("rename", (file, oldPath) => {
+                if (!(file instanceof TFile)) return;
+
+                const previousProperties = previousPropertiesByPath.get(oldPath);
+                previousPropertiesByPath.delete(oldPath);
+
+                if (previousProperties) {
+                    previousPropertiesByPath.set(file.path, previousProperties);
+                }
             });
 
             const unsubscribe = () => {
@@ -191,7 +205,10 @@ export class MetaEditApi {
 
                 unsubscribed = true;
                 previousPropertiesByPath.clear();
+                eventQueues.clear();
                 this.plugin.app.metadataCache.offref(eventRef);
+                this.plugin.app.metadataCache.offref(deletedEventRef);
+                this.plugin.app.vault.offref(renameEventRef);
             };
 
             this.plugin.register(unsubscribe);
@@ -202,35 +219,6 @@ export class MetaEditApi {
     private async getPropertyInFile(propertyName: string, file: TFile): Promise<Property | undefined> {
         const propsInFile: Property[] = await this.plugin.controller.getPropertiesInFile(file);
         return propsInFile.find(prop => prop.key === propertyName);
-    }
-
-    private async deleteDataviewProperty(property: Property, file: TFile): Promise<void> {
-        const fileContent = await this.plugin.app.vault.read(file);
-        let deleted = false;
-
-        const newFileContent = fileContent.split("\n")
-            .map(line => {
-                if (deleted) return line;
-
-                const updatedLine = this.removeDataviewPropertyFromLine(property.key, line);
-                if (updatedLine === line) return line;
-
-                deleted = true;
-                return updatedLine.trim().length === 0 ? null : updatedLine;
-            })
-            .filter((line): line is string => line !== null)
-            .join("\n");
-
-        await this.plugin.app.vault.modify(file, newFileContent);
-    }
-
-    private removeDataviewPropertyFromLine(propertyKey: string, line: string): string {
-        const propertyRegex = new RegExp(`(^|[\\s\\[\\(])${this.escapeSpecialCharacters(propertyKey)}::[ ]*[^\\)\\]\\n\\r]*(\\]\\]|[\\]\\)]?)?`);
-        return line.replace(propertyRegex, "").replace(/[ \t]{2,}/g, " ").trimEnd();
-    }
-
-    private escapeSpecialCharacters(text: string): string {
-        return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
     }
 
     private cloneAutoProperties(autoProperties: AutoProperty[]): AutoProperty[] {
@@ -245,25 +233,17 @@ export class MetaEditApi {
             throw new TypeError("Auto Properties must be an array.");
         }
 
-        const names = new Set<string>();
-
         return autoProperties.map((autoProperty, index) => {
             if (!autoProperty || typeof autoProperty !== "object") {
                 throw new TypeError(`Auto Property at index ${index} must be an object.`);
             }
 
-            if (typeof autoProperty.name !== "string" || autoProperty.name.length === 0) {
-                throw new TypeError(`Auto Property at index ${index} must have a non-empty string name.`);
-            }
-
-            if (names.has(autoProperty.name)) {
-                throw new Error(`Duplicate Auto Property name: ${autoProperty.name}`);
-            }
-
-            names.add(autoProperty.name);
-
             if (!Array.isArray(autoProperty.choices) || !autoProperty.choices.every(choice => typeof choice === "string")) {
-                throw new TypeError(`Auto Property '${autoProperty.name}' choices must be an array of strings.`);
+                throw new TypeError(`Auto Property at index ${index} choices must be an array of strings.`);
+            }
+
+            if (typeof autoProperty.name !== "string") {
+                throw new TypeError(`Auto Property at index ${index} must have a string name.`);
             }
 
             return {

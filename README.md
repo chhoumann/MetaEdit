@@ -55,6 +55,8 @@ This is an asynchronous function, so you should `await` it.
 
 `update` changes an existing property. If you want to create the property when it is missing, use `addOrUpdateProperty`.
 
+When updating inline Dataview fields, non-string values are stringified. YAML frontmatter properties can preserve richer YAML values such as numbers, booleans, arrays, and objects.
+
 ### `createYamlProperty(propertyName: string, propertyValue: unknown, file: TFile | string)`
 Creates a YAML frontmatter property in the given file.
 
@@ -64,11 +66,6 @@ This is an asynchronous function, so you should `await` it.
 
 ### `addOrUpdateProperty(propertyName: string, propertyValue: unknown, file: TFile | string)`
 Updates an existing property with the given name, or creates a YAML frontmatter property when the property does not exist.
-
-This is an asynchronous function, so you should `await` it.
-
-### `deleteProperty(propertyName: string, file: TFile | string)`
-Deletes the first matching YAML frontmatter property or inline Dataview field with the given name.
 
 This is an asynchronous function, so you should `await` it.
 
@@ -95,7 +92,7 @@ The returned array is a copy, so mutating it will not change MetaEdit settings. 
 ### `setAutoProperties(autoProperties: AutoProperty[])`
 Replaces MetaEdit's configured Auto Properties and saves settings.
 
-Each Auto Property must have a unique non-empty `name` and a `choices` array of strings.
+Each Auto Property must have a string `name` and a `choices` array of strings.
 
 This is an asynchronous function, so you should `await` it.
 

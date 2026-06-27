@@ -30,7 +30,6 @@ describe("MetaEdit runtime", () => {
 			"addOrUpdateProperty",
 			"autoprop",
 			"createYamlProperty",
-			"deleteProperty",
 			"getAutoProperties",
 			"getFilesWithProperty",
 			"getPropertiesInFile",
@@ -89,7 +88,7 @@ describe("MetaEdit runtime", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
-	test("adds, updates, and deletes properties through the public API", async () => {
+	test("adds and updates properties through the public API", async () => {
 		const { obsidian, sandbox } = getContext();
 
 		const notePath = sandbox.path("property-helpers.md");
@@ -109,20 +108,18 @@ describe("MetaEdit runtime", () => {
 			"published",
 			notePath,
 		]);
-		await callApi(obsidian, "deleteProperty", ["owner", notePath]);
 
 		const content = await sandbox.waitForContent(
 			"property-helpers.md",
 			(value) =>
 				value.includes("priority: 1") &&
-				value.includes("status: published") &&
-				!value.includes("owner:: old"),
+				value.includes("status: published"),
 			WAIT_OPTS,
 		);
 
 		expect(content).toContain("priority: 1");
 		expect(content).toContain("status: published");
-		expect(content).not.toContain("owner:: old");
+		expect(content).toContain("owner:: old");
 		expect(content).toContain("\n\nBody text.");
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
@@ -157,8 +154,8 @@ describe("MetaEdit runtime", () => {
 		const state = await evalJsonAsync<{
 			returnedChoices: string[];
 			savedChoices: string[];
-			duplicateMessage: string;
-			settingsAfterDuplicate: { name: string; choices: string[] }[];
+			invalidMessage: string;
+			settingsAfterInvalid: { name: string; choices: string[] }[];
 		}>(
 			obsidian,
 			`
@@ -168,30 +165,31 @@ describe("MetaEdit runtime", () => {
 				if (!api) throw new Error("MetaEdit API is not available.");
 
 				await api.setAutoProperties([
+					{ name: "", choices: [""] },
 					{ name: "Status", choices: ["Draft", "Done"] },
+					{ name: "Status", choices: ["Duplicate"] },
 				]);
 
 				const returned = api.getAutoProperties();
-				returned[0].choices.push("Leaked");
+				returned[1].choices.push("Leaked");
 
-				let duplicateMessage = "";
+				let invalidMessage = "";
 				try {
 					await api.setAutoProperties([
-						{ name: "Status", choices: ["One"] },
-						{ name: "Status", choices: ["Two"] },
+						{ name: "Broken", choices: "not-an-array" },
 					]);
 				}
 				catch (error) {
-					duplicateMessage = error.message;
+					invalidMessage = error.message;
 				}
 
 				const saved = await plugin.loadData();
 
 				return {
-					returnedChoices: api.getAutoProperties()[0].choices,
-					savedChoices: saved.AutoProperties.properties[0].choices,
-					duplicateMessage,
-					settingsAfterDuplicate: plugin.settings.AutoProperties.properties,
+					returnedChoices: api.getAutoProperties()[1].choices,
+					savedChoices: saved.AutoProperties.properties[1].choices,
+					invalidMessage,
+					settingsAfterInvalid: plugin.settings.AutoProperties.properties,
 				};
 			})()
 		`,
@@ -199,9 +197,11 @@ describe("MetaEdit runtime", () => {
 
 		expect(state.returnedChoices).toEqual(["Draft", "Done"]);
 		expect(state.savedChoices).toEqual(["Draft", "Done"]);
-		expect(state.duplicateMessage).toContain("Duplicate Auto Property name: Status");
-		expect(state.settingsAfterDuplicate).toEqual([
+		expect(state.invalidMessage).toContain("choices must be an array of strings");
+		expect(state.settingsAfterInvalid).toEqual([
+			{ name: "", choices: [""] },
 			{ name: "Status", choices: ["Draft", "Done"] },
+			{ name: "Status", choices: ["Duplicate"] },
 		]);
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
