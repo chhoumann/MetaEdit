@@ -27,8 +27,10 @@ describe("MetaEdit runtime", () => {
 
 		expect(state.hasRunCommand).toBe(true);
 		expect(state.apiMethods).toEqual([
+			"addOrUpdateProperty",
 			"autoprop",
 			"createYamlProperty",
+			"deleteProperty",
 			"getFilesWithProperty",
 			"getPropertiesInFile",
 			"getPropertyValue",
@@ -81,6 +83,68 @@ describe("MetaEdit runtime", () => {
 		]);
 		expect(String(updated)).toBe("published");
 
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("adds, updates, and deletes properties through the public API", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("property-helpers.md");
+		await writeLiveFile(
+			obsidian,
+			notePath,
+			"---\nstatus: draft\n---\nowner:: old\n\nBody text.\n",
+		);
+
+		await callApi(obsidian, "addOrUpdateProperty", [
+			"priority",
+			1,
+			notePath,
+		]);
+		await callApi(obsidian, "addOrUpdateProperty", [
+			"status",
+			"published",
+			notePath,
+		]);
+		await callApi(obsidian, "deleteProperty", ["owner", notePath]);
+
+		const content = await sandbox.waitForContent(
+			"property-helpers.md",
+			(value) =>
+				value.includes("priority: 1") &&
+				value.includes("status: published") &&
+				!value.includes("owner:: old"),
+			WAIT_OPTS,
+		);
+
+		expect(content).toContain("priority: 1");
+		expect(content).toContain("status: published");
+		expect(content).not.toContain("owner:: old");
+		expect(content).toContain("\n\nBody text.");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("updates one numeric YAML property without changing its sibling", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("numeric-frontmatter.md");
+		await writeLiveFile(
+			obsidian,
+			notePath,
+			"---\noutdoor: 0\nreading: 0\n---\n# Baseline\n",
+		);
+
+		await callApi(obsidian, "update", ["outdoor", 1, notePath]);
+
+		const content = await sandbox.waitForContent(
+			"numeric-frontmatter.md",
+			(value) => value.includes("outdoor: 1") && value.includes("reading: 0"),
+			WAIT_OPTS,
+		);
+
+		expect(content).toContain("outdoor: 1");
+		expect(content).toContain("reading: 0");
+		expect(content).not.toContain("reading: 1");
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
