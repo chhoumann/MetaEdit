@@ -31,9 +31,11 @@ describe("MetaEdit runtime", () => {
 			"autoprop",
 			"createYamlProperty",
 			"deleteProperty",
+			"getAutoProperties",
 			"getFilesWithProperty",
 			"getPropertiesInFile",
 			"getPropertyValue",
+			"setAutoProperties",
 			"update",
 		]);
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
@@ -145,6 +147,61 @@ describe("MetaEdit runtime", () => {
 		expect(content).toContain("outdoor: 1");
 		expect(content).toContain("reading: 0");
 		expect(content).not.toContain("reading: 1");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("sets Auto Properties through the public API without exposing mutable settings", async () => {
+		const { obsidian } = getContext();
+
+		const state = await evalJsonAsync<{
+			returnedChoices: string[];
+			savedChoices: string[];
+			duplicateMessage: string;
+			settingsAfterDuplicate: { name: string; choices: string[] }[];
+		}>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const api = plugin?.api;
+				if (!api) throw new Error("MetaEdit API is not available.");
+
+				await api.setAutoProperties([
+					{ name: "Status", choices: ["Draft", "Done"] },
+				]);
+
+				const returned = api.getAutoProperties();
+				returned[0].choices.push("Leaked");
+
+				let duplicateMessage = "";
+				try {
+					await api.setAutoProperties([
+						{ name: "Status", choices: ["One"] },
+						{ name: "Status", choices: ["Two"] },
+					]);
+				}
+				catch (error) {
+					duplicateMessage = error.message;
+				}
+
+				const saved = await plugin.loadData();
+
+				return {
+					returnedChoices: api.getAutoProperties()[0].choices,
+					savedChoices: saved.AutoProperties.properties[0].choices,
+					duplicateMessage,
+					settingsAfterDuplicate: plugin.settings.AutoProperties.properties,
+				};
+			})()
+		`,
+		);
+
+		expect(state.returnedChoices).toEqual(["Draft", "Done"]);
+		expect(state.savedChoices).toEqual(["Draft", "Done"]);
+		expect(state.duplicateMessage).toContain("Duplicate Auto Property name: Status");
+		expect(state.settingsAfterDuplicate).toEqual([
+			{ name: "Status", choices: ["Draft", "Done"] },
+		]);
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
@@ -386,7 +443,14 @@ async function writeLiveFile(
 			for (const part of parts.slice(0, -1)) {
 				current = current ? current + "/" + part : part;
 				if (!app.vault.getAbstractFileByPath(current)) {
-					await app.vault.createFolder(current);
+					try {
+						await app.vault.createFolder(current);
+					}
+					catch (error) {
+						if (!String(error.message).includes("Folder already exists")) {
+							throw error;
+						}
+					}
 				}
 			}
 

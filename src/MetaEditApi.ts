@@ -3,8 +3,11 @@ import type {IMetaEditApi, MetaEditPropertyValue} from "./IMetaEditApi";
 import type {Property} from "./parser";
 import {TFile} from "obsidian";
 import {MetaType} from "./Types/metaType";
+import type {AutoProperty} from "./Types/autoProperty";
 
 export class MetaEditApi {
+    private settingsWriteQueue: Promise<unknown> = Promise.resolve();
+
     constructor(private plugin: MetaEdit) {
     }
 
@@ -18,6 +21,8 @@ export class MetaEditApi {
             addOrUpdateProperty: this.getAddOrUpdatePropertyFunction(),
             deleteProperty: this.getDeletePropertyFunction(),
             getPropertiesInFile: this.getGetPropertiesInFile(),
+            getAutoProperties: this.getGetAutoPropertiesFunction(),
+            setAutoProperties: this.getSetAutoPropertiesFunction(),
         };
     }
 
@@ -125,6 +130,31 @@ export class MetaEditApi {
         }
     }
 
+    private getGetAutoPropertiesFunction() {
+        return (): AutoProperty[] => {
+            return this.cloneAutoProperties(this.plugin.settings.AutoProperties.properties);
+        }
+    }
+
+    private getSetAutoPropertiesFunction() {
+        return async (autoProperties: AutoProperty[]): Promise<void> => {
+            await this.enqueueSettingsWrite(async () => {
+                const nextAutoProperties = this.validateAutoProperties(autoProperties);
+                const previousAutoProperties = this.cloneAutoProperties(this.plugin.settings.AutoProperties.properties);
+
+                this.plugin.settings.AutoProperties.properties = nextAutoProperties;
+
+                try {
+                    await this.plugin.saveSettings();
+                }
+                catch (error) {
+                    this.plugin.settings.AutoProperties.properties = previousAutoProperties;
+                    throw error;
+                }
+            });
+        }
+    }
+
     private async getPropertyInFile(propertyName: string, file: TFile): Promise<Property | undefined> {
         const propsInFile: Property[] = await this.plugin.controller.getPropertiesInFile(file);
         return propsInFile.find(prop => prop.key === propertyName);
@@ -157,5 +187,51 @@ export class MetaEditApi {
 
     private escapeSpecialCharacters(text: string): string {
         return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+    }
+
+    private cloneAutoProperties(autoProperties: AutoProperty[]): AutoProperty[] {
+        return autoProperties.map(autoProperty => ({
+            name: autoProperty.name,
+            choices: [...autoProperty.choices],
+        }));
+    }
+
+    private validateAutoProperties(autoProperties: AutoProperty[]): AutoProperty[] {
+        if (!Array.isArray(autoProperties)) {
+            throw new TypeError("Auto Properties must be an array.");
+        }
+
+        const names = new Set<string>();
+
+        return autoProperties.map((autoProperty, index) => {
+            if (!autoProperty || typeof autoProperty !== "object") {
+                throw new TypeError(`Auto Property at index ${index} must be an object.`);
+            }
+
+            if (typeof autoProperty.name !== "string" || autoProperty.name.length === 0) {
+                throw new TypeError(`Auto Property at index ${index} must have a non-empty string name.`);
+            }
+
+            if (names.has(autoProperty.name)) {
+                throw new Error(`Duplicate Auto Property name: ${autoProperty.name}`);
+            }
+
+            names.add(autoProperty.name);
+
+            if (!Array.isArray(autoProperty.choices) || !autoProperty.choices.every(choice => typeof choice === "string")) {
+                throw new TypeError(`Auto Property '${autoProperty.name}' choices must be an array of strings.`);
+            }
+
+            return {
+                name: autoProperty.name,
+                choices: [...autoProperty.choices],
+            };
+        });
+    }
+
+    private enqueueSettingsWrite<T>(task: () => Promise<T>): Promise<T> {
+        const queued = this.settingsWriteQueue.catch(() => undefined).then(task);
+        this.settingsWriteQueue = queued.catch(() => undefined);
+        return queued;
     }
 }

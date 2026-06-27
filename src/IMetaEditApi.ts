@@ -1,5 +1,6 @@
 import type {TFile} from "obsidian";
 import type {Property} from "./parser";
+import type {AutoProperty} from "./Types/autoProperty";
 
 export type MetaEditPropertyValue = unknown;
 
@@ -12,4 +13,6 @@ export interface IMetaEditApi {
     addOrUpdateProperty: (propertyName: string, propertyValue: MetaEditPropertyValue, file: TFile | string) => Promise<void>;
     deleteProperty: (propertyName: string, file: TFile | string) => Promise<void>;
     getPropertiesInFile: (file: TFile | string) => Promise<Property[]>;
+    getAutoProperties: () => AutoProperty[];
+    setAutoProperties: (autoProperties: AutoProperty[]) => Promise<void>;
 }
