@@ -2,7 +2,7 @@
     import type {KanbanProperty} from "../../Types/kanbanProperty";
     import {KanbanHelperSettingSuggester} from "./KanbanHelperSettingSuggester";
     import type {App, TFile} from "obsidian";
-    import {onMount} from "svelte";
+    import {onDestroy, onMount} from "svelte";
     import {log} from "../../logger/logManager";
 
     export let save: (kanbanProperties: KanbanProperty[]) => void;
@@ -16,6 +16,8 @@
     onMount(() => {
         suggester = new KanbanHelperSettingSuggester(app, suggestEl, boards);
     })
+
+    onDestroy(() => suggester?.close())
 
     function addNewProperty() {
         const board: TFile = boards.find(board => board.basename === inputValue);

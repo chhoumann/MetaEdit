@@ -1,29 +1,19 @@
-import {TextInputSuggest} from "../../suggest";
-import type {App} from "obsidian";
+import {AbstractInputSuggest, type App} from "obsidian";
 import type {TFile} from "obsidian";
 
-export class KanbanHelperSettingSuggester extends TextInputSuggest<TFile> {
-    public app: App;
-    public inputEl: HTMLInputElement;
-    private boards: TFile[];
+export class KanbanHelperSettingSuggester extends AbstractInputSuggest<TFile> {
 
-    constructor(app: App, inputEl: HTMLInputElement, boards: TFile[]) {
+    constructor(app: App, private readonly inputEl: HTMLInputElement, private readonly boards: TFile[]) {
         super(app, inputEl);
-        this.app = app;
-        this.inputEl = inputEl;
-        this.boards = boards;
     }
 
-    getSuggestions(inputStr: string): TFile[] {
+    protected getSuggestions(inputStr: string): TFile[] {
         const inputLowerCase: string = inputStr.toLowerCase();
-        return this.boards.map(board => {
-            if (board.basename.toLowerCase().contains(inputLowerCase))
-                return board;
-        });
+        return this.boards.filter(board => board.basename.toLowerCase().includes(inputLowerCase));
     }
 
-    selectSuggestion(item: TFile): void {
-        this.inputEl.value = item.basename;
+    selectSuggestion(item: TFile, _evt: MouseEvent | KeyboardEvent): void {
+        this.setValue(item.basename);
         this.inputEl.trigger("input");
         this.close();
     }

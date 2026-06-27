@@ -1,24 +1,22 @@
-import {TextInputSuggest} from "../../suggest";
+import {AbstractInputSuggest, type App} from "obsidian";
 import {filterSuggestions} from "./valueSuggest";
-import type {App} from "obsidian";
 
-export class GenericTextSuggester extends TextInputSuggest<string> {
+export class GenericTextSuggester extends AbstractInputSuggest<string> {
 
     constructor(
-        public app: App,
-        public inputEl: HTMLInputElement,
+        app: App,
+        private readonly inputEl: HTMLInputElement,
         private items: string[],
-        options?: {openOnFocus?: boolean},
     ) {
-        super(app, inputEl, options);
+        super(app, inputEl);
     }
 
-    getSuggestions(inputStr: string): string[] {
+    protected getSuggestions(inputStr: string): string[] {
         return filterSuggestions(this.items, inputStr);
     }
 
-    selectSuggestion(item: string): void {
-        this.inputEl.value = item;
+    selectSuggestion(item: string, _evt: MouseEvent | KeyboardEvent): void {
+        this.setValue(item);
         this.inputEl.trigger("input");
         this.close();
     }
@@ -26,5 +24,9 @@ export class GenericTextSuggester extends TextInputSuggest<string> {
     renderSuggestion(value: string, el: HTMLElement): void {
         if (value)
             el.setText(value);
+    }
+
+    refreshSuggestions(): void {
+        this.inputEl.trigger("input");
     }
 }
