@@ -11,6 +11,9 @@ import {ProgressPropertyOptions} from "./Types/progressPropertyOptions";
 import {MetaType} from "./Types/metaType";
 import {Notice, normalizePath} from "obsidian";
 import {log} from "./logger/logManager";
+import AutoPropertyValueModal from "./Modals/AutoPropertyValueModal/AutoPropertyValueModal";
+import type {AutoProperty} from "./Types/autoProperty";
+import {findAutoProperty, isMultiAutoProperty, withChoiceAdded} from "./autoProperties";
 
 const fileWriteQueues: Map<string, Promise<unknown>> = new Map();
 
@@ -61,7 +64,8 @@ export default class MetaController {
         }
     }
 
-    public async addDataviewField(propName: string, propValue: string, file: TFile): Promise<void> {
+    public async addDataviewField(propName: string, propValue: unknown, file: TFile): Promise<void> {
+        const valueStr = Array.isArray(propValue) ? propValue.join(", ") : String(propValue);
         const fileContent: string = await this.app.vault.read(file);
         const lines = fileContent.split("\n").reduce((obj: {[key: string]: string}, line: string, idx: number) => {
             obj[idx] = !!line ? line : "";
@@ -73,7 +77,7 @@ export default class MetaController {
 
         const splitContent: string[] = fileContent.split("\n");
         if (typeof appendAfter === "number" || parseInt(appendAfter)) {
-            splitContent.splice(parseInt(appendAfter), 0, `${propName}:: ${propValue}`);
+            splitContent.splice(parseInt(appendAfter), 0, `${propName}:: ${valueStr}`);
         }
         const newFileContent = splitContent.join("\n");
 
@@ -83,9 +87,19 @@ export default class MetaController {
     public async editMetaElement(property: Property, meta: Property[], file: TFile): Promise<void> {
         const mode: EditMode = this.plugin.settings.EditMode.mode;
 
-        if (property.type === MetaType.Tag)
+        if (property.type === MetaType.Tag) {
             await this.editTag(property, file);
-        else if (mode === EditMode.AllMulti || mode === EditMode.SomeMulti)
+            return;
+        }
+
+        // Auto Properties own their value-entry UX (description, pick-or-create,
+        // single/multi). They take precedence over the global EditMode flow.
+        if (this.getActiveAutoProperty(property.key)) {
+            await this.editAutoProperty(property, file);
+            return;
+        }
+
+        if (mode === EditMode.AllMulti || mode === EditMode.SomeMulti)
             await this.multiValueMode(property, file);
         else
             await this.standardMode(property, file);
@@ -110,7 +124,8 @@ export default class MetaController {
             const autoProp = await this.handleAutoProperties(allButLast);
 
             if (autoProp)
-                newValue = autoProp;
+                // A tag is a single token; collapse a multi result into one string.
+                newValue = Array.isArray(autoProp) ? autoProp.join(", ") : autoProp;
             else
                 newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`);
         }
@@ -145,10 +160,10 @@ export default class MetaController {
         const propName = await GenericPrompt.Prompt(this.app, "Enter a property name", "Property", "", suggestValues);
         if (!propName) return null;
 
-        let propValue: string;
+        let propValue: string | string[];
         const autoProp = await this.handleAutoProperties(propName);
 
-        if (autoProp) {
+        if (autoProp !== null) {
             propValue = autoProp;
         } else {
             propValue = await GenericPrompt.Prompt(this.app, "Enter a property value", "Value")
@@ -157,7 +172,7 @@ export default class MetaController {
 
         if (propValue === null) return null;
 
-        return {propName, propValue: propValue.trim()};
+        return {propName, propValue: typeof propValue === "string" ? propValue.trim() : propValue};
     }
 
     public async deleteProperty(property: Property, file: TFile): Promise<void> {
@@ -196,13 +211,9 @@ export default class MetaController {
     }
 
     private async standardMode(property: Property, file: TFile): Promise<void> {
-        const autoProp = await this.handleAutoProperties(property.key);
-        let newValue;
-
-        if (autoProp)
-            newValue = autoProp;
-        else
-            newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`, property.content, property.content);
+        // Auto Properties are intercepted in editMetaElement, so this path only
+        // handles free-text values.
+        const newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`, property.content, property.content);
 
         if (newValue) {
             await this.updatePropertyInFile(property, newValue, file);
@@ -237,10 +248,8 @@ export default class MetaController {
         if (!selectedOption) return;
         let selectedIndex;
 
-        const autoProp = await this.handleAutoProperties(property.key);
-        if (autoProp) {
-            tempValue = autoProp;
-        } else if (selectedOption.includes("cmd")) {
+        // Auto Properties are intercepted in editMetaElement; this path is free-text.
+        if (selectedOption.includes("cmd")) {
             tempValue = await GenericPrompt.Prompt(this.app, "Enter a new value");
         } else {
             selectedIndex = splitValues.findIndex(el => el == selectedOption);
@@ -278,15 +287,53 @@ export default class MetaController {
         return false;
     }
 
-    public async handleAutoProperties(propertyName: string): Promise<string> {
-        const autoProp = this.plugin.settings.AutoProperties.properties.find(a => a.name === propertyName);
+    private getActiveAutoProperty(propertyName: string): AutoProperty | undefined {
+        if (!this.plugin.settings.AutoProperties.enabled) return undefined;
+        return findAutoProperty(this.plugin.settings.AutoProperties.properties, propertyName);
+    }
 
-        if (this.plugin.settings.AutoProperties.enabled && autoProp) {
-            const options = autoProp.choices;
-            return await GenericPrompt.Prompt(this.app, `Enter a new value for ${propertyName}`, '', '', options);
+    /**
+     * Open the Auto Property value prompt for `propertyName`, if one is defined and
+     * enabled. Returns a string for a Single property, a string[] for a Multi
+     * property, or null when there is no auto property or the user cancels.
+     */
+    public async handleAutoProperties(propertyName: string, currentValue?: unknown): Promise<string | string[] | null> {
+        const autoProp = this.getActiveAutoProperty(propertyName);
+        if (!autoProp) return null;
+
+        const isMulti = isMultiAutoProperty(autoProp, this.plugin.settings.EditMode, propertyName);
+
+        return await AutoPropertyValueModal.Show(this.app, autoProp, {
+            isMulti,
+            currentValue,
+            onSaveChoices: (values: string[]) => this.persistAutoPropertyChoices(autoProp, values),
+        });
+    }
+
+    private async editAutoProperty(property: Property, file: TFile): Promise<void> {
+        const result = await this.handleAutoProperties(property.key, property.content);
+        if (result === null || result === undefined) return;
+
+        // YAML keeps a real list; inline/tag fields store a comma-joined string.
+        const newValue: unknown =
+            Array.isArray(result) && property.type !== MetaType.YAML ? result.join(", ") : result;
+
+        await this.updatePropertyInFile(property, newValue, file);
+    }
+
+    private async persistAutoPropertyChoices(autoProp: AutoProperty, values: string[]): Promise<void> {
+        let updated = autoProp;
+        for (const value of values) {
+            updated = withChoiceAdded(updated, value);
         }
+        if (updated === autoProp) return; // nothing new
 
-        return null;
+        const list = this.plugin.settings.AutoProperties.properties;
+        const idx = list.findIndex(a => a === autoProp || a.name === autoProp.name);
+        if (idx === -1) return;
+
+        list[idx] = {...list[idx], choices: updated.choices};
+        await this.plugin.saveSettings();
     }
 
     public async updatePropertyInFile(property: Partial<Property>, newValue: unknown, file: TFile): Promise<void> {

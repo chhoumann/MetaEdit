@@ -16,7 +16,7 @@ export interface MetaEditMetadataChange {
 export type MetaEditMetadataChangeCallback = (change: MetaEditMetadataChange) => void | Promise<void>;
 
 export interface IMetaEditApi {
-    autoprop: (propertyName: string) => Promise<string | null>;
+    autoprop: (propertyName: string) => Promise<string | string[] | null>;
     update: (propertyName: string, propertyValue: MetaEditPropertyValue, file: TFile | string) => Promise<void>;
     getPropertyValue: (propertyName: string, file: (TFile | string)) => Promise<any>;
     getFilesWithProperty: (propertyName: string) => TFile[];
