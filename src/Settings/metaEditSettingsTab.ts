@@ -124,7 +124,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
         let modal: SingleValueTableEditorContent, div: HTMLDivElement, hidden = true;
         const setting = new Setting(containerEl)
             .setName("Edit Meta menu")
-            .setDesc("Control what the 'Edit Meta' menu lists: hide specific properties by name, or hide all of a note's file tags. Click the gear to configure.")
+            .setDesc("Control what the 'Edit Meta' menu lists. Enable it, then use the gear to hide specific properties by name or all of a note's file tags.")
             .addToggle(toggle => {
                 toggle
                     .setTooltip("Toggle menu filtering")

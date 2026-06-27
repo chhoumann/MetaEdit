@@ -16,17 +16,23 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  * reads back `undefined` for existing users instead of its default. Merging each
  * section with a spread backfills new fields while letting stored values win.
  *
+ * The defaults are deep-cloned first: `DEFAULT_SETTINGS` is only shallowly
+ * frozen, and several settings UIs mutate the section arrays (`properties`,
+ * `boards`) in place. Sharing those arrays by reference would let edits leak
+ * back into the module-level default and poison later merges, so every section
+ * the result returns is fully owned. Unknown top-level keys the stored data
+ * carried (e.g. settings from a newer version) are preserved, matching the old
+ * Object.assign behavior so a later save never silently drops them.
+ *
  * This relies on every top-level setting being a flat object whose only nested
- * values are scalars or arrays, and on every default array being an empty
- * sentinel (so wholesale array-replacement never drops a default entry). A
- * future nested-object sub-field, or a non-empty default array, would need its
- * own migration. `DEFAULT_SETTINGS` is frozen, so each section is spread into a
- * fresh object rather than mutated.
+ * values are scalars or arrays. A future nested-object sub-field would need its
+ * own merge logic.
  */
 export function mergeSettings(loaded: Loaded): MetaEditSettings {
-    const defaults = DEFAULT_SETTINGS as unknown as Record<string, unknown>;
+    const defaults = structuredClone(DEFAULT_SETTINGS) as unknown as Record<string, unknown>;
     const stored = (loaded ?? {}) as Record<string, unknown>;
-    const merged: Record<string, unknown> = {};
+
+    const merged: Record<string, unknown> = {...stored};
 
     for (const key of Object.keys(defaults)) {
         const def = defaults[key];
@@ -34,27 +40,28 @@ export function mergeSettings(loaded: Loaded): MetaEditSettings {
 
         merged[key] = isPlainObject(def) && isPlainObject(value)
             ? {...def, ...value}
-            : {...(def as object)};
+            : def;
     }
 
     return merged as unknown as MetaEditSettings;
 }
 
 /**
- * One-time migration of the IgnoredProperties "enabled" flag.
+ * One-time migration of the IgnoredProperties section.
  *
  * Older versions filtered ignored keys regardless of `enabled` (a bug). Now that
  * the toggle is honored, a user who had built up an ignored-key list and then
  * left the feature "off" would silently lose their always-on filtering. Preserve
  * their observed behavior by enabling the feature for them.
  *
- * It runs only for data written before `hideFileTags` existed (detected by its
- * absence in the raw stored section), so once settings are saved with the new
- * field present it never fires again - which means a user can later disable the
+ * Pre-`hideFileTags` data is detected by that field's absence in the raw stored
+ * section. For all such data this returns `true` so the caller persists the
+ * normalized shape (now including `hideFileTags`) exactly once; afterwards the
+ * field is present and this never fires again - so a user can later disable the
  * feature with a non-empty list without it flipping back on. Mutates the passed
- * settings and returns whether anything changed (so the caller can persist).
+ * settings; returns whether the caller should save.
  */
-export function migrateIgnoredEnabled(loaded: Loaded, settings: MetaEditSettings): boolean {
+export function migrateIgnoredProperties(loaded: Loaded, settings: MetaEditSettings): boolean {
     const rawIgnored = loaded?.IgnoredProperties;
     const isPreVersionData = isPlainObject(rawIgnored) && rawIgnored.hideFileTags === undefined;
     if (!isPreVersionData) return false;
@@ -62,8 +69,7 @@ export function migrateIgnoredEnabled(loaded: Loaded, settings: MetaEditSettings
     const ignored = settings.IgnoredProperties;
     if (!ignored.enabled && ignored.properties.length > 0) {
         ignored.enabled = true;
-        return true;
     }
 
-    return false;
+    return true;
 }

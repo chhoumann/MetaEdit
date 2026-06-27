@@ -4,7 +4,7 @@ import MetaEditSuggester from "./Modals/metaEditSuggester";
 import MetaController from "./metaController";
 import {BulkMetadataEditor} from "./bulk/bulkMetadataEditor";
 import type {MetaEditSettings} from "./Settings/metaEditSettings";
-import {mergeSettings, migrateIgnoredEnabled} from "./Settings/settingsMigration";
+import {mergeSettings, migrateIgnoredProperties} from "./Settings/settingsMigration";
 import {LinkMenu} from "./Modals/LinkMenu";
 import type {Property} from "./parser";
 import type {IMetaEditApi} from "./IMetaEditApi";
@@ -102,9 +102,9 @@ export default class MetaEdit extends Plugin {
         const loaded = await this.loadData();
         this.settings = mergeSettings(loaded);
 
-        // Persist only when a migration actually changed something, so a normal
-        // load stays read-only.
-        if (migrateIgnoredEnabled(loaded, this.settings)) {
+        // Persist only when a migration needs to normalize stored data, so a
+        // normal load stays read-only.
+        if (migrateIgnoredProperties(loaded, this.settings)) {
             await this.saveSettings();
         }
     }
