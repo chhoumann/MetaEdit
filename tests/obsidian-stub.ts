@@ -61,3 +61,33 @@ export function getLinkpath(linktext: string): string {
 
   return cutIndex === -1 ? linktext : linktext.slice(0, cutIndex);
 }
+
+export function parseYaml(yaml: string): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  const lines = yaml.split(/\r?\n/);
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed === "---") continue;
+
+    const separatorIndex = trimmed.indexOf(":");
+    if (separatorIndex === -1) continue;
+
+    const key = trimmed.slice(0, separatorIndex).trim();
+    const rawValue = trimmed.slice(separatorIndex + 1).trim();
+    if (!key) continue;
+
+    if (rawValue.startsWith("[") && rawValue.endsWith("]")) {
+      result[key] = rawValue
+        .slice(1, -1)
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean);
+      continue;
+    }
+
+    result[key] = rawValue;
+  }
+
+  return result;
+}

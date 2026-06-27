@@ -41,10 +41,7 @@ describe("MetaEdit runtime", () => {
 		const { obsidian, sandbox } = getContext();
 
 		const notePath = sandbox.path("note.md");
-		await sandbox.write("note.md", "# Note\n\nBody text.\n", {
-			waitForContent: true,
-			waitOptions: WAIT_OPTS,
-		});
+		await writeLiveFile(obsidian, notePath, "# Note\n\nBody text.\n");
 
 		// createYamlProperty adds a brand-new frontmatter key to the file.
 		await callApi(obsidian, "createYamlProperty", [
@@ -86,6 +83,208 @@ describe("MetaEdit runtime", () => {
 
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
+
+	test("updates YAML frontmatter through sequential API calls without corrupting fences", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("sequential-frontmatter.md");
+		await writeLiveFile(
+			obsidian,
+			notePath,
+			"---\nstatus: backlog\nstarted: old\nlastRead: old\nupdated: old\n---\n# Book\n",
+		);
+
+		await callApi(obsidian, "update", ["status", "reading", notePath]);
+		await callApi(obsidian, "update", ["started", "2026-06-27", notePath]);
+		await callApi(obsidian, "update", [
+			"lastRead",
+			"2026-06-27T12:00:00",
+			notePath,
+		]);
+		await callApi(obsidian, "update", [
+			"updated",
+			"2026-06-27T12:00:00",
+			notePath,
+		]);
+
+		const content = await sandbox.waitForContent(
+			"sequential-frontmatter.md",
+			(value) =>
+				value.includes("status: reading") &&
+				value.includes("started: 2026-06-27") &&
+				value.includes("lastRead: 2026-06-27T12:00:00") &&
+				value.includes("updated: 2026-06-27T12:00:00"),
+			WAIT_OPTS,
+		);
+
+		expect(content).toContain("---\n# Book");
+		expect(content).not.toContain("----");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("serializes concurrent YAML property creation for one file", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("concurrent-create.md");
+		await writeLiveFile(obsidian, notePath, "Note Content\n");
+
+		await evalJsonAsync<void>(
+			obsidian,
+			`
+			(async () => {
+				const api = app.plugins.plugins.${PLUGIN_ID}?.api;
+				if (!api) throw new Error("MetaEdit API is not available.");
+				const notePath = ${JSON.stringify(notePath)};
+				await Promise.all([
+					api.createYamlProperty("AB", "1", notePath),
+					api.createYamlProperty("BB", "1", notePath),
+					api.createYamlProperty("CB", "1", notePath),
+				]);
+			})()
+		`,
+		);
+
+		const content = await sandbox.waitForContent(
+			"concurrent-create.md",
+			(value) =>
+				value.includes("AB:") &&
+				value.includes("BB:") &&
+				value.includes("CB:"),
+			WAIT_OPTS,
+		);
+
+		expect(content.match(/^---$/gm)).toHaveLength(2);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("updates only the exact inline field key", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("inline-substring.md");
+		await writeLiveFile(
+			obsidian,
+			notePath,
+			"airingstatus:: airing\nstatus:: backlog\nmy-key:: old\nprogress (%):: old\n",
+		);
+
+		await callApi(obsidian, "update", ["status", "complete", notePath]);
+		await callApi(obsidian, "update", ["my-key", "new", notePath]);
+		await callApi(obsidian, "update", ["progress (%)", "done", notePath]);
+
+		const content = await sandbox.waitForContent(
+			"inline-substring.md",
+			(value) =>
+				value.includes("status:: complete") &&
+				value.includes("my-key:: new") &&
+				value.includes("progress (%):: done"),
+			WAIT_OPTS,
+		);
+
+		expect(content).toContain("airingstatus:: airing");
+		expect(content).toContain("status:: complete");
+		expect(content).toContain("my-key:: new");
+		expect(content).toContain("progress (%):: done");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("preserves the rest of an inline multi-value list when editing the first item", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("first-inline-item.md");
+		await writeLiveFile(obsidian, notePath, "Tags:: #a, #B, #c, #d\n");
+
+		const content = await evalJsonAsync<string>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const file = app.vault.getAbstractFileByPath(${JSON.stringify(notePath)});
+				const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+				const originalMode = plugin.settings.EditMode.mode;
+				plugin.settings.EditMode.mode = "All Multi";
+
+				try {
+					const props = await plugin.controller.getPropertiesInFile(file);
+					const property = props.find((prop) => prop.key === "Tags");
+					if (!property) throw new Error("Tags property was not parsed.");
+
+					const editPromise = plugin.controller.multiValueMode(property, file);
+					const waitFor = async (selector, predicate = () => true) => {
+						const start = Date.now();
+						while (Date.now() - start < 5000) {
+							const found = Array.from(document.querySelectorAll(selector)).find(predicate);
+							if (found) return found;
+							await sleep(100);
+						}
+						throw new Error("Timed out waiting for " + selector);
+					};
+
+					const firstItem = await waitFor(
+						".suggestion-item",
+						(el) => el.textContent?.trim() === "#a",
+					);
+					firstItem.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+					firstItem.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+					firstItem.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+					const input = await waitFor(".metaEditPromptInput");
+					input.value = "#A";
+					input.dispatchEvent(new Event("input", { bubbles: true }));
+					input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+					await editPromise;
+					await sleep(300);
+
+					return await app.vault.read(file);
+				}
+				finally {
+					plugin.settings.EditMode.mode = originalMode;
+				}
+			})()
+		`,
+		);
+
+		expect(content).toBe("Tags:: #A, #B, #c, #d\n");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("progress properties update YAML without rewriting matching body text", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("progress-body.md");
+		await writeLiveFile(
+			obsidian,
+			notePath,
+			"---\nreadProgress: 0\n---\n# Tasks\n- [ ] one\n- [x] two\nBody line should stay literal: readProgress: 0\n",
+		);
+
+		const content = await evalJsonAsync<string>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const file = app.vault.getAbstractFileByPath(${JSON.stringify(notePath)});
+				plugin.settings.ProgressProperties.enabled = true;
+				plugin.settings.ProgressProperties.properties = [{ name: "readProgress", type: "Total Tasks" }];
+				const props = await plugin.controller.getPropertiesInFile(file);
+
+				try {
+					await plugin.controller.handleProgressProps(props, file);
+					await new Promise((resolve) => setTimeout(resolve, 300));
+					return await app.vault.read(file);
+				}
+				finally {
+					plugin.settings.ProgressProperties.enabled = false;
+					plugin.settings.ProgressProperties.properties = [];
+				}
+			})()
+		`,
+		);
+
+		expect(content).toMatch(/readProgress: "?2"?/);
+		expect(content).toContain("Body line should stay literal: readProgress: 0");
+		expect(content).not.toContain("Body line should stay literal: readProgress: 2");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
 });
 
 // Invoke a MetaEdit public-API method inside the running app and return its
@@ -102,6 +301,35 @@ async function callApi<T = unknown>(
 			const api = app.plugins.plugins.${PLUGIN_ID}?.api;
 			if (!api) throw new Error("MetaEdit API is not available.");
 			return await api[${JSON.stringify(method)}](...${JSON.stringify(args)});
+		})()
+	`,
+	);
+}
+
+async function writeLiveFile(
+	obsidian: Parameters<typeof evalJsonAsync>[0],
+	path: string,
+	content: string,
+): Promise<void> {
+	await evalJsonAsync<void>(
+		obsidian,
+		`
+		(async () => {
+			const path = ${JSON.stringify(path)};
+			const content = ${JSON.stringify(content)};
+			const parts = path.split("/");
+			let current = "";
+			for (const part of parts.slice(0, -1)) {
+				current = current ? current + "/" + part : part;
+				if (!app.vault.getAbstractFileByPath(current)) {
+					await app.vault.createFolder(current);
+				}
+			}
+
+			const existing = app.vault.getAbstractFileByPath(path);
+			if (existing) await app.vault.delete(existing);
+			await app.vault.create(path, content);
+			await new Promise((resolve) => setTimeout(resolve, 500));
 		})()
 	`,
 	);
