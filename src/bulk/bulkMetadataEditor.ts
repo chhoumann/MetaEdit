@@ -1,4 +1,4 @@
-import { type App, type TAbstractFile, Notice, TFile, TFolder } from "obsidian";
+import { type App, type TAbstractFile, Notice, parseYaml, TFile, TFolder } from "obsidian";
 import type MetaEdit from "../main";
 import { EditMode } from "../Types/editMode";
 import GenericPrompt from "../Modals/GenericPrompt/GenericPrompt";
@@ -77,13 +77,14 @@ export class BulkMetadataEditor {
 		// across the whole batch, matching the prior folder command's guard.
 		if (!rawValue) return;
 
-		const conflicts = this.countExisting(files, key);
+		const conflicts = await this.countExisting(files, key);
 		let policy: ConflictPolicy = "skip";
 
 		if (conflicts > 0) {
 			const conflictWord = conflicts === 1 ? "note" : "notes";
+			const conflictVerb = conflicts === 1 ? "has" : "have";
 			const choice = await BulkOptionModal.Choose(this.app, {
-				title: `${conflicts} ${conflictWord} already have "${key}"`,
+				title: `${conflicts} ${conflictWord} already ${conflictVerb} "${key}"`,
 				description: "Choose how to handle notes that already define this property.",
 				options: [
 					{
@@ -207,13 +208,33 @@ export class BulkMetadataEditor {
 		return [...byPath.values()];
 	}
 
-	private countExisting(files: TFile[], key: string): number {
+	private async countExisting(files: TFile[], key: string): Promise<number> {
 		let count = 0;
 		for (const file of files) {
-			const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
+			const frontmatter = await this.readLiveFrontmatter(file);
 			if (frontmatter && Object.prototype.hasOwnProperty.call(frontmatter, key)) count += 1;
 		}
 		return count;
+	}
+
+	private async readLiveFrontmatter(file: TFile): Promise<Record<string, unknown> | null> {
+		const content = await this.app.vault.cachedRead(file);
+		const lines = content.split(/\r?\n/);
+		const firstLine = (lines[0] ?? "").replace(/^\uFEFF/, "");
+		if (!/^---\s*$/.test(firstLine)) return null;
+
+		const end = lines.findIndex((line, index) => index > 0 && /^(?:---|\.\.\.)\s*$/.test(line));
+		if (end === -1) return null;
+
+		let parsed: unknown;
+		try {
+			parsed = parseYaml(lines.slice(1, end).join("\n"));
+		} catch {
+			return null;
+		}
+		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+
+		return parsed as Record<string, unknown>;
 	}
 
 	private wrapInArrayFor(key: string): boolean {
