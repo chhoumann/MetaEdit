@@ -12,7 +12,11 @@ const INLINE_FIELD_WRAPPERS: Readonly<Record<string, string>> = Object.freeze({"
 // Leading whitespace, blockquote/callout markers (`>`), and at most one list
 // marker (`-`, `*`, `+`, `1.`/`1)`) precede the key of a "full-line" inline
 // field. Stripping them lets `> - key:: value` resolve to the key `key`.
-const FULL_LINE_PREFIX = /^(?:\s*(?:>\s*)*)(?:[-*+]\s+|\d+[.)]\s+)?/;
+// A marker is only stripped when it is followed by whitespace, so the key it
+// guards stays preceded by whitespace in the source - which is what the write
+// path needs to re-locate it. `>foo::` therefore keeps its `>` rather than
+// becoming an un-writable `foo`.
+const FULL_LINE_PREFIX = /^\s*(?:>\s+)*(?:[-*+]\s+|\d+[.)]\s+)?/;
 
 // Opening fences for code blocks (``` or ~~~), optionally indented up to three
 // spaces. Inline fields inside code blocks are examples, not metadata.
@@ -213,20 +217,14 @@ export default class MetaEditParser {
     }
 
     private findClosingBracket(line: string, start: number, open: string, close: string): {value: string, end: number} | null {
+        // Only bracket nesting matters; `\` is treated as an ordinary character.
+        // Honouring it as an escape would let a value ending in a backslash
+        // (e.g. a Windows path `C:\`) swallow its own closing bracket and drop
+        // the whole field.
         let nesting = 0;
-        let escaped = false;
 
         for (let i = start; i < line.length; i++) {
             const char = line[i];
-
-            if (char === "\\") {
-                escaped = !escaped;
-                continue;
-            }
-            if (escaped) {
-                escaped = false;
-                continue;
-            }
 
             if (char === open) {
                 nesting++;

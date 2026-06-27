@@ -177,4 +177,22 @@ describe("MetaEditParser inline field parsing", () => {
             {key: "b", content: "2"},
         ]);
     });
+
+    it("treats a backslash as an ordinary value character", () => {
+        // A `\` before the closing bracket must not drop the field.
+        expect(parseInline("(x:: a\\) (y:: b)")).toEqual([
+            {key: "x", content: "a\\"},
+            {key: "y", content: "b"},
+        ]);
+        expect(parseInline("(path:: C:\\)")).toEqual([{key: "path", content: "C:\\"}]);
+        expect(parseInline("[note:: draft\\]")).toEqual([{key: "note", content: "draft\\"}]);
+    });
+
+    it("only strips a blockquote marker that is separated from the key by space", () => {
+        // `> key::` (spaced) -> clean key; `>key::` keeps the marker so the key
+        // is still locatable by the write path, mirroring the list-marker rule.
+        expect(parseInline("> spaced:: v")).toEqual([{key: "spaced", content: "v"}]);
+        expect(parseInline(">tight:: v")).toEqual([{key: ">tight", content: "v"}]);
+        expect(parseInline("-tight:: v")).toEqual([{key: "-tight", content: "v"}]);
+    });
 });
