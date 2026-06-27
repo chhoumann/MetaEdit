@@ -1,8 +1,9 @@
 import {type App, Modal} from "obsidian";
 import GenericPromptContent from "./GenericPromptContent.svelte"
+import {type MountedSvelteComponent, mountSvelteComponent, unmountSvelteComponent} from "../../svelteMount";
 
 export default class GenericPrompt extends Modal {
-    private modalContent: GenericPromptContent;
+    private modalContent: MountedSvelteComponent;
     private resolvePromise: (input: string | null) => void;
     private input: string;
     public waitForClose: Promise<string | null>;
@@ -16,9 +17,10 @@ export default class GenericPrompt extends Modal {
     private constructor(app: App, header: string, placeholder?: string, value?: string, suggestValues?: string[]) {
         super(app);
 
-        this.modalContent = new GenericPromptContent({
-            target: this.contentEl,
-            props: {
+        this.modalContent = mountSvelteComponent(
+            GenericPromptContent,
+            this.contentEl,
+            {
                 app,
                 header,
                 placeholder,
@@ -30,7 +32,7 @@ export default class GenericPrompt extends Modal {
                     this.close();
                 }
             }
-        });
+        );
 
         this.waitForClose = new Promise<string | null>(
             (resolve) => {
@@ -54,7 +56,7 @@ export default class GenericPrompt extends Modal {
 
     onClose() {
         super.onClose();
-        this.modalContent.$destroy();
+        unmountSvelteComponent(this.modalContent);
 
         // Cancelling (Escape/close without submitting) resolves to null rather than
         // rejecting, so a normal cancel never surfaces as an unhandled rejection.

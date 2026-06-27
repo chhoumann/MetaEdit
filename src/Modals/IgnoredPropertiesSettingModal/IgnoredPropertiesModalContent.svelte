@@ -23,16 +23,18 @@
             <th>Property</th>
         </tr>
         </thead>
-        {#each ignoredProperties as property, i}
-            <tr>
-                <td>
-                    <input type="button" value="❌" class="not-a-button" on:click={() => removeProperty(i)}/>
-                </td>
-                <td>
-                    <input on:change={async () => save(ignoredProperties)} style="width: 100%;" type="text" placeholder="Property name" bind:value={property}>
-                </td>
-            </tr>
-        {/each}
+        <tbody>
+            {#each ignoredProperties as property, i}
+                <tr>
+                    <td>
+                        <input type="button" value="❌" class="not-a-button" on:click={() => removeProperty(i)}/>
+                    </td>
+                    <td>
+                        <input on:change={async () => save(ignoredProperties)} style="width: 100%;" type="text" placeholder="Property name" bind:value={property}>
+                    </td>
+                </tr>
+            {/each}
+        </tbody>
     </table>
 
     <div class="buttonContainer">
@@ -45,16 +47,6 @@
         display: flex;
         justify-content: center;
         margin-top: 1rem;
-    }
-
-    select {
-        border-radius: 4px;
-        width: 100%;
-        height: 30px;
-        border: 1px solid #dbdbdc;
-        color: #383a42;
-        background-color: #fff;
-        padding: 3px;
     }
 
     button {

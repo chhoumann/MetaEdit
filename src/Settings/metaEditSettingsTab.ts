@@ -9,6 +9,7 @@ import SingleValueTableEditorContent from "../Modals/shared/SingleValueTableEdit
 import type {ProgressProperty} from "../Types/progressProperty";
 import type {AutoProperty} from "../Types/autoProperty";
 import type {KanbanProperty} from "../Types/kanbanProperty";
+import {type MountedSvelteComponent, mountSvelteComponent, unmountSvelteComponent} from "../svelteMount";
 
 function toggleHiddenEl(el: HTMLElement, bShow: boolean) {
     if (el && !bShow) {
@@ -23,7 +24,7 @@ function toggleHiddenEl(el: HTMLElement, bShow: boolean) {
 
 export class MetaEditSettingsTab extends PluginSettingTab {
     plugin: MetaEdit;
-    private svelteElements: (SingleValueTableEditorContent | AutoPropertiesModalContent | ProgressPropertiesModalContent)[] = [];
+    private svelteElements: MountedSvelteComponent[] = [];
 
     constructor(app: App, plugin: MetaEdit) {
         super(app, plugin);
@@ -33,6 +34,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
     display(): void {
         const {containerEl} = this;
 
+        this.destroySvelteElements();
         containerEl.empty();
 
         containerEl.createEl('h2', {text: 'MetaEdit Settings'});
@@ -46,7 +48,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
     }
 
     private addProgressPropertiesSetting(containerEl: HTMLElement) {
-        let modal: ProgressPropertiesModalContent, div: HTMLDivElement, hidden: boolean = true;
+        let modal: MountedSvelteComponent, div: HTMLDivElement, hidden: boolean = true;
         const setting = new Setting(containerEl)
             .setName("Progress Properties")
             .setDesc("Update properties automatically.")
@@ -69,22 +71,23 @@ export class MetaEditSettingsTab extends PluginSettingTab {
         setting.settingEl.style.display = "block";
         div.style.display = "none";
 
-        modal = new ProgressPropertiesModalContent({
-            target: div,
-            props: {
+        modal = mountSvelteComponent(
+            ProgressPropertiesModalContent,
+            div,
+            {
                 properties: this.plugin.settings.ProgressProperties.properties,
                 save: async (progressProperties: ProgressProperty[]) => {
                     this.plugin.settings.ProgressProperties.properties = progressProperties;
                     await this.plugin.saveSettings();
                 }
             },
-        });
+        );
 
         this.svelteElements.push(modal);
     }
 
     private addAutoPropertiesSetting(containerEl: HTMLElement) {
-        let modal: AutoPropertiesModalContent, div: HTMLDivElement, hidden: boolean = true;
+        let modal: MountedSvelteComponent, div: HTMLDivElement, hidden: boolean = true;
         const setting = new Setting(containerEl)
             .setName("Auto Properties")
             .setDesc("Quick switch for values you know the value of.")
@@ -106,22 +109,23 @@ export class MetaEditSettingsTab extends PluginSettingTab {
         setting.settingEl.style.display = "block";
         div.style.display = "none";
 
-        modal = new AutoPropertiesModalContent({
-            target: div,
-            props: {
+        modal = mountSvelteComponent(
+            AutoPropertiesModalContent,
+            div,
+            {
                 autoProperties: this.plugin.settings.AutoProperties.properties,
                 save: async (autoProperties: AutoProperty[]) => {
                     this.plugin.settings.AutoProperties.properties = autoProperties;
                     await this.plugin.saveSettings();
                 }
             },
-        });
+        );
 
         this.svelteElements.push(modal);
     }
 
     private addEditMetaMenuSetting(containerEl: HTMLElement) {
-        let modal: SingleValueTableEditorContent, div: HTMLDivElement, hidden = true;
+        let modal: MountedSvelteComponent, div: HTMLDivElement, hidden = true;
         const setting = new Setting(containerEl)
             .setName("Edit Meta menu")
             .setDesc("Control what the 'Edit Meta' menu lists. Enable it, then use the gear to hide specific properties by name or all of a note's file tags.")
@@ -162,23 +166,24 @@ export class MetaEditSettingsTab extends PluginSettingTab {
             const tableLabel = div.createEl("p", {text: "Hide specific properties by name:"});
             tableLabel.style.marginBottom = "0";
 
-            modal = new SingleValueTableEditorContent({
-                target: div,
-                props: {
+            modal = mountSvelteComponent(
+                SingleValueTableEditorContent,
+                div,
+                {
                     properties: this.plugin.settings.IgnoredProperties.properties,
                     save: async (ignoredProperties: string[]) => {
                         this.plugin.settings.IgnoredProperties.properties = ignoredProperties;
                         await this.plugin.saveSettings();
                     }
                 },
-            });
+            );
 
             this.svelteElements.push(modal);
         }
     }
 
     private addEditModeSetting(containerEl: HTMLElement) {
-        let modal: any, div: HTMLDivElement, bDivToggle: boolean = true, extraButtonEl, bExtraButtonToggle: boolean = true;
+        let modal: MountedSvelteComponent, div: HTMLDivElement, bDivToggle: boolean = true, extraButtonEl, bExtraButtonToggle: boolean = true;
 
         // For linebreaks
         const df = new DocumentFragment();
@@ -230,27 +235,33 @@ export class MetaEditSettingsTab extends PluginSettingTab {
         setting.settingEl.style.display = "block";
         div.style.display = "none";
 
-        modal = new SingleValueTableEditorContent({
-            target: div,
-            props: {
+        modal = mountSvelteComponent(
+            SingleValueTableEditorContent,
+            div,
+            {
                 properties: this.plugin.settings.EditMode.properties,
                 save: async (properties: string[]) => {
                     this.plugin.settings.EditMode.properties = properties;
                     await this.plugin.saveSettings();
                 }
             },
-        });
+        );
 
         this.svelteElements.push(modal);
     }
 
     hide(): any {
-        this.svelteElements.forEach(el => el.$destroy());
+        this.destroySvelteElements();
         return super.hide();
     }
 
+    private destroySvelteElements() {
+        this.svelteElements.forEach(unmountSvelteComponent);
+        this.svelteElements = [];
+    }
+
     private addKanbanHelperSetting(containerEl: HTMLElement) {
-        let modal: ProgressPropertiesModalContent, div: HTMLDivElement, hidden: boolean = true;
+        let modal: MountedSvelteComponent, div: HTMLDivElement, hidden: boolean = true;
         const setting = new Setting(containerEl)
             .setName("Kanban Board Helper")
             .setDesc("Update properties in links in kanban boards automatically when a card is moved to a new lane.")
@@ -273,9 +284,10 @@ export class MetaEditSettingsTab extends PluginSettingTab {
         setting.settingEl.style.display = "block";
         div.style.display = "none";
 
-        modal = new KanbanHelperSettingContent({
-            target: div,
-            props: {
+        modal = mountSvelteComponent(
+            KanbanHelperSettingContent,
+            div,
+            {
                 kanbanProperties: this.plugin.settings.KanbanHelper.boards,
                 boards: this.plugin.getFilesWithProperty("kanban-plugin"),
                 app: this.app,
@@ -284,7 +296,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 }
             },
-        });
+        );
 
         this.svelteElements.push(modal);
     }

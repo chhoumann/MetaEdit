@@ -1,6 +1,7 @@
 import {type App, Modal} from "obsidian";
 import AutoPropertyValueModalContent from "./AutoPropertyValueModalContent.svelte";
 import type {AutoProperty} from "../../Types/autoProperty";
+import {type MountedSvelteComponent, mountSvelteComponent, unmountSvelteComponent} from "../../svelteMount";
 
 export interface AutoPropertyValueModalOptions {
     isMulti: boolean;
@@ -21,7 +22,7 @@ export interface AutoPropertyValueModalOptions {
  * the generic suggester, whose concerns (free-text autocomplete) differ.
  */
 export default class AutoPropertyValueModal extends Modal {
-    private content: AutoPropertyValueModalContent;
+    private content: MountedSvelteComponent;
     private resolvePromise: (value: string | string[] | null) => void;
     private result: string | string[] | null = null;
     private didSubmit = false;
@@ -40,9 +41,10 @@ export default class AutoPropertyValueModal extends Modal {
 
         this.waitForClose = new Promise((resolve) => (this.resolvePromise = resolve));
 
-        this.content = new AutoPropertyValueModalContent({
-            target: this.contentEl,
-            props: {
+        this.content = mountSvelteComponent(
+            AutoPropertyValueModalContent,
+            this.contentEl,
+            {
                 autoProperty,
                 isMulti: options.isMulti,
                 currentValue: options.currentValue ?? null,
@@ -53,14 +55,14 @@ export default class AutoPropertyValueModal extends Modal {
                     this.close();
                 },
             },
-        });
+        );
 
         this.open();
     }
 
     onClose() {
         super.onClose();
-        this.content.$destroy();
+        unmountSvelteComponent(this.content);
         this.resolvePromise(this.didSubmit ? this.result : null);
     }
 }

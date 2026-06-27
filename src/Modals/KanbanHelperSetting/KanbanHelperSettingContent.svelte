@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {KanbanProperty} from "../../Types/kanbanProperty";
+    import type {KanbanProperty} from "../../Types/kanbanProperty";
     import {KanbanHelperSettingSuggester} from "./KanbanHelperSettingSuggester";
     import type {App, TFile} from "obsidian";
     import {onMount} from "svelte";
@@ -61,23 +61,24 @@
             <th>Possible values</th>
         </tr>
         </thead>
-        {#each kanbanProperties as kanbanProperty, i}
-            <tr>
-                <td>
-                    <input type="button" value="❌" class="not-a-button" on:click={() => removeProperty(i)}/>
-                </td>
-                <td>
-                    {kanbanProperty.boardName}
-                </td>
-                <td>
-                    <input on:change={() => save(kanbanProperties)} type="text" placeholder="Property name" bind:value={kanbanProperty.property}>
-                </td>
-                <td>
-                        {getHeadingsInBoard(kanbanProperty.boardName)}
-                </td>
-            </tr>
-            <br>
-        {/each}
+        <tbody>
+            {#each kanbanProperties as kanbanProperty, i}
+                <tr>
+                    <td>
+                        <input type="button" value="❌" class="not-a-button" on:click={() => removeProperty(i)}/>
+                    </td>
+                    <td>
+                        {kanbanProperty.boardName}
+                    </td>
+                    <td>
+                        <input on:change={() => save(kanbanProperties)} type="text" placeholder="Property name" bind:value={kanbanProperty.property}>
+                    </td>
+                    <td>
+                            {getHeadingsInBoard(kanbanProperty.boardName)}
+                    </td>
+                </tr>
+            {/each}
+        </tbody>
     </table>
 
     <input bind:this={suggestEl} bind:value={inputValue} type="text">
@@ -91,16 +92,6 @@
         display: flex;
         justify-content: center;
         margin-top: 1rem;
-    }
-
-    select {
-        border-radius: 4px;
-        width: 100%;
-        height: 30px;
-        border: 1px solid #dbdbdc;
-        color: #383a42;
-        background-color: #fff;
-        padding: 3px;
     }
 
     button {
