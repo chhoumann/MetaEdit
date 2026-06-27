@@ -455,13 +455,17 @@ export default class MetaController {
 
     private async updateMultipleInFile(properties: Property[], file: TFile): Promise<void> {
         await this.enqueueFileWrite(file, async () => {
-            const yamlProperties = properties.filter(prop => prop.type === MetaType.YAML && !prop.isVirtual);
+            const yamlProperties = properties.filter(prop => prop.type === MetaType.YAML && !prop.path);
+            const yamlPathProperties = properties.filter(prop => prop.type === MetaType.YAML && prop.path);
             const textProperties = properties.filter(prop => prop.type !== MetaType.YAML);
 
-            if (yamlProperties.length > 0) {
+            if (yamlProperties.length > 0 || yamlPathProperties.length > 0) {
                 await this.processFrontMatter(file, (frontmatter) => {
                     for (const prop of yamlProperties) {
                         frontmatter[prop.key] = prop.content;
+                    }
+                    for (const prop of yamlPathProperties) {
+                        setYamlPath(frontmatter, prop.path, prop.content, {createParents: false, createLeaf: false});
                     }
                 });
             }

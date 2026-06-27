@@ -1184,6 +1184,44 @@ describe("MetaEdit runtime", () => {
 		expect(content).not.toContain("Body line should stay literal: readProgress: 2");
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
+
+	test("progress properties update nested YAML leaf paths", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("progress-nested.md");
+		await writeLiveFile(
+			obsidian,
+			notePath,
+			"---\ntasks:\n  total: 0\n---\n# Tasks\n- [ ] one\n- [x] two\n",
+		);
+
+		const content = await evalJsonAsync<string>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const file = app.vault.getAbstractFileByPath(${JSON.stringify(notePath)});
+				plugin.settings.ProgressProperties.enabled = true;
+				plugin.settings.ProgressProperties.properties = [{ name: "tasks.total", type: "Total Tasks" }];
+				const props = await plugin.controller.getPropertiesInFile(file);
+
+				try {
+					await plugin.controller.handleProgressProps(props, file);
+					await new Promise((resolve) => setTimeout(resolve, 300));
+					return await app.vault.read(file);
+				}
+				finally {
+					plugin.settings.ProgressProperties.enabled = false;
+					plugin.settings.ProgressProperties.properties = [];
+				}
+			})()
+		`,
+		);
+
+		expect(content).toMatch(/tasks:\n  total: "?2"?/);
+		expect(content).not.toContain("tasks.total:");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
 });
 
 // Invoke a MetaEdit public-API method inside the running app and return its
