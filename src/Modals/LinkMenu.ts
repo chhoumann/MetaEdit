@@ -5,6 +5,7 @@ export class LinkMenu {
     private targetFile: TFile;
     private targetFolder: TFolder;
     private eventRef: EventRef;
+    private filesEventRef: EventRef;
 
     constructor(private plugin: MetaEdit) {}
 
@@ -12,11 +13,19 @@ export class LinkMenu {
         this.eventRef = this.plugin.app.workspace.on('file-menu',
             (menu, file, source) => this.onMenuOpenCallback(menu, file, source));
         this.plugin.registerEvent(this.eventRef);
+
+        // 'files-menu' fires for a multi-selection in the file explorer.
+        this.filesEventRef = this.plugin.app.workspace.on('files-menu',
+            (menu, files, source) => this.onFilesMenuOpenCallback(menu, files, source));
+        this.plugin.registerEvent(this.filesEventRef);
     }
 
     public unregisterEvent(): void {
         if (this.eventRef){
             this.plugin.app.workspace.offref(this.eventRef);
+        }
+        if (this.filesEventRef){
+            this.plugin.app.workspace.offref(this.filesEventRef);
         }
     }
 
@@ -37,11 +46,29 @@ export class LinkMenu {
         }
     }
 
+    private onFilesMenuOpenCallback(menu: Menu, files: TAbstractFile[], source: string) {
+        if (source !== "file-explorer-context-menu") return;
+        if (!Array.isArray(files) || files.length === 0) return;
+
+        const hasMarkdown = files.some(f =>
+            (f instanceof TFile && f.extension === "md") ||
+            (f instanceof TFolder && f.children?.some(c => c instanceof TFile && c.extension === "md")));
+        if (!hasMarkdown) return;
+
+        menu.addItem(item => {
+            item.setIcon('pencil');
+            item.setTitle("Bulk edit metadata in selected notes");
+            item.onClick(async () => {
+                await this.plugin.runBulkEditForSelection(files);
+            });
+        });
+    }
+
     private addFileOptions(menu: Menu) {
         menu.addItem(item => {
             item.setIcon('pencil');
             item.setTitle("Edit Meta");
-            item.onClick(async evt => {
+            item.onClick(async () => {
                 await this.plugin.runMetaEditForFile(this.targetFile);
             })
         })
@@ -50,8 +77,8 @@ export class LinkMenu {
     private addFolderOptions(menu: Menu) {
         menu.addItem(item => {
             item.setIcon('pencil');
-            item.setTitle("Add YAML property to all files in this folder (and subfolders)");
-            item.onClick(async evt => {
+            item.setTitle("Bulk edit metadata in this folder (and subfolders)");
+            item.onClick(async () => {
                 await this.plugin.runMetaEditForFolder(this.targetFolder);
             })
         })

@@ -22,14 +22,22 @@ const decide = (over: Partial<Parameters<typeof decideBulkWrite>[0]>) =>
 	});
 
 describe("decideBulkWrite - add (key missing)", () => {
-	it("adds a scalar when the key is missing, regardless of policy", () => {
-		for (const policy of ["skip", "overwrite", "merge"] as ConflictPolicy[]) {
+	it("adds a scalar when the key is missing under skip/overwrite", () => {
+		for (const policy of ["skip", "overwrite"] as ConflictPolicy[]) {
 			expect(decide({ exists: false, rawValue: "draft", policy })).toEqual({
 				action: "write",
 				value: "draft",
 				outcome: "added",
 			});
 		}
+	});
+
+	it("seeds a list when the key is missing under merge (list-shaped result)", () => {
+		expect(decide({ exists: false, rawValue: "draft", policy: "merge" })).toEqual({
+			action: "write",
+			value: ["draft"],
+			outcome: "added",
+		});
 	});
 
 	it("wraps the added value in a list when EditMode requests multi-value", () => {

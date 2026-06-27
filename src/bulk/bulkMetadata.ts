@@ -50,7 +50,11 @@ export function decideBulkWrite(args: DecideArgs): BulkDecision {
 	const { exists, currentValue, rawValue, policy, wrapInArray } = args;
 
 	if (!exists) {
-		return { action: "write", value: wrapScalar(rawValue, wrapInArray), outcome: "added" };
+		// Under merge the property is meant to be a list, so seed it as one even
+		// when adding it fresh - that keeps every note in a merge run list-shaped
+		// rather than scalar-for-added vs list-for-merged.
+		const value = policy === "merge" ? [rawValue] : wrapScalar(rawValue, wrapInArray);
+		return { action: "write", value, outcome: "added" };
 	}
 
 	switch (policy) {
