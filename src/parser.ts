@@ -3,7 +3,7 @@ import {parseYaml} from "obsidian";
 import {MetaType} from "./Types/metaType";
 
 export type Property = {key: string, content: any, type: MetaType};
-type FrontmatterPosition = {start: Loc, end: Loc};
+export type FrontmatterPosition = {start: Loc, end: Loc};
 // `start`/`end` are the field's span in the line; `sepEnd` is the offset just
 // after `::`; `valueEnd` is where the value content ends (the closing bracket
 // for a bracketed field, or end-of-line for a full-line field). The latter two
@@ -46,23 +46,27 @@ export default class MetaEditParser {
 
     public async parseFrontmatter(file: TFile): Promise<Property[]> {
         const fileCache = this.app.metadataCache.getFileCache(file);
+        const frontmatterPosition = this.getFrontmatterPosition(fileCache);
+        const filecontent = await this.app.vault.cachedRead(file);
+        const parsedYaml = this.parseFrontmatterContent(filecontent, frontmatterPosition);
+        if (parsedYaml !== null) return this.objectToYamlProperties(parsedYaml);
+
         const frontmatter = fileCache?.frontmatter;
         if (!frontmatter) return [];
 
-        const frontmatterPosition = this.getFrontmatterPosition(fileCache);
-        if (!frontmatterPosition) {
-            return this.objectToYamlProperties(frontmatter, true);
-        }
-
-        const {start, end} = frontmatterPosition;
-        const filecontent = await this.app.vault.cachedRead(file);
-        const yamlContent: string = filecontent.split("\n").slice(start.line, end.line).join("\n");
-        const parsedYaml = parseYaml(yamlContent);
-
-        return this.objectToYamlProperties(parsedYaml);
+        return this.objectToYamlProperties(frontmatter, true);
     }
 
-    private getFrontmatterPosition(fileCache: CachedMetadata): FrontmatterPosition | null {
+    public parseFrontmatterCache(fileCache: CachedMetadata | null | undefined): Property[] {
+        const frontmatter = fileCache?.frontmatter;
+        if (!frontmatter) return [];
+
+        return this.objectToYamlProperties(frontmatter, true);
+    }
+
+    public getFrontmatterPosition(fileCache: CachedMetadata | null | undefined): FrontmatterPosition | null {
+        if (!fileCache) return null;
+
         const frontmatterPosition = fileCache.frontmatterPosition;
         if (this.isFrontmatterPosition(frontmatterPosition)) return frontmatterPosition;
 
@@ -108,7 +112,8 @@ export default class MetaEditParser {
 
     public async parseInlineFields(file: TFile): Promise<Property[]> {
         const content = await this.app.vault.cachedRead(file);
-        return this.parseInlineContent(content);
+        const frontmatterPosition = this.getFrontmatterPosition(this.app.metadataCache.getFileCache(file));
+        return this.parseInlineContent(content, frontmatterPosition);
     }
 
     /**
@@ -121,22 +126,17 @@ export default class MetaEditParser {
      * full-line key is otherwise kept verbatim so odd-but-real keys like
      * `progress (%)` survive a read/write cycle.
      */
-    public parseInlineContent(content: string): Property[] {
+    public parseInlineContent(content: string, frontmatterPosition: FrontmatterPosition | null = null): Property[] {
         const properties: Property[] = [];
         const lines = content.split(/\r?\n/);
-        let inFrontmatter = false;
+        const frontmatterRange = this.getInlineFrontmatterRange(lines, frontmatterPosition);
         let openFence: string | null = null;
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
 
             // Skip a leading YAML frontmatter block - it is handled by parseFrontmatter.
-            if (i === 0 && /^---\s*$/.test(line)) {
-                inFrontmatter = true;
-                continue;
-            }
-            if (inFrontmatter) {
-                if (/^(?:---|\.\.\.)\s*$/.test(line)) inFrontmatter = false;
+            if (frontmatterRange && i >= frontmatterRange.startLine && i <= frontmatterRange.endLine) {
                 continue;
             }
 
@@ -163,6 +163,37 @@ export default class MetaEditParser {
         }
 
         return properties;
+    }
+
+    private getInlineFrontmatterRange(
+        lines: string[],
+        frontmatterPosition: FrontmatterPosition | null,
+    ): {startLine: number, endLine: number} | null {
+        if (frontmatterPosition) {
+            return {
+                startLine: frontmatterPosition.start.line,
+                endLine: frontmatterPosition.end.line,
+            };
+        }
+
+        if (!/^---\s*$/.test(lines[0] ?? "")) return null;
+
+        for (let i = 1; i < lines.length; i++) {
+            if (/^(?:---|\.\.\.)\s*$/.test(lines[i])) {
+                return {startLine: 0, endLine: i};
+            }
+        }
+
+        return null;
+    }
+
+    private parseFrontmatterContent(content: string, frontmatterPosition: FrontmatterPosition | null): unknown | null {
+        const lines = content.split(/\r?\n/);
+        const frontmatterRange = this.getInlineFrontmatterRange(lines, frontmatterPosition);
+        if (!frontmatterRange || frontmatterRange.startLine !== 0) return null;
+
+        const yamlContent = lines.slice(frontmatterRange.startLine + 1, frontmatterRange.endLine).join("\n");
+        return parseYaml(yamlContent);
     }
 
     private parseLineFields(line: string): InlineField[] {
@@ -246,8 +277,9 @@ export default class MetaEditParser {
     }
 
     private extractFullLineField(line: string): InlineField | null {
+        const lineEnd = line.endsWith("\r") ? line.length - 1 : line.length;
         const prefix = line.match(FULL_LINE_PREFIX)?.[0] ?? "";
-        const body = line.slice(prefix.length);
+        const body = line.slice(prefix.length, lineEnd);
 
         const sep = body.indexOf("::");
         if (sep < 0) return null;
@@ -258,7 +290,7 @@ export default class MetaEditParser {
         const value = body.substring(sep + 2).trim();
         // A full-line field has no wrapper: its value runs to end of line.
         const sepEnd = prefix.length + sep + 2;
-        return {key, value, start: prefix.length, end: line.length, sepEnd, valueEnd: line.length};
+        return {key, value, start: prefix.length, end: lineEnd, sepEnd, valueEnd: lineEnd};
     }
 
     /**

@@ -124,6 +124,42 @@ describe("MetaEdit runtime", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
+	test("parses inline fields after an unmatched leading thematic break", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("thematic-break-inline.md");
+		await writeLiveFile(obsidian, notePath, "---\nstatus:: open\nbody:: yes\n");
+
+		const state = await evalJsonAsync<{
+			frontmatter: unknown;
+			frontmatterPosition: unknown;
+			properties: { key: string; content: unknown }[];
+		}>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const file = app.vault.getAbstractFileByPath(${JSON.stringify(notePath)});
+				const cache = app.metadataCache.getFileCache(file);
+				const props = await plugin.controller.getPropertiesInFile(file);
+				return {
+					frontmatter: cache?.frontmatter ?? null,
+					frontmatterPosition: cache?.frontmatterPosition ?? cache?.frontmatter?.position ?? null,
+					properties: props.map((prop) => ({ key: prop.key, content: prop.content })),
+				};
+			})()
+		`,
+		);
+
+		expect(state.frontmatter).toBeNull();
+		expect(state.frontmatterPosition).toBeNull();
+		expect(state.properties).toEqual([
+			{ key: "status", content: "open" },
+			{ key: "body", content: "yes" },
+		]);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
 	test("updates one numeric YAML property without changing its sibling", async () => {
 		const { obsidian, sandbox } = getContext();
 
@@ -151,12 +187,16 @@ describe("MetaEdit runtime", () => {
 	test("sets Auto Properties through the public API without exposing mutable settings", async () => {
 		const { obsidian } = getContext();
 
-		const state = await evalJsonAsync<{
-			returnedChoices: string[];
-			savedChoices: string[];
-			invalidMessage: string;
-			settingsAfterInvalid: { name: string; choices: string[] }[];
-		}>(
+			const state = await evalJsonAsync<{
+				returnedChoices: string[];
+				returnedType: string | undefined;
+				returnedDescription: string | undefined;
+				savedChoices: string[];
+				savedType: string | undefined;
+				savedDescription: string | undefined;
+				invalidMessage: string;
+				settingsAfterInvalid: { name: string; choices: string[]; type?: string; description?: string }[];
+			}>(
 			obsidian,
 			`
 			(async () => {
@@ -164,11 +204,16 @@ describe("MetaEdit runtime", () => {
 				const api = plugin?.api;
 				if (!api) throw new Error("MetaEdit API is not available.");
 
-				await api.setAutoProperties([
-					{ name: "", choices: [""] },
-					{ name: "Status", choices: ["Draft", "Done"] },
-					{ name: "Status", choices: ["Duplicate"] },
-				]);
+					await api.setAutoProperties([
+						{ name: "", choices: [""] },
+						{
+							name: "Status",
+							choices: ["Draft", "Done"],
+							description: "Workflow state",
+							type: "Single",
+						},
+						{ name: "Status", choices: ["Duplicate"] },
+					]);
 
 				const returned = api.getAutoProperties();
 				returned[1].choices.push("Leaked");
@@ -185,24 +230,37 @@ describe("MetaEdit runtime", () => {
 
 				const saved = await plugin.loadData();
 
-				return {
-					returnedChoices: api.getAutoProperties()[1].choices,
-					savedChoices: saved.AutoProperties.properties[1].choices,
-					invalidMessage,
-					settingsAfterInvalid: plugin.settings.AutoProperties.properties,
-				};
+					return {
+						returnedChoices: api.getAutoProperties()[1].choices,
+						returnedType: api.getAutoProperties()[1].type,
+						returnedDescription: api.getAutoProperties()[1].description,
+						savedChoices: saved.AutoProperties.properties[1].choices,
+						savedType: saved.AutoProperties.properties[1].type,
+						savedDescription: saved.AutoProperties.properties[1].description,
+						invalidMessage,
+						settingsAfterInvalid: plugin.settings.AutoProperties.properties,
+					};
 			})()
 		`,
 		);
 
-		expect(state.returnedChoices).toEqual(["Draft", "Done"]);
-		expect(state.savedChoices).toEqual(["Draft", "Done"]);
-		expect(state.invalidMessage).toContain("choices must be an array of strings");
-		expect(state.settingsAfterInvalid).toEqual([
-			{ name: "", choices: [""] },
-			{ name: "Status", choices: ["Draft", "Done"] },
-			{ name: "Status", choices: ["Duplicate"] },
-		]);
+			expect(state.returnedChoices).toEqual(["Draft", "Done"]);
+			expect(state.returnedType).toBe("Single");
+			expect(state.returnedDescription).toBe("Workflow state");
+			expect(state.savedChoices).toEqual(["Draft", "Done"]);
+			expect(state.savedType).toBe("Single");
+			expect(state.savedDescription).toBe("Workflow state");
+			expect(state.invalidMessage).toContain("choices must be an array of strings");
+			expect(state.settingsAfterInvalid).toEqual([
+				{ name: "", choices: [""] },
+				{
+					name: "Status",
+					choices: ["Draft", "Done"],
+					description: "Workflow state",
+					type: "Single",
+				},
+				{ name: "Status", choices: ["Duplicate"] },
+			]);
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
@@ -275,6 +333,126 @@ describe("MetaEdit runtime", () => {
 
 		expect(state.events.some(event => event.status === "done" && event.inline === "one")).toBe(true);
 		expect(state.countAfterUnsubscribe).toBe(state.countBeforeUnsubscribe);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("keeps metadata change event data, cache, and properties in the same snapshot", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("metadata-burst.md");
+		await writeLiveFile(obsidian, notePath, "---\nstatus: zero\n---\nbody\n");
+
+		const state = await evalJsonAsync<{
+			events: {
+				dataStatus: string | null;
+				cacheStatus: unknown;
+				propStatus: unknown;
+				previousStatus: unknown;
+			}[];
+		}>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const api = plugin?.api;
+				if (!api) throw new Error("MetaEdit API is not available.");
+
+				const notePath = ${JSON.stringify(notePath)};
+				const file = app.vault.getAbstractFileByPath(notePath);
+				const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+				const statusFromData = (data) => data.match(/status:\\s*([^\\n\\r]+)/)?.[1] ?? null;
+				const events = [];
+				const unsubscribe = api.onMetadataChange(async (change) => {
+					if (change.file.path !== notePath) return;
+					events.push({
+						dataStatus: statusFromData(change.data),
+						cacheStatus: change.cache?.frontmatter?.status ?? null,
+						propStatus: change.properties.find((property) => property.key === "status")?.content ?? null,
+						previousStatus: change.previousProperties?.find((property) => property.key === "status")?.content ?? null,
+					});
+					await sleep(150);
+				});
+
+				try {
+					await app.vault.modify(file, "---\\nstatus: one\\n---\\nbody\\n");
+					await sleep(20);
+					await app.vault.modify(file, "---\\nstatus: two\\n---\\nbody\\n");
+
+					const started = Date.now();
+					while (Date.now() - started < 5000 && events.length < 2) {
+						await sleep(100);
+					}
+					await sleep(300);
+					return { events };
+				} finally {
+					unsubscribe();
+				}
+			})()
+		`,
+		);
+
+		expect(state.events).toEqual([
+			{
+				dataStatus: "one",
+				cacheStatus: "one",
+				propStatus: "one",
+				previousStatus: null,
+			},
+			{
+				dataStatus: "two",
+				cacheStatus: "two",
+				propStatus: "two",
+				previousStatus: "one",
+			},
+		]);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("metadata change events include a user frontmatter key named position", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("metadata-position.md");
+		await writeLiveFile(obsidian, notePath, "---\nposition: goalkeeper\n---\nbody\n");
+
+		const state = await evalJsonAsync<{ position: unknown; keys: string[] }>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const api = plugin?.api;
+				if (!api) throw new Error("MetaEdit API is not available.");
+
+				const notePath = ${JSON.stringify(notePath)};
+				const file = app.vault.getAbstractFileByPath(notePath);
+				const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+				const events = [];
+				const unsubscribe = api.onMetadataChange((change) => {
+					if (change.file.path !== notePath) return;
+					events.push(change.properties);
+				});
+
+				try {
+					await api.update("position", "striker", file);
+					const started = Date.now();
+					while (Date.now() - started < 5000 && events.length === 0) {
+						await sleep(100);
+					}
+
+					const latest = events[events.length - 1] ?? [];
+					const position = latest.find((property) => property.key === "position")?.content ?? null;
+					return {
+						position,
+						keys: latest.map((property) => property.key),
+					};
+				} finally {
+					unsubscribe();
+				}
+			})()
+		`,
+		);
+
+		expect(state.position).toBe("striker");
+		expect(state.keys).toContain("position");
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
@@ -378,6 +556,24 @@ describe("MetaEdit runtime", () => {
 		expect(content).toContain("status:: complete");
 		expect(content).toContain("my-key:: new");
 		expect(content).toContain("progress (%):: done");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("preserves CRLF terminators when updating a full-line inline field", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("inline-crlf.md");
+		await writeLiveFile(obsidian, notePath, "status:: open\r\nother:: keep\r\n");
+
+		await callApi(obsidian, "update", ["status", "closed", notePath]);
+
+		const content = await sandbox.waitForContent(
+			"inline-crlf.md",
+			(value) => value.includes("status:: closed"),
+			WAIT_OPTS,
+		);
+
+		expect(content).toBe("status:: closed\r\nother:: keep\r\n");
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 

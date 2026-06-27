@@ -157,6 +157,23 @@ describe("MetaEdit multi-value editing", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
+	test("keeps a YAML scalar scalar when edited through All Multi mode", async () => {
+		const { obsidian, sandbox } = getContext();
+		const notePath = sandbox.path("scalar-allmulti.md");
+		await writeLiveFile(obsidian, notePath, "---\nstatus: open\n---\nbody\n");
+
+		const result = await driveListEdit(obsidian, notePath, {
+			mode: "All Multi",
+			key: "status",
+			selectText: "open",
+			enterValue: "closed",
+		});
+
+		expect(result.content).toBe("---\nstatus: closed\n---\nbody\n");
+		expect(result.readBack).toBe("closed");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
 	// #36: the public API update with an array writes a native YAML list (verifying the
 	// processFrontMatter write path that already fixed this stays fixed).
 	test("api.update with an array writes a native YAML list (#36)", async () => {
@@ -182,6 +199,27 @@ describe("MetaEdit multi-value editing", () => {
 
 		expect(result.content).toBe("---\nfoo:\n  - a\n  - c\n---\nbody\n");
 		expect(result.readBack).toEqual(["a", "c"]);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("edits a literal add-command sentinel as a normal list element", async () => {
+		const { obsidian, sandbox } = getContext();
+		const notePath = sandbox.path("sentinel-value.md");
+		await writeLiveFile(
+			obsidian,
+			notePath,
+			"---\nscripts:\n  - cmd:addfirst\n  - keep\n---\nbody\n",
+		);
+
+		const result = await driveListEdit(obsidian, notePath, {
+			mode: "All Single",
+			key: "scripts",
+			selectText: "cmd:addfirst",
+			enterValue: "changed",
+		});
+
+		expect(result.content).toBe("---\nscripts:\n  - changed\n  - keep\n---\nbody\n");
+		expect(result.readBack).toEqual(["changed", "keep"]);
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 });

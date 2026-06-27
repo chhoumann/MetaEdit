@@ -87,6 +87,15 @@ describe("MetaEditParser frontmatter parsing", () => {
         ]);
     });
 
+    it("reads live frontmatter content when the metadata cache has not populated yet", async () => {
+        const file = new TFile("live-only.md");
+        const parser = createParser(null, "---\nstatus: draft\n---\nBody\n");
+
+        await expect(parser.parseFrontmatter(file)).resolves.toEqual([
+            {key: "status", content: "draft", type: MetaType.YAML},
+        ]);
+    });
+
     // #85: `tags:value` (and other non-mapping frontmatter) must not be walked
     // with `for..in`, which would surface string/array indices like `0:value`.
     it("ignores non-mapping frontmatter instead of emitting index keys (#85)", async () => {
@@ -197,6 +206,13 @@ describe("MetaEditParser inline field parsing", () => {
         expect(parseInline(content)).toEqual([{key: "body", content: "yes"}]);
     });
 
+    it("does not hide inline fields after an unmatched leading thematic break", () => {
+        expect(parseInline("---\nstatus:: open\nbody:: yes")).toEqual([
+            {key: "status", content: "open"},
+            {key: "body", content: "yes"},
+        ]);
+    });
+
     it("parses two adjacent bracketed fields", () => {
         expect(parseInline("(a:: 1)(b:: 2)")).toEqual([
             {key: "a", content: "1"},
@@ -228,6 +244,10 @@ describe("MetaEditParser inline value replacement", () => {
         expect(replaceInline("ref:: [[Some Note]]", "ref", "[[Other Note]]")).toBe("ref:: [[Other Note]]");
         expect(replaceInline("note:: foo (bar)", "note", "baz (qux)")).toBe("note:: baz (qux)");
         expect(replaceInline("status:: open", "status", "closed")).toBe("status:: closed");
+    });
+
+    it("preserves a trailing carriage return when replacing a CRLF full-line field", () => {
+        expect(replaceInline("status:: open\r", "status", "closed")).toBe("status:: closed\r");
     });
 
     it("preserves the wrapper of a bracketed field (#67)", () => {

@@ -233,6 +233,55 @@ describe("Auto Properties value prompt", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
+	test("adds an explicit Single auto property as a scalar under AllMulti", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("ap-single-add-allmulti.md");
+		const result = await evalJsonAsync<{ content: string; status: unknown }>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+				const snapshot = {
+					auto: JSON.parse(JSON.stringify(plugin.settings.AutoProperties)),
+					mode: plugin.settings.EditMode.mode,
+				};
+				plugin.settings.AutoProperties.enabled = true;
+				plugin.settings.AutoProperties.properties = [
+					{ name: "status", choices: ["todo", "done"], type: "Single" },
+				];
+				plugin.settings.EditMode.mode = "All Multi";
+				await plugin.saveSettings();
+
+				const path = ${JSON.stringify(notePath)};
+				const existing = app.vault.getAbstractFileByPath(path);
+				if (existing) await app.vault.delete(existing);
+				const file = await app.vault.create(path, "Body\\n");
+				await sleep(300);
+
+				try {
+					await plugin.controller.addYamlProp("status", "done", file);
+					await sleep(300);
+					return {
+						content: await app.vault.read(file),
+						status: app.metadataCache.getFileCache(file)?.frontmatter?.status,
+					};
+				} finally {
+					plugin.settings.AutoProperties = snapshot.auto;
+					plugin.settings.EditMode.mode = snapshot.mode;
+					await plugin.saveSettings();
+				}
+			})()
+		`,
+		);
+
+		expect(result.content).toContain("status: done");
+		expect(result.content).not.toContain("- done");
+		expect(result.status).toBe("done");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
 	test("treats an entry without a type as single (back-compat)", async () => {
 		const { obsidian, sandbox } = getContext();
 

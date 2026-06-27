@@ -5,7 +5,7 @@ import type {
     MetaEditPropertyValue,
     MetaEditUnsubscribe,
 } from "./IMetaEditApi";
-import type {Property} from "./parser";
+import MetaEditParser, {type Property} from "./parser";
 import {TFile} from "obsidian";
 import type {CachedMetadata} from "obsidian";
 import {MetaType} from "./Types/metaType";
@@ -13,8 +13,10 @@ import type {AutoProperty} from "./Types/autoProperty";
 
 export class MetaEditApi {
     private settingsWriteQueue: Promise<unknown> = Promise.resolve();
+    private parser: MetaEditParser;
 
     constructor(private plugin: MetaEdit) {
+        this.parser = new MetaEditParser(plugin.app);
     }
 
     public make(): IMetaEditApi {
@@ -152,7 +154,7 @@ export class MetaEditApi {
                 if (unsubscribed) return;
 
                 const previousProperties = previousPropertiesByPath.get(file.path) ?? null;
-                const properties = this.cloneProperties(await this.plugin.controller.getPropertiesInFile(file));
+                const properties = this.cloneProperties(this.getPropertiesFromEvent(data, cache));
                 if (unsubscribed) return;
 
                 if (previousProperties && this.propertiesSignature(previousProperties) === this.propertiesSignature(properties)) {
@@ -222,10 +224,15 @@ export class MetaEditApi {
     }
 
     private cloneAutoProperties(autoProperties: AutoProperty[]): AutoProperty[] {
-        return autoProperties.map(autoProperty => ({
-            name: autoProperty.name,
-            choices: [...autoProperty.choices],
-        }));
+        return autoProperties.map(autoProperty => {
+            const clone: AutoProperty = {
+                name: autoProperty.name,
+                choices: [...autoProperty.choices],
+            };
+            if (autoProperty.description !== undefined) clone.description = autoProperty.description;
+            if (autoProperty.type !== undefined) clone.type = autoProperty.type;
+            return clone;
+        });
     }
 
     private validateAutoProperties(autoProperties: AutoProperty[]): AutoProperty[] {
@@ -246,10 +253,21 @@ export class MetaEditApi {
                 throw new TypeError(`Auto Property at index ${index} must have a string name.`);
             }
 
-            return {
+            if (autoProperty.description !== undefined && typeof autoProperty.description !== "string") {
+                throw new TypeError(`Auto Property at index ${index} description must be a string.`);
+            }
+
+            if (autoProperty.type !== undefined && autoProperty.type !== "Single" && autoProperty.type !== "Multi") {
+                throw new TypeError(`Auto Property at index ${index} type must be "Single" or "Multi".`);
+            }
+
+            const validated: AutoProperty = {
                 name: autoProperty.name,
                 choices: [...autoProperty.choices],
             };
+            if (autoProperty.description !== undefined) validated.description = autoProperty.description;
+            if (autoProperty.type !== undefined) validated.type = autoProperty.type;
+            return validated;
         });
     }
 
@@ -264,6 +282,22 @@ export class MetaEditApi {
             key: property.key,
             type: property.type,
             content: this.cloneValue(property.content),
+        }));
+    }
+
+    private getPropertiesFromEvent(data: string, cache: CachedMetadata): Property[] {
+        return [
+            ...this.getTagsFromCache(cache),
+            ...this.parser.parseFrontmatterCache(cache),
+            ...this.parser.parseInlineContent(data, this.parser.getFrontmatterPosition(cache)),
+        ];
+    }
+
+    private getTagsFromCache(cache: CachedMetadata): Property[] {
+        return (cache.tags ?? []).map(tag => ({
+            key: tag.tag,
+            content: tag.tag,
+            type: MetaType.Tag,
         }));
     }
 

@@ -4,7 +4,6 @@ import type MetaEdit from "./main";
 import GenericPrompt from "./Modals/GenericPrompt/GenericPrompt";
 import {EditMode} from "./Types/editMode";
 import GenericSuggester from "./Modals/GenericSuggester/GenericSuggester";
-import {ADD_FIRST_ELEMENT, ADD_TO_BEGINNING, ADD_TO_END} from "./constants";
 import type {ProgressProperty} from "./Types/progressProperty";
 import {ProgressPropertyOptions} from "./Types/progressPropertyOptions";
 import {MetaType} from "./Types/metaType";
@@ -16,6 +15,10 @@ import {findAutoProperty, isMultiAutoProperty, toValueArray, withChoiceAdded} fr
 import {applyMultiValueEdit, isMultiValueYamlProperty, shouldUseMultiValueEditor, type MultiValueEdit} from "./multiValue";
 
 const fileWriteQueues: Map<string, Promise<unknown>> = new Map();
+const ADD_FIRST_SELECTION = "metaedit:multi-value:add-first";
+const ADD_TO_BEGINNING_SELECTION = "metaedit:multi-value:add-beginning";
+const ADD_TO_END_SELECTION = "metaedit:multi-value:add-end";
+const VALUE_SELECTION_PREFIX = "metaedit:multi-value:value:";
 
 export default class MetaController {
     private parser: MetaEditParser;
@@ -42,10 +45,13 @@ export default class MetaController {
 
     public async addYamlProp(propName: string, propValue: unknown, file: TFile): Promise<void> {
         const settings = this.plugin.settings;
+        const activeAutoProperty = this.getActiveAutoProperty(propName);
+        const autoPropertyKeepsScalar = !!activeAutoProperty &&
+            !isMultiAutoProperty(activeAutoProperty, settings.EditMode, propName);
         if (!Array.isArray(propValue) &&
+            !autoPropertyKeepsScalar &&
             (settings.EditMode.mode === EditMode.AllMulti ||
             (settings.EditMode.mode === EditMode.SomeMulti && settings.EditMode.properties.contains(propName)))) {
-            // A Multi auto property already produced a list; don't nest it.
             propValue = [propValue];
         }
 
@@ -242,50 +248,55 @@ export default class MetaController {
             : (writeBase as string[]);
 
         let selectedOption: string;
+        const valueSelection = (index: number) => `${VALUE_SELECTION_PREFIX}${index}`;
         if (displayValues.length == 0 || (displayValues.length == 1 && displayValues[0] == "")) {
             const options = ["Add new value"];
-            selectedOption = await GenericSuggester.Suggest(this.app, options, [ADD_FIRST_ELEMENT]);
+            selectedOption = await GenericSuggester.Suggest(this.app, options, [ADD_FIRST_SELECTION]);
         }
         else if (displayValues.length == 1) {
             const options = [displayValues[0], "Add to end", "Add to beginning"];
-            selectedOption = await GenericSuggester.Suggest(this.app, options, [displayValues[0], ADD_TO_END, ADD_TO_BEGINNING]);
+            selectedOption = await GenericSuggester.Suggest(this.app, options, [valueSelection(0), ADD_TO_END_SELECTION, ADD_TO_BEGINNING_SELECTION]);
         } else {
             const options = ["Add to end", ...displayValues, "Add to beginning"];
-            selectedOption = await GenericSuggester.Suggest(this.app, options, [ADD_TO_END, ...displayValues, ADD_TO_BEGINNING]);
+            selectedOption = await GenericSuggester.Suggest(
+                this.app,
+                options,
+                [ADD_TO_END_SELECTION, ...displayValues.map((_, index) => valueSelection(index)), ADD_TO_BEGINNING_SELECTION],
+            );
         }
 
         if (!selectedOption) return false;
 
         let tempValue: string;
-        let selectedIndex = -1;
-        // Match the add/insert sentinels EXACTLY. A substring `includes("cmd")`
-        // check would misread a real list element that merely contains "cmd"
-        // (e.g. `cmd:build`) as a command and collapse the whole list.
+        const parsedSelectedIndex = selectedOption.startsWith(VALUE_SELECTION_PREFIX)
+            ? Number(selectedOption.substring(VALUE_SELECTION_PREFIX.length))
+            : -1;
+        const selectedIndex = Number.isInteger(parsedSelectedIndex) ? parsedSelectedIndex : -1;
         // (Auto Properties are intercepted in editMetaElement; this path is free-text.)
         const isAddCommand =
-            selectedOption === ADD_FIRST_ELEMENT ||
-            selectedOption === ADD_TO_BEGINNING ||
-            selectedOption === ADD_TO_END;
+            selectedOption === ADD_FIRST_SELECTION ||
+            selectedOption === ADD_TO_BEGINNING_SELECTION ||
+            selectedOption === ADD_TO_END_SELECTION;
         if (isAddCommand) {
             tempValue = await GenericPrompt.Prompt(this.app, "Enter a new value");
         } else {
-            selectedIndex = displayValues.findIndex(el => el == selectedOption);
-            tempValue = await GenericPrompt.Prompt(this.app, `Change ${selectedOption} to`, selectedOption);
+            const selectedValue = displayValues[selectedIndex] ?? "";
+            tempValue = await GenericPrompt.Prompt(this.app, `Change ${selectedValue} to`, selectedValue);
         }
 
         if (!tempValue) return false;
 
         const edit: MultiValueEdit =
-            selectedOption === ADD_FIRST_ELEMENT ? {kind: "addFirst", value: tempValue} :
-            selectedOption === ADD_TO_BEGINNING ? {kind: "prepend", value: tempValue} :
-            selectedOption === ADD_TO_END ? {kind: "append", value: tempValue} :
+            selectedOption === ADD_FIRST_SELECTION ? {kind: "addFirst", value: tempValue} :
+            selectedOption === ADD_TO_BEGINNING_SELECTION ? {kind: "prepend", value: tempValue} :
+            selectedOption === ADD_TO_END_SELECTION ? {kind: "append", value: tempValue} :
             {kind: "replace", index: selectedIndex, value: tempValue};
 
         const newList = applyMultiValueEdit(writeBase, edit);
 
-        // YAML persists a real list (round-trips as a native YAML array); an
-        // inline/tag field stores the comma-joined string per the inline convention.
-        const newValue: unknown = property.type === MetaType.YAML ? newList : newList.join(", ");
+        // Only values that began as native YAML arrays persist as arrays. YAML
+        // scalars routed here by EditMode stay scalar strings.
+        const newValue: unknown = editsArray ? newList : newList.join(", ");
 
         await this.updatePropertyInFile(property, newValue, file);
         return true;

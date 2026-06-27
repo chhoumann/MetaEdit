@@ -47,6 +47,100 @@ describe("MetaEdit bulk metadata edit", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
+	test("shows conflict options from live frontmatter when the metadata cache is stale", async () => {
+		const { obsidian, sandbox } = getContext();
+		const dir = "stale-cache-folder";
+		await seed(obsidian, sandbox.path(dir), {
+			"existing.md": "---\nstatus: old\n---\n\nbody\n",
+		});
+
+		const result = await evalJsonAsync<{ content: string; conflictTitle: string | null }>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+				const waitFor = async (selector, predicate = () => true) => {
+					const start = Date.now();
+					while (Date.now() - start < 5000) {
+						const found = Array.from(document.querySelectorAll(selector)).find(predicate);
+						if (found) return found;
+						await sleep(80);
+					}
+					throw new Error("Timed out waiting for " + selector);
+				};
+
+				const path = ${JSON.stringify(sandbox.path(`${dir}/existing.md`))};
+				const file = app.vault.getAbstractFileByPath(path);
+				const originalGetFileCache = app.metadataCache.getFileCache.bind(app.metadataCache);
+				app.metadataCache.getFileCache = (candidate) =>
+					candidate?.path === path ? {} : originalGetFileCache(candidate);
+
+				try {
+					const runPromise = plugin.bulkEditor.run([file], "stale cache").then(() => "resolved");
+
+					const keyInput = await waitFor(".metaEditPromptInput");
+					keyInput.value = "status";
+					keyInput.dispatchEvent(new Event("input", { bubbles: true }));
+					keyInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+					const valueInput = await waitFor(".metaEditPromptInput");
+					valueInput.value = "new";
+					valueInput.dispatchEvent(new Event("input", { bubbles: true }));
+					valueInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+					const conflictTitle = (await waitFor(".metaedit-bulk-modal h3")).textContent;
+					const overwrite = await waitFor(
+						".metaedit-bulk-option",
+						(el) => el.textContent.includes("Overwrite existing values"),
+					);
+					overwrite.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+					const confirm = await waitFor(
+						".metaedit-bulk-option",
+						(el) => el.textContent.trim() === "Overwrite",
+					);
+					confirm.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+					await runPromise;
+					await sleep(400);
+					return { content: await app.vault.read(file), conflictTitle };
+				} finally {
+					app.metadataCache.getFileCache = originalGetFileCache;
+					document.querySelectorAll(".modal-close-button").forEach((button) => button.click());
+				}
+			})()
+		`,
+		);
+
+		expect(result.conflictTitle).toBe('1 note already has "status"');
+		expect(result.content).toContain("status: new");
+		expect(result.content).not.toContain("status: old");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("does not abort conflict preflight on malformed frontmatter", async () => {
+		const { obsidian, sandbox } = getContext();
+		const dir = "malformed-frontmatter-folder";
+		await seed(obsidian, sandbox.path(dir), {
+			"bad.md": "---\nstatus: : :\n---\n\nbody\n",
+		});
+
+		const conflicts = await evalJsonAsync<number>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const file = app.vault.getAbstractFileByPath(${JSON.stringify(sandbox.path(`${dir}/bad.md`))});
+				return await plugin.bulkEditor.countExisting([file], "status");
+			})()
+		`,
+		);
+
+		expect(conflicts).toBe(0);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
 	test("merge appends into a list without duplicating and converges on re-run", async () => {
 		const { obsidian, sandbox } = getContext();
 		const dir = "merge-folder";
