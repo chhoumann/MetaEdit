@@ -39,7 +39,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
 
         this.addProgressPropertiesSetting(containerEl);
         this.addAutoPropertiesSetting(containerEl);
-        this.addIgnorePropertiesSetting(containerEl);
+        this.addEditMetaMenuSetting(containerEl);
         this.addEditModeSetting(containerEl);
         this.addKanbanHelperSetting(containerEl);
         this.addUIElementsSetting(containerEl);
@@ -120,14 +120,14 @@ export class MetaEditSettingsTab extends PluginSettingTab {
         this.svelteElements.push(modal);
     }
 
-    private addIgnorePropertiesSetting(containerEl: HTMLElement) {
+    private addEditMetaMenuSetting(containerEl: HTMLElement) {
         let modal: SingleValueTableEditorContent, div: HTMLDivElement, hidden = true;
         const setting = new Setting(containerEl)
-            .setName("Ignore Properties")
-            .setDesc("Hide these properties from the menu.")
+            .setName("Edit Meta menu")
+            .setDesc("Control what the 'Edit Meta' menu lists. Enable it, then use the gear to hide specific properties by name or all of a note's file tags.")
             .addToggle(toggle => {
                 toggle
-                    .setTooltip("Toggle Ignored Properties")
+                    .setTooltip("Toggle menu filtering")
                     .setValue(this.plugin.settings.IgnoredProperties.enabled)
                     .onChange(async value => {
                         if (value === this.plugin.settings.IgnoredProperties.enabled) return;
@@ -143,6 +143,24 @@ export class MetaEditSettingsTab extends PluginSettingTab {
             div = setting.settingEl.createDiv();
             setting.settingEl.style.display = "block";
             div.style.display = "none";
+
+            new Setting(div)
+                .setName("Hide file tags")
+                .setDesc("Hide the note's #tags from the menu, leaving only frontmatter and inline fields. A frontmatter 'tags' property stays editable.")
+                .addToggle(toggle => {
+                    toggle
+                        .setTooltip("Toggle hiding file tags")
+                        .setValue(this.plugin.settings.IgnoredProperties.hideFileTags)
+                        .onChange(async value => {
+                            if (value === this.plugin.settings.IgnoredProperties.hideFileTags) return;
+
+                            this.plugin.settings.IgnoredProperties.hideFileTags = value;
+                            await this.plugin.saveSettings();
+                        });
+                });
+
+            const tableLabel = div.createEl("p", {text: "Hide specific properties by name:"});
+            tableLabel.style.marginBottom = "0";
 
             modal = new SingleValueTableEditorContent({
                 target: div,

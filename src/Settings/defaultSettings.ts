@@ -8,7 +8,8 @@ export const DEFAULT_SETTINGS: MetaEditSettings = Object.freeze({
     },
     IgnoredProperties: {
         enabled: false,
-        properties: []
+        properties: [],
+        hideFileTags: false
     },
     AutoProperties: {
         enabled: false,
