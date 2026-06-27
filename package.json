@@ -35,7 +35,7 @@
     "esbuild-svelte": "0.9.5",
     "eslint": "^9.39.1",
     "globals": "^16.5.0",
-    "obsidian": "1.4.4",
+    "obsidian": "1.13.1",
     "obsidian-e2e": "0.6.0",
     "semantic-release": "^25.0.5",
     "svelte": "^5.56.4",
