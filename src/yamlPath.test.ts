@@ -2,7 +2,6 @@ import {describe, expect, it} from "vitest";
 import {
 	formatYamlPath,
 	getYamlPath,
-	hasYamlPath,
 	parseYamlPath,
 	setYamlPath,
 	YamlPathError,
@@ -27,8 +26,7 @@ describe("YAML path helpers", () => {
 
 		expect(getYamlPath(root, "metadata.description")).toBe("old");
 		expect(getYamlPath(root, ["contributors", 1, "role"])).toBe("Editor");
-		expect(hasYamlPath(root, "contributors[0].name")).toBe(true);
-		expect(hasYamlPath(root, "contributors[2].name")).toBe(false);
+		expect(() => getYamlPath(root, "contributors[2].name")).toThrow(YamlPathError);
 	});
 
 	it("updates existing paths without replacing siblings", () => {
@@ -63,6 +61,36 @@ describe("YAML path helpers", () => {
 		setYamlPath(root, "publisher.name", "Meta House", {createParents: true});
 
 		expect(root).toEqual({publisher: {name: "Meta House"}});
+	});
+
+	it("can require an existing leaf for update-style writes", () => {
+		const root = {
+			metadata: {description: "old"},
+		};
+
+		expect(() => setYamlPath(root, "metadata.descrption", "typo", {createLeaf: false}))
+			.toThrow("does not exist");
+
+		setYamlPath(root, "metadata.description", "new", {createLeaf: false});
+
+		expect(root).toEqual({metadata: {description: "new"}});
+	});
+
+	it("rejects stale update-style writes when the current value changed", () => {
+		const root = {
+			contributors: [
+				{name: "Ada", role: "Writer"},
+				{name: "Bob", role: "Editor"},
+			],
+		};
+
+		expect(() => setYamlPath(root, "contributors[1].role", "Proofreader", {
+			createLeaf: false,
+			expectedValue: "Writer",
+			validateExpectedValue: true,
+		})).toThrow("current value changed");
+
+		expect(root.contributors[1].role).toBe("Editor");
 	});
 
 	it("rejects scalar parents and out-of-range array writes", () => {

@@ -1,7 +1,7 @@
 import type {App, CachedMetadata, Loc, TFile} from "obsidian";
 import {parseYaml} from "obsidian";
 import {MetaType} from "./Types/metaType";
-import {formatYamlPath, isPlainYamlObject, isYamlScalarLeaf, type YamlPath, type YamlPathSegment} from "./yamlPath";
+import {formatYamlPath, isPlainYamlObject, isYamlScalarLeaf, type YamlPath} from "./yamlPath";
 
 export type Property = {
 	key: string,
@@ -142,7 +142,7 @@ export default class MetaEditParser {
 
     private collectNestedYamlProperties(value: unknown, path: YamlPath, properties: Property[]): void {
         if (isYamlScalarLeaf(value)) {
-            if (path.length > 1 && !this.isRootArrayScalarItem(path)) {
+            if (path.length > 1 && typeof path[path.length - 1] !== "number") {
                 const rootKey = String(path[0]);
                 properties.push({
                     key: formatYamlPath(path),
@@ -167,10 +167,6 @@ export default class MetaEditParser {
                 this.collectNestedYamlProperties(value[key], [...path, key], properties);
             }
         }
-    }
-
-    private isRootArrayScalarItem(path: readonly YamlPathSegment[]): boolean {
-        return path.length === 2 && typeof path[1] === "number";
     }
 
     public async parseInlineFields(file: TFile): Promise<Property[]> {

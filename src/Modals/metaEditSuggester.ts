@@ -8,7 +8,7 @@ import type {AutoProperty} from "../Types/autoProperty";
 import {getKnownPropertyNames} from "./GenericPrompt/valueSuggest";
 import {setPendingValueContext} from "./GenericPrompt/promptValueContext";
 import {filterMenuItems} from "./menuFilter";
-import {isPlainYamlObject} from "../yamlPath";
+import {isYamlParentContainerValue} from "../yamlPath";
 
 export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     public app: App;
@@ -144,10 +144,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
 
     private static isYamlParentContainer(property: Property): boolean {
         if (property.type !== MetaType.YAML || property.isVirtual) return false;
-        if (isPlainYamlObject(property.content)) return true;
-        if (!Array.isArray(property.content)) return false;
-
-        return property.content.some(item => isPlainYamlObject(item) || Array.isArray(item));
+        return isYamlParentContainerValue(property.content);
     }
 
     private setSuggestValues() {

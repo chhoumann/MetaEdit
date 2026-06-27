@@ -498,6 +498,61 @@ describe("MetaEdit runtime", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
+	test("rejects stale in-range array path writes instead of updating the wrong item", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("nested-stale-array.md");
+		await writeLiveFile(
+			obsidian,
+			notePath,
+			"---\ncontributors:\n  - name: Ada\n    role: Writer\n  - name: Bob\n    role: Editor\n---\nbody\n",
+		);
+
+		const result = await evalJsonAsync<{
+			errorMessage: string;
+			cache: Record<string, unknown>;
+			content: string;
+		}>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const file = app.vault.getAbstractFileByPath(${JSON.stringify(notePath)});
+				const props = await plugin.controller.getPropertiesInFile(file);
+				const staleBobRole = props.find((prop) => prop.key === "contributors[1].role");
+				if (!staleBobRole) throw new Error("contributors[1].role was not parsed.");
+
+				await app.fileManager.processFrontMatter(file, (frontmatter) => {
+					frontmatter.contributors.unshift({ name: "Carol", role: "Reviewer" });
+				});
+
+				let errorMessage = "";
+				try {
+					await plugin.controller.updatePropertyInFile(staleBobRole, "Proofreader", file);
+				} catch (error) {
+					errorMessage = error.message;
+				}
+				await new Promise((resolve) => setTimeout(resolve, 600));
+
+				return {
+					errorMessage,
+					cache: app.metadataCache.getFileCache(file)?.frontmatter ?? {},
+					content: await app.vault.read(file),
+				};
+			})()
+		`,
+		);
+
+		expect(result.errorMessage).toContain("current value changed");
+		expect(result.cache.contributors).toEqual([
+			{ name: "Carol", role: "Reviewer" },
+			{ name: "Ada", role: "Writer" },
+			{ name: "Bob", role: "Editor" },
+		]);
+		expect(result.content).not.toContain("Proofreader");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
 	test("edits nested YAML leaf rows through the real MetaEdit suggester", async () => {
 		const { obsidian, sandbox } = getContext();
 

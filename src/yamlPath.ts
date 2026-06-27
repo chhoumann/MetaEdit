@@ -3,6 +3,9 @@ export type YamlPath = YamlPathSegment[];
 
 export interface SetYamlPathOptions {
 	createParents?: boolean;
+	createLeaf?: boolean;
+	expectedValue?: unknown;
+	validateExpectedValue?: boolean;
 }
 
 export class YamlPathError extends Error {
@@ -36,16 +39,6 @@ export function formatYamlPath(path: readonly YamlPathSegment[]): string {
 	}, "");
 }
 
-export function hasYamlPath(root: unknown, path: string | readonly YamlPathSegment[]): boolean {
-	const resolvedPath = parseYamlPath(path);
-	try {
-		getYamlPath(root, resolvedPath);
-		return true;
-	} catch {
-		return false;
-	}
-}
-
 export function getYamlPath(root: unknown, path: string | readonly YamlPathSegment[]): unknown {
 	const resolvedPath = parseYamlPath(path);
 	let current = root;
@@ -77,6 +70,7 @@ export function setYamlPath(
 			}
 
 			if (isLeaf) {
+				validateLeafWrite(current, segment, resolvedPath, options);
 				current[segment] = value;
 				return;
 			}
@@ -97,6 +91,7 @@ export function setYamlPath(
 		}
 
 		if (isLeaf) {
+			validateLeafWrite(current, segment, resolvedPath, options);
 			current[segment] = value;
 			return;
 		}
@@ -114,18 +109,11 @@ export function isYamlScalarLeaf(value: unknown): boolean {
 	return !isPlainYamlObject(value) && !Array.isArray(value);
 }
 
-export function hasNestedYamlLeaves(value: unknown): boolean {
-	if (isYamlScalarLeaf(value)) return false;
+export function isYamlParentContainerValue(value: unknown): boolean {
+	if (isPlainYamlObject(value)) return true;
+	if (!Array.isArray(value)) return false;
 
-	if (Array.isArray(value)) {
-		return value.some(item => isYamlScalarLeaf(item) || hasNestedYamlLeaves(item));
-	}
-
-	if (isPlainYamlObject(value)) {
-		return Object.values(value).some(item => isYamlScalarLeaf(item) || hasNestedYamlLeaves(item));
-	}
-
-	return false;
+	return value.some(item => isPlainYamlObject(item) || Array.isArray(item));
 }
 
 function readPathPart(part: string, originalPath: string, segments: YamlPath): void {
@@ -184,4 +172,32 @@ function createMissingParent(options: SetYamlPathOptions, nextSegment: YamlPathS
 
 function arrayIndexExists(array: unknown[], index: number): boolean {
 	return index >= 0 && index < array.length && Object.prototype.hasOwnProperty.call(array, index);
+}
+
+function validateLeafWrite(
+	current: Record<string, unknown> | unknown[],
+	segment: YamlPathSegment,
+	path: readonly YamlPathSegment[],
+	options: SetYamlPathOptions,
+): void {
+	const exists = typeof segment === "number"
+		? arrayIndexExists(current as unknown[], segment)
+		: Object.prototype.hasOwnProperty.call(current, segment);
+	const label = formatYamlPath(path);
+
+	if (!exists && options.createLeaf === false) {
+		throw new YamlPathError(`Cannot write YAML path '${label}': path does not exist.`);
+	}
+
+	const currentValue = typeof segment === "number"
+		? (current as unknown[])[segment]
+		: (current as Record<string, unknown>)[segment];
+	if (exists && options.validateExpectedValue && !yamlValuesEqual(currentValue, options.expectedValue)) {
+		throw new YamlPathError(`Cannot write YAML path '${label}': current value changed before update.`);
+	}
+}
+
+function yamlValuesEqual(left: unknown, right: unknown): boolean {
+	if (left instanceof Date && right instanceof Date) return left.getTime() === right.getTime();
+	return Object.is(left, right);
 }
