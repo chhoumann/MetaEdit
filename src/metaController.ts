@@ -395,7 +395,7 @@ export default class MetaController {
         let newLine: string;
         switch (property.type) {
             case MetaType.Dataview:
-                newLine = line.replace(this.dataviewPropertyRegex(property.key), `$1${property.key}:: ${newValue}$4`);
+                newLine = this.parser.replaceInlineFieldValue(line, property.key, String(newValue));
                 break;
             case MetaType.YAML:
                 newLine = `${property.key}: ${newValue}`;

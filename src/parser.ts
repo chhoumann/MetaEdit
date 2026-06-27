@@ -4,7 +4,11 @@ import {MetaType} from "./Types/metaType";
 
 export type Property = {key: string, content: any, type: MetaType};
 type FrontmatterPosition = {start: Loc, end: Loc};
-type InlineField = {key: string, value: string, start: number, end: number};
+// `start`/`end` are the field's span in the line; `sepEnd` is the offset just
+// after `::`; `valueEnd` is where the value content ends (the closing bracket
+// for a bracketed field, or end-of-line for a full-line field). The latter two
+// let the value be rewritten in place without disturbing the key or wrapper.
+type InlineField = {key: string, value: string, start: number, end: number, sepEnd: number, valueEnd: number};
 
 // Dataview wraps inline fields in either square brackets or parentheses.
 const INLINE_FIELD_WRAPPERS: Readonly<Record<string, string>> = Object.freeze({"[": "]", "(": ")"});
@@ -213,7 +217,9 @@ export default class MetaEditParser {
         const closing = this.findClosingBracket(line, sep + 2, open, close);
         if (!closing) return null;
 
-        return {key, value: closing.value, start, end: closing.end};
+        // closing.end points just past the close bracket, so the value content
+        // ends one character earlier (at the close bracket itself).
+        return {key, value: closing.value, start, end: closing.end, sepEnd: sep + 2, valueEnd: closing.end - 1};
     }
 
     private findClosingBracket(line: string, start: number, open: string, close: string): {value: string, end: number} | null {
@@ -250,7 +256,33 @@ export default class MetaEditParser {
         if (!key) return null;
 
         const value = body.substring(sep + 2).trim();
-        return {key, value, start: prefix.length, end: line.length};
+        // A full-line field has no wrapper: its value runs to end of line.
+        const sepEnd = prefix.length + sep + 2;
+        return {key, value, start: prefix.length, end: line.length, sepEnd, valueEnd: line.length};
+    }
+
+    /**
+     * Rewrite the value of every inline field named `key` on a single line,
+     * leaving the key, surrounding text, and any `[...]`/`(...)` wrapper intact.
+     *
+     * This is the write-side counterpart to {@link parseInlineContent}: because
+     * it reuses the same field boundaries, a full-line value (which may itself
+     * contain `]`/`)`, e.g. `ref:: [[Note]]`) is replaced up to end-of-line and a
+     * bracketed value only up to its matching close bracket - so updates no
+     * longer append a stray closing bracket. Returns the line unchanged when no
+     * field matches.
+     */
+    public replaceInlineFieldValue(line: string, key: string, newValue: string): string {
+        const matches = this.parseLineFields(line).filter(field => field.key === key);
+        if (matches.length === 0) return line;
+
+        // Splice right-to-left so each field's offsets stay valid as we rewrite.
+        let result = line;
+        for (let i = matches.length - 1; i >= 0; i--) {
+            const field = matches[i];
+            result = result.slice(0, field.sepEnd) + " " + newValue + result.slice(field.valueEnd);
+        }
+        return result;
     }
 
 }
