@@ -5,7 +5,10 @@
 ## Features
 - Add or update Yaml properties and Dataview fields easily
 - Ignore properties to hide them from the menu
-- Auto Properties that have customizable, pre-defined values selectable through a suggester
+- Auto Properties that have customizable, pre-defined values selectable through a prompt
+  - Add an optional description shown when you pick a value
+  - Choose a Single or Multi (multi-select) type per property
+  - Type a value that is not in the list to use it once, or save it as a new choice
 - Multi-Value Mode that allows you to detect and vectorize/create arrays from your values
 - Progress Properties that automatically update properties/fields
   - Works with total task, completed task, and incomplete task counts. Mark a task as completed (from anywhere), and the file will be updated with the new count.
@@ -40,16 +43,35 @@ const {autoprop} = this.app.plugins.plugins["metaedit"].api;
 ```
 
 ### `autoprop(propertyName: string)`
-Takes a string containing a property name. Looks for the property in user settings and will open a suggester with possible values for that property.
+Takes a string containing a property name. Looks for the property in user settings and will open a prompt with the possible values for that property (and its description, if set).
 
-Returns the selected value. If no value was selected, or if the property was not found in settings, it returns `null`.
+Returns the selected value: a `string` for a Single property, or a `string[]` for a Multi property. If nothing was selected, or the property was not found / Auto Properties are disabled, it returns `null`.
+
+For a Multi property used in a template, join the array yourself, e.g.
+`<% (await autoprop("Tags"))?.join(", ") %>`.
 
 This is an asynchronous function, so you should `await` it.
 
-### `update(propertyName: string, propertyValue: string, file: TFile | string)`
+### `update(propertyName: string, propertyValue: unknown, file: TFile | string)`
 Updates a property with the given name to the given value in the given file.
 
 If the file is a string, it should be the file path. Otherwise, a `TFile` is fine.
+
+This is an asynchronous function, so you should `await` it.
+
+`update` changes an existing property. If you want to create the property when it is missing, use `addOrUpdateProperty`.
+
+When updating inline Dataview fields, non-string values are stringified. YAML frontmatter properties can preserve richer YAML values such as numbers, booleans, arrays, and objects.
+
+### `createYamlProperty(propertyName: string, propertyValue: unknown, file: TFile | string)`
+Creates a YAML frontmatter property in the given file.
+
+If the file already has a property with the same name, MetaEdit leaves it unchanged.
+
+This is an asynchronous function, so you should `await` it.
+
+### `addOrUpdateProperty(propertyName: string, propertyValue: unknown, file: TFile | string)`
+Updates an existing property with the given name, or creates a YAML frontmatter property when the property does not exist.
 
 This is an asynchronous function, so you should `await` it.
 
@@ -59,6 +81,43 @@ Gets the value of the given property in the given file.
 If the file is a string, it should be the file path. Otherwise, a `TFile` is fine.
 
 This is an asynchronous function, so you should `await` it.
+
+### `getPropertiesInFile(file: TFile | string)`
+Gets all metadata properties MetaEdit can read from the given file, including tags, YAML frontmatter properties, and inline Dataview fields.
+
+This is an asynchronous function, so you should `await` it.
+
+### `getFilesWithProperty(propertyName: string)`
+Gets all markdown files with a YAML frontmatter property matching the given name.
+
+### `getAutoProperties()`
+Gets a copy of MetaEdit's configured Auto Properties.
+
+The returned array is a copy, so mutating it will not change MetaEdit settings. Use `setAutoProperties` to save changes.
+
+### `setAutoProperties(autoProperties: AutoProperty[])`
+Replaces MetaEdit's configured Auto Properties and saves settings.
+
+Each Auto Property must have a string `name` and a `choices` array of strings.
+
+This is an asynchronous function, so you should `await` it.
+
+### `onMetadataChange(callback)`
+Registers a metadata-change listener and returns an unsubscribe function.
+
+The callback receives `{ file, data, cache, properties, previousProperties }`. `properties` contains the current properties parsed by MetaEdit for the file. `previousProperties` contains the last property snapshot emitted by this subscription for that file, or `null` when no previous snapshot is available.
+
+MetaEdit does not classify changes as add, rename, value change, or remove, because Obsidian's metadata event does not provide a stable semantic diff. Compare `previousProperties` and `properties` in your callback when you need that detail.
+
+Call the returned function when your plugin unloads, or register it with Obsidian's cleanup system:
+
+```js
+const unsubscribe = app.plugins.plugins["metaedit"].api.onMetadataChange((change) => {
+    console.log(change.file.path, change.properties);
+});
+
+this.register(unsubscribe);
+```
 
 ### API Examples
 #### New Task template (requires [Templater](https://github.com/SilentVoid13/Templater))

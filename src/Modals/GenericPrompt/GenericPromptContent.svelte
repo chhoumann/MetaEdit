@@ -1,8 +1,8 @@
 <script lang="ts">
     import {onDestroy, onMount} from "svelte";
     import {GenericTextSuggester} from "./genericTextSuggester";
+    import {consumePendingValueContext} from "./promptValueContext";
     import {getDateInputType, getValueSuggestions} from "./valueSuggest";
-    import type {PromptValueContext} from "./promptValueContext";
     import type {App} from "obsidian";
 
     export let app: App;
@@ -11,18 +11,20 @@
     export let value: string = "";
     export let onSubmit: (value: string) => void;
     export let suggestValues: string[];
-    export let valueContext: PromptValueContext | null = null;
     let suggester: GenericTextSuggester;
     let inputEl: HTMLInputElement;
 
+    // The property being edited (set by metaEditSuggester). Taken once so a stale
+    // context never leaks into a later prompt.
+    const context = consumePendingValueContext();
     const hasExplicitSuggestions = Array.isArray(suggestValues) && suggestValues.length > 0;
 
     // Date detection is cheap (property-type registry lookups), so resolve it up
     // front to pick the input type before first paint. Explicit suggestion lists
     // (Auto Properties) keep their plain choice-list behaviour and never become a
     // date picker.
-    const dateInputType = !hasExplicitSuggestions && valueContext
-        ? getDateInputType(app, valueContext.key, value, valueContext.type)
+    const dateInputType = !hasExplicitSuggestions && context
+        ? getDateInputType(context.app, context.key, value, context.type)
         : null;
     // datetime-local needs step="1" to show/keep seconds; without it a seconds
     // value would be silently truncated.
@@ -32,8 +34,8 @@
         if (!dateInputType) {
             const suggestions = hasExplicitSuggestions
                 ? suggestValues
-                : valueContext
-                    ? getValueSuggestions(app, valueContext.key, valueContext.type)
+                : context
+                    ? getValueSuggestions(context.app, context.key, context.type)
                     : [];
 
             if (suggestions.length > 0) {

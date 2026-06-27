@@ -1,13 +1,5 @@
 import {type App, Modal} from "obsidian";
 import GenericPromptContent from "./GenericPromptContent.svelte"
-import type {PromptValueContext} from "./promptValueContext";
-
-export interface PromptOptions {
-    placeholder?: string;
-    value?: string;
-    suggestValues?: string[];
-    valueContext?: PromptValueContext;
-}
 
 export default class GenericPrompt extends Modal {
     private modalContent: GenericPromptContent;
@@ -16,12 +8,12 @@ export default class GenericPrompt extends Modal {
     public waitForClose: Promise<string | null>;
     private didSubmit: boolean = false;
 
-    public static Prompt(app: App, header: string, options?: PromptOptions): Promise<string | null> {
-        const newPromptModal = new GenericPrompt(app, header, options);
+    public static Prompt(app: App, header: string, placeholder?: string, value?: string, suggestValues?: string[]): Promise<string | null> {
+        const newPromptModal = new GenericPrompt(app, header, placeholder, value, suggestValues);
         return newPromptModal.waitForClose;
     }
 
-    private constructor(app: App, header: string, options: PromptOptions = {}) {
+    private constructor(app: App, header: string, placeholder?: string, value?: string, suggestValues?: string[]) {
         super(app);
 
         this.modalContent = new GenericPromptContent({
@@ -29,10 +21,9 @@ export default class GenericPrompt extends Modal {
             props: {
                 app,
                 header,
-                placeholder: options.placeholder,
-                value: options.value,
-                suggestValues: options.suggestValues,
-                valueContext: options.valueContext ?? null,
+                placeholder,
+                value,
+                suggestValues,
                 onSubmit: (input: string) => {
                     this.input = input;
                     this.didSubmit = true;
