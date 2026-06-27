@@ -7,6 +7,7 @@ import {MetaType} from "../Types/metaType";
 import {concat} from "svelte-preprocess/dist/modules/utils";
 import type {AutoProperty} from "../Types/autoProperty";
 import {setPendingValueContext} from "./GenericPrompt/promptValueContext";
+import {getKnownPropertyNames} from "./GenericPrompt/valueSuggest";
 
 export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     public app: App;
@@ -137,14 +138,18 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     }
 
     private setSuggestValues() {
-        const autoProps = this.plugin.settings.AutoProperties.properties;
+        const existing = new Set(this.data.map(prop => prop.key));
+        const names = new Set<string>();
 
-        this.suggestValues = autoProps.reduce((arr: string[], val: AutoProperty) => {
-            if (!this.data.find(prop => val.name === prop.key || val.name.startsWith('#'))) {
-                arr.push(val.name);
-            }
+        // Configured Auto Property names (existing behaviour).
+        for (const autoProp of this.plugin.settings.AutoProperties.properties as AutoProperty[]) {
+            if (!autoProp.name.startsWith('#')) names.add(autoProp.name);
+        }
 
-            return arr;
-        }, []);
+        // Property names already used in the vault, so the "new property" name
+        // prompt autocompletes known keys instead of free-typing them.
+        for (const name of getKnownPropertyNames(this.app)) names.add(name);
+
+        this.suggestValues = [...names].filter(name => !existing.has(name));
     }
 }

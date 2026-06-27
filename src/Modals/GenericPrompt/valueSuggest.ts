@@ -58,6 +58,23 @@ export function getDateInputType(
 }
 
 /**
+ * Property names already used anywhere in the vault, so adding a new property
+ * can autocomplete known keys instead of free-typing them.
+ */
+export function getKnownPropertyNames(app: App): string[] {
+    const typeManager = (app as unknown as {
+        metadataTypeManager?: {getAllProperties?: () => Record<string, {name?: string}>};
+    }).metadataTypeManager;
+
+    const all = typeManager?.getAllProperties?.();
+    if (!all) return [];
+
+    return Object.values(all)
+        .map(info => info?.name)
+        .filter((name): name is string => typeof name === "string" && name.length > 0);
+}
+
+/**
  * Filter known values against the current input for the dropdown. Hides the
  * dropdown when it has nothing useful to add: no matches, or a single match
  * identical to what the user already typed.

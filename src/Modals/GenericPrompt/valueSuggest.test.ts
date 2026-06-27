@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vitest";
 import {TFile} from "obsidian";
-import {filterSuggestions, getDateInputType, getValueSuggestions} from "./valueSuggest";
+import {filterSuggestions, getDateInputType, getKnownPropertyNames, getValueSuggestions} from "./valueSuggest";
 import {MetaType} from "../../Types/metaType";
 
 type FileCache = {frontmatter?: Record<string, unknown>};
@@ -114,6 +114,26 @@ describe("getValueSuggestions - tags", () => {
         });
 
         expect(getValueSuggestions(app, "#a/draft", MetaType.Tag)).toEqual(["draft"]);
+    });
+});
+
+describe("getKnownPropertyNames", () => {
+    it("returns the names of all properties known to Obsidian", () => {
+        const app = {
+            metadataTypeManager: {
+                getAllProperties: () => ({
+                    status: {name: "status", widget: "text", occurrences: 3},
+                    due: {name: "due", widget: "date", occurrences: 1},
+                    tags: {name: "tags", widget: "tags", occurrences: 0},
+                }),
+            },
+        } as never;
+
+        expect(getKnownPropertyNames(app)).toEqual(["status", "due", "tags"]);
+    });
+
+    it("degrades to an empty list when the registry is unavailable", () => {
+        expect(getKnownPropertyNames({} as never)).toEqual([]);
     });
 });
 
