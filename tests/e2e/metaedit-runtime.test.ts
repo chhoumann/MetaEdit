@@ -28,15 +28,18 @@ describe("MetaEdit runtime", () => {
 		expect(state.hasRunCommand).toBe(true);
 		expect(state.apiMethods).toEqual([
 			"addOrUpdateProperty",
+			"addOrUpdateYamlPath",
 			"autoprop",
 			"createYamlProperty",
 			"getAutoProperties",
 			"getFilesWithProperty",
 			"getPropertiesInFile",
 			"getPropertyValue",
+			"getYamlPath",
 			"onMetadataChange",
 			"setAutoProperties",
 			"update",
+			"updateYamlPath",
 		]);
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
@@ -233,6 +236,402 @@ describe("MetaEdit runtime", () => {
 		expect(content).toContain("outdoor: 1");
 		expect(content).toContain("reading: 0");
 		expect(content).not.toContain("reading: 1");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("reads and updates existing nested YAML leaves through public APIs (#33, #76)", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("nested-api.md");
+		await writeLiveFile(
+			obsidian,
+			notePath,
+			[
+				"---",
+				"metadata:",
+				"  description: old",
+				"  scope: personal",
+				"attributes:",
+				"  one: something",
+				"  two: 12345",
+				"contributors:",
+				"  - name: Ada",
+				"    role: Writer",
+				"  - name: Bob",
+				"    role: Editor",
+				"---",
+				"body",
+			].join("\n"),
+		);
+
+		const result = await evalJsonAsync<{
+			properties: {
+				key: string;
+				content: unknown;
+				path?: Array<string | number>;
+				rootKey?: string;
+				isNested?: boolean;
+				isVirtual?: boolean;
+			}[];
+			descriptionBefore: unknown;
+			descriptionAfter: unknown;
+			contributorRole: unknown;
+			publisherName: unknown;
+			content: string;
+			cache: Record<string, unknown>;
+		}>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const api = plugin?.api;
+				if (!api) throw new Error("MetaEdit API is not available.");
+				const notePath = ${JSON.stringify(notePath)};
+				const file = app.vault.getAbstractFileByPath(notePath);
+				const properties = (await api.getPropertiesInFile(file)).map((prop) => ({
+					key: prop.key,
+					content: prop.content,
+					path: prop.path,
+					rootKey: prop.rootKey,
+					isNested: prop.isNested,
+					isVirtual: prop.isVirtual,
+				}));
+				const descriptionBefore = await api.getPropertyValue("metadata.description", file);
+
+				await api.update("metadata.description", "test", file);
+				await api.addOrUpdateProperty("attributes.one", "changed", file);
+				await api.updateYamlPath("contributors[1].role", "Proofreader", file);
+				await api.addOrUpdateYamlPath(["publisher", "name"], "Meta House", file);
+				await new Promise((resolve) => setTimeout(resolve, 600));
+
+				return {
+					properties,
+					descriptionBefore,
+					descriptionAfter: await api.getPropertyValue("metadata.description", file),
+					contributorRole: await api.getYamlPath(["contributors", 1, "role"], file),
+					publisherName: await api.getYamlPath("publisher.name", file),
+					content: await app.vault.read(file),
+					cache: app.metadataCache.getFileCache(file)?.frontmatter ?? {},
+				};
+			})()
+		`,
+		);
+
+		expect(result.properties).toContainEqual({
+			key: "metadata.description",
+			content: "old",
+			path: ["metadata", "description"],
+			rootKey: "metadata",
+			isNested: true,
+			isVirtual: true,
+		});
+		expect(result.descriptionBefore).toBe("old");
+		expect(result.descriptionAfter).toBe("test");
+		expect(result.contributorRole).toBe("Proofreader");
+		expect(result.publisherName).toBe("Meta House");
+		expect(result.cache.metadata).toEqual({ description: "test", scope: "personal" });
+		expect(result.cache.attributes).toEqual({ one: "changed", two: 12345 });
+		expect(result.cache.contributors).toEqual([
+			{ name: "Ada", role: "Writer" },
+			{ name: "Bob", role: "Proofreader" },
+		]);
+		expect(result.cache.publisher).toEqual({ name: "Meta House" });
+		expect(result.content).not.toContain("attributes.one:");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("keeps exact dotted YAML keys and inline dotted fields ahead of virtual nested YAML", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const literalPath = sandbox.path("literal-dotted-precedence.md");
+		const inlinePath = sandbox.path("inline-dotted-precedence.md");
+		await writeLiveFile(
+			obsidian,
+			literalPath,
+			"---\nauthor.name: literal old\nauthor:\n  name: YAML Author\n---\nbody\n",
+		);
+		await writeLiveFile(
+			obsidian,
+			inlinePath,
+			"---\nauthor:\n  name: YAML Author\n---\nauthor.name:: inline old\n",
+		);
+
+		const result = await evalJsonAsync<{
+			literalCache: Record<string, unknown>;
+			inlineContent: string;
+			inlineCache: Record<string, unknown>;
+			literalReadBack: unknown;
+			inlineReadBack: unknown;
+			forcedNestedReadBack: unknown;
+		}>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const api = plugin?.api;
+				if (!api) throw new Error("MetaEdit API is not available.");
+				const literalFile = app.vault.getAbstractFileByPath(${JSON.stringify(literalPath)});
+				const inlineFile = app.vault.getAbstractFileByPath(${JSON.stringify(inlinePath)});
+
+				await api.update("author.name", "literal new", literalFile);
+				await api.update("author.name", "inline new", inlineFile);
+				await api.updateYamlPath("author.name", "YAML forced", inlineFile);
+				await new Promise((resolve) => setTimeout(resolve, 600));
+
+				return {
+					literalCache: app.metadataCache.getFileCache(literalFile)?.frontmatter ?? {},
+					inlineContent: await app.vault.read(inlineFile),
+					inlineCache: app.metadataCache.getFileCache(inlineFile)?.frontmatter ?? {},
+					literalReadBack: await api.getPropertyValue("author.name", literalFile),
+					inlineReadBack: await api.getPropertyValue("author.name", inlineFile),
+					forcedNestedReadBack: await api.getYamlPath("author.name", inlineFile),
+				};
+			})()
+		`,
+		);
+
+		expect(result.literalCache["author.name"]).toBe("literal new");
+		expect(result.literalCache.author).toEqual({ name: "YAML Author" });
+		expect(result.literalReadBack).toBe("literal new");
+		expect(result.inlineContent).toContain("author.name:: inline new");
+		expect(result.inlineCache.author).toEqual({ name: "YAML forced" });
+		expect(result.inlineReadBack).toBe("inline new");
+		expect(result.forcedNestedReadBack).toBe("YAML forced");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("keeps missing dotted legacy addOrUpdateProperty literal but explicit path writes can create parents", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("missing-dotted.md");
+		await writeLiveFile(obsidian, notePath, "---\nstatus: draft\n---\nbody\n");
+
+		const result = await evalJsonAsync<{
+			cache: Record<string, unknown>;
+			nestedValue: unknown;
+			literalValue: unknown;
+		}>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const api = plugin?.api;
+				if (!api) throw new Error("MetaEdit API is not available.");
+				const file = app.vault.getAbstractFileByPath(${JSON.stringify(notePath)});
+
+				await api.addOrUpdateProperty("missing.path", "literal", file);
+				await api.addOrUpdateYamlPath("created.path", "nested", file);
+				await new Promise((resolve) => setTimeout(resolve, 600));
+
+				return {
+					cache: app.metadataCache.getFileCache(file)?.frontmatter ?? {},
+					nestedValue: await api.getYamlPath("created.path", file),
+					literalValue: await api.getPropertyValue("missing.path", file),
+				};
+			})()
+		`,
+		);
+
+		expect(result.cache["missing.path"]).toBe("literal");
+		expect(result.cache.missing).toBeUndefined();
+		expect(result.cache.created).toEqual({ path: "nested" });
+		expect(result.nestedValue).toBe("nested");
+		expect(result.literalValue).toBe("literal");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("rejects scalar-parent and stale array nested writes without data loss", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("nested-rejections.md");
+		await writeLiveFile(
+			obsidian,
+			notePath,
+			"---\nrating: '4'\ncontributors:\n  - name: Ada\n    role: Writer\n---\nbody\n",
+		);
+
+		const result = await evalJsonAsync<{
+			scalarError: string;
+			arrayError: string;
+			cache: Record<string, unknown>;
+			content: string;
+		}>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const api = plugin?.api;
+				if (!api) throw new Error("MetaEdit API is not available.");
+				const file = app.vault.getAbstractFileByPath(${JSON.stringify(notePath)});
+				let scalarError = "";
+				let arrayError = "";
+
+				try {
+					await api.addOrUpdateYamlPath("rating.stars", 5, file);
+				} catch (error) {
+					scalarError = error.message;
+				}
+
+				try {
+					await api.updateYamlPath("contributors[1].role", "Editor", file);
+				} catch (error) {
+					arrayError = error.message;
+				}
+
+				await new Promise((resolve) => setTimeout(resolve, 600));
+				return {
+					scalarError,
+					arrayError,
+					cache: app.metadataCache.getFileCache(file)?.frontmatter ?? {},
+					content: await app.vault.read(file),
+				};
+			})()
+		`,
+		);
+
+		expect(result.scalarError).toContain("rating");
+		expect(result.arrayError).toContain("out of range");
+		expect(result.cache.rating).toBe("4");
+		expect(result.cache.contributors).toEqual([{ name: "Ada", role: "Writer" }]);
+		expect(result.content).not.toContain("stars:");
+		expect(result.content).not.toContain("Editor");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("edits nested YAML leaf rows through the real MetaEdit suggester", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("nested-picker.md");
+		await writeLiveFile(
+			obsidian,
+			notePath,
+			[
+				"---",
+				"status: draft",
+				"attributes:",
+				"  one: something",
+				"  two: 12345",
+				"contributors:",
+				"  - name: Ada",
+				"    role: Writer",
+				"  - name: Bob",
+				"    role: Editor",
+				"---",
+				"body",
+			].join("\n"),
+		);
+
+		const menuResult = await evalJsonAsync<{
+			keys: string[];
+			nestedButtonCount: number;
+		}>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const file = app.vault.getAbstractFileByPath(${JSON.stringify(notePath)});
+				const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+				const waitFor = async (selector, predicate = () => true) => {
+					const start = Date.now();
+					while (Date.now() - start < 5000) {
+						const found = Array.from(document.querySelectorAll(selector)).find(predicate);
+						if (found) return found;
+						await sleep(80);
+					}
+					throw new Error("Timed out waiting for " + selector);
+				};
+				const itemText = (item) => {
+					const textEl = item.querySelector(".suggestion-item-text") || item;
+					return (textEl.textContent || "").trim();
+				};
+
+				await plugin.runMetaEditForFile(file);
+				await waitFor(".suggestion-item");
+				await sleep(150);
+
+				const items = Array.from(document.querySelectorAll(".suggestion-item"));
+				const keys = items.map(itemText);
+				const nestedItem = items.find((item) => itemText(item) === "attributes.one");
+				if (!nestedItem) throw new Error("Nested attributes.one row was not rendered.");
+				const nestedButtonCount = nestedItem.querySelectorAll("button").length;
+
+				app.workspace.activeModal?.close?.();
+				for (const button of Array.from(document.querySelectorAll(".modal-close-button"))) {
+					button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+				}
+				await sleep(150);
+
+				return {
+					keys,
+					nestedButtonCount,
+				};
+			})()
+		`,
+		);
+
+		const editResult = await evalJsonAsync<{
+			cache: Record<string, unknown>;
+			content: string;
+		}>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const file = app.vault.getAbstractFileByPath(${JSON.stringify(notePath)});
+				const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+				const waitFor = async (selector, predicate = () => true) => {
+					const start = Date.now();
+					while (Date.now() - start < 5000) {
+						const found = Array.from(document.querySelectorAll(selector)).find(predicate);
+						if (found) return found;
+						await sleep(80);
+					}
+					throw new Error("Timed out waiting for " + selector);
+				};
+
+				for (const button of Array.from(document.querySelectorAll(".modal-close-button"))) {
+					button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+				}
+				await sleep(100);
+
+				const props = await plugin.controller.getPropertiesInFile(file);
+				const property = props.find((prop) => prop.key === "attributes.one");
+				if (!property) throw new Error("Nested attributes.one property was not parsed.");
+				const editPromise = plugin.controller.editMetaElement(property, props, file);
+				const input = await waitFor(".metaEditPromptInput");
+				input.value = "edited";
+				input.dispatchEvent(new Event("input", { bubbles: true }));
+				input.dispatchEvent(new KeyboardEvent("keydown", {
+					key: "Enter",
+					code: "Enter",
+					keyCode: 13,
+					which: 13,
+					bubbles: true,
+					cancelable: true,
+				}));
+				await editPromise;
+				await waitFor("body", () => !document.querySelector(".metaEditPromptInput"));
+				await waitFor("body", () => {
+					const cache = app.metadataCache.getFileCache(file)?.frontmatter ?? {};
+					return cache.attributes?.one === "edited";
+				});
+
+				return {
+					cache: app.metadataCache.getFileCache(file)?.frontmatter ?? {},
+					content: await app.vault.read(file),
+				};
+			})()
+		`,
+		);
+
+		expect(menuResult.keys).toContain("attributes.one");
+		expect(menuResult.keys).toContain("attributes.two");
+		expect(menuResult.keys).toContain("contributors[1].role");
+		expect(menuResult.keys).not.toContain("attributes");
+		expect(menuResult.keys).not.toContain("contributors");
+		expect(menuResult.nestedButtonCount).toBe(0);
+		expect(editResult.cache.attributes).toEqual({ one: "edited", two: 12345 });
+		expect(editResult.content).not.toContain("attributes.one:");
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
