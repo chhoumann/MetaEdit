@@ -97,7 +97,7 @@ function buildBoardCache(content: string): {links: any[]; headings: any[]} {
   return {links, headings};
 }
 
-type NoteSpec = {path?: string; status?: string};
+type NoteSpec = {path?: string; status?: string; throws?: boolean};
 
 // Wire the mocks for an end-to-end onFileModify call against a board string and a
 // set of linked notes (keyed by basename) with their current "status" value.
@@ -124,6 +124,7 @@ function setupBoard(board: string, notes: Record<string, NoteSpec>, boardName = 
   );
   plugin.controller.getPropertiesInFile.mockImplementation(async (file: TFile) => {
     const spec = notes[file.basename];
+    if (spec?.throws) throw new Error(`malformed YAML in ${file.basename}`);
     if (!spec || spec.status === undefined) return [];
     return [{key: "status", content: spec.status, type: "YAML"}];
   });
@@ -354,6 +355,26 @@ describe("KanbanHelper updates linked file properties", () => {
     );
   });
 
+  // Issue #80, fault #1 via the throw path: a linked note with malformed YAML makes
+  // getPropertiesInFile reject; that must not abort syncing of later cards.
+  it("keeps updating later cards when an earlier card's property read throws", async () => {
+    const board = ["## Backlog", "", "- [ ] [[Bad Note]]", "- [ ] [[Good Note]]", ""].join("\n");
+    const {helper, plugin, boardFile, noteFiles, updatedFiles} = setupBoard(board, {
+      "Bad Note": {throws: true},
+      "Good Note": {status: "Done"},
+    });
+
+    await helper.onFileModify(boardFile);
+
+    expect(updatedFiles()).toEqual([{file: "Good Note", value: "Backlog"}]);
+    expect(plugin.controller.updatePropertyInFile).toHaveBeenCalledTimes(1);
+    expect(plugin.controller.updatePropertyInFile).toHaveBeenCalledWith(
+      expect.objectContaining({key: "status"}),
+      "Backlog",
+      noteFiles["Good Note"]
+    );
+  });
+
   it("does not treat a card whose text starts with prose then a link as a card link", async () => {
     const board = "## Doing\n\n- [ ] Read [[Book]] before Friday\n";
     const {helper, plugin, boardFile} = setupBoard(board, {
@@ -367,7 +388,7 @@ describe("KanbanHelper updates linked file properties", () => {
 
   it("ignores indented sub-checklist items (only top-level cards are cards)", async () => {
     const board = ["## Doing", "", "- [ ] [[Parent]]", "\t- [ ] [[Subtask]]", ""].join("\n");
-    const {helper, plugin, boardFile, updatedFiles} = setupBoard(board, {
+    const {helper, boardFile, updatedFiles} = setupBoard(board, {
       Parent: {status: "Backlog"},
       Subtask: {status: "Backlog"},
     });

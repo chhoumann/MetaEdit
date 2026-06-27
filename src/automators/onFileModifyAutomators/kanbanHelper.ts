@@ -27,7 +27,7 @@ export class KanbanHelper extends OnFileModifyAutomator {
         const targetBoard = this.findBoardByName(file.basename);
         if (!targetBoard) return;
 
-        const kanbanBoardFileCache: CachedMetadata = this.app.metadataCache.getFileCache(file);
+        const kanbanBoardFileCache: CachedMetadata | null = this.app.metadataCache.getFileCache(file);
         if (!kanbanBoardFileCache?.links) return;
 
         const kanbanBoardFileContent: string = await this.app.vault.cachedRead(file);
@@ -49,29 +49,40 @@ export class KanbanHelper extends OnFileModifyAutomator {
         laneForLine: (line: number) => string | null
     ): Promise<void> {
         for (const link of links) {
-            // Only the card's leading link is updatable; date/reference links are skipped.
-            if (!this.isCardLink(link, boardLines)) continue;
+            // Each card is processed in isolation: a bad link or a failed update of one
+            // card must never abort syncing of the rest of the board (issue #80, fault 1).
+            try {
+                // Only the card's leading link is updatable; date/reference links are skipped.
+                if (!this.isCardLink(link, boardLines)) continue;
 
-            const lane = laneForLine(link.position.start.line);
-            // A card placed above any lane heading has no lane to write.
-            if (!lane) continue;
+                const lane = laneForLine(link.position.start.line);
+                // A card placed above any lane heading has no lane to write.
+                if (!lane) continue;
 
-            const linkFile = this.resolveLinkFile(link, sourcePath);
-            if (!this.isMarkdownFile(linkFile)) {
-                // Keep processing the remaining cards (issue #80: do not abort on a bad link).
-                log.logMessage(`${link.link} is not updatable for the KanbanHelper.`);
-                continue;
+                const linkFile = this.resolveLinkFile(link, sourcePath);
+                if (!this.isMarkdownFile(linkFile)) {
+                    log.logMessage(`${link.link} is not updatable for the KanbanHelper.`);
+                    continue;
+                }
+
+                await this.updateFileInBoard(linkFile, board, lane);
+            } catch (error) {
+                // e.g. a linked note with malformed YAML makes getPropertiesInFile throw.
+                // logMessage is used (not logError, which re-throws) so one failing card
+                // is logged without aborting the rest or spamming a notice every edit.
+                const reason = error instanceof Error ? error.message : String(error);
+                log.logMessage(`KanbanHelper could not update '${link.link}': ${reason}`);
             }
-
-            await this.updateFileInBoard(linkFile, board, lane);
         }
     }
 
-    // A card link is the leading link of a top-level task line. We verify against
-    // the freshly-read board content that the cached link still sits at its
-    // recorded position, which also guards against the metadata cache lagging the
-    // board edit: on any drift the link is skipped rather than written to a wrong
-    // lane.
+    // A card link is the leading link of a top-level task line. We verify against the
+    // freshly-read board content that the cached link still sits at its recorded
+    // position with its recorded text; on a mismatch (the card moved or changed since
+    // the cache was built) the link is skipped rather than acted on with stale data.
+    // This validates the link's own identity only; it does not reconcile a lane
+    // heading that was renamed in place while the cache lagged (a transient state the
+    // 5s modify debounce makes negligible and that self-corrects on the next edit).
     private isCardLink(link: LinkCache, boardLines: string[]): boolean {
         const start = link.position?.start;
         if (!start) return false;
@@ -104,11 +115,6 @@ export class KanbanHelper extends OnFileModifyAutomator {
 
     private async updateFileInBoard(linkFile: TFile, board: KanbanProperty, lane: string): Promise<void> {
         const fileProperties: Property[] = await this.plugin.controller.getPropertiesInFile(linkFile);
-        if (!fileProperties) {
-            log.logWarning(`No properties found in '${linkFile.basename}', cannot update '${board.property}'.`);
-            return;
-        }
-
         const targetProperty = fileProperties.find(prop => prop.key === board.property);
         if (!targetProperty) {
             // Only real card notes reach this point, so the warning is now actionable.
