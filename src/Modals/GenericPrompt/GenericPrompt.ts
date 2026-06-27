@@ -3,13 +3,12 @@ import GenericPromptContent from "./GenericPromptContent.svelte"
 
 export default class GenericPrompt extends Modal {
     private modalContent: GenericPromptContent;
-    private resolvePromise: (input: string) => void;
+    private resolvePromise: (input: string | null) => void;
     private input: string;
-    public waitForClose: Promise<string>;
-    private rejectPromise: (reason?: any) => void;
+    public waitForClose: Promise<string | null>;
     private didSubmit: boolean = false;
 
-    public static Prompt(app: App, header: string, placeholder?: string, value?: string, suggestValues?: string[]): Promise<string> {
+    public static Prompt(app: App, header: string, placeholder?: string, value?: string, suggestValues?: string[]): Promise<string | null> {
         const newPromptModal = new GenericPrompt(app, header, placeholder, value, suggestValues);
         return newPromptModal.waitForClose;
     }
@@ -33,10 +32,9 @@ export default class GenericPrompt extends Modal {
             }
         });
 
-        this.waitForClose = new Promise<string>(
-            (resolve, reject) => {
+        this.waitForClose = new Promise<string | null>(
+            (resolve) => {
                 this.resolvePromise = resolve;
-                this.rejectPromise = reject;
             }
         );
 
@@ -46,17 +44,21 @@ export default class GenericPrompt extends Modal {
     onOpen() {
         super.onOpen();
 
-        const modalPrompt: HTMLElement = document.querySelector('.metaEditPrompt');
-        const modalInput: any = modalPrompt.querySelector('.metaEditPromptInput');
-        modalInput.focus();
-        modalInput.select();
+        const modalPrompt = document.querySelector('.metaEditPrompt');
+        const modalInput = modalPrompt?.querySelector('.metaEditPromptInput') as HTMLInputElement | null;
+        modalInput?.focus();
+        // select() is only meaningful (and only safe) on text inputs - calling it
+        // on a date/datetime input throws in some engines.
+        if (modalInput?.type === "text") modalInput.select();
     }
 
     onClose() {
         super.onClose();
         this.modalContent.$destroy();
 
-        if(!this.didSubmit) this.rejectPromise("No input given.");
+        // Cancelling (Escape/close without submitting) resolves to null rather than
+        // rejecting, so a normal cancel never surfaces as an unhandled rejection.
+        if (!this.didSubmit) this.resolvePromise(null);
         else this.resolvePromise(this.input);
     }
 }

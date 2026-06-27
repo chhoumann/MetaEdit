@@ -1,7 +1,7 @@
 // Sam stole all this from Liam's Periodic Notes Plugin: https://github.com/liamcain/obsidian-periodic-notes
 // And then I stole it from Sam's Buttons: https://github.com/shabegom/buttons
 
-import { type App, type ISuggestOwner, Scope, TFile, TAbstractFile } from "obsidian";
+import { type App, type ISuggestOwner, Scope } from "obsidian";
 import { createPopper, type Instance as PopperInstance } from "@popperjs/core";
 
 const wrapAround = (value: number, size: number): number => {
@@ -103,16 +103,27 @@ class Suggest<T> {
     }
 }
 
+export interface TextInputSuggestOptions {
+    /**
+     * Open the suggestion dropdown when the input gains focus. Defaults to true.
+     * Disable it for prompts that seed the input with an existing value, so a
+     * bare Enter submits that value instead of selecting a pre-highlighted
+     * suggestion.
+     */
+    openOnFocus?: boolean;
+}
+
 export abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
     protected app: App;
     protected inputEl: HTMLInputElement;
 
-    private popper: PopperInstance;
+    private popper: PopperInstance | undefined;
     private scope: Scope;
     private suggestEl: HTMLElement;
     private suggest: Suggest<T>;
+    private isOpen = false;
 
-    constructor(app: App, inputEl: HTMLInputElement) {
+    constructor(app: App, inputEl: HTMLInputElement, options?: TextInputSuggestOptions) {
         this.app = app;
         this.inputEl = inputEl;
         this.scope = new Scope();
@@ -124,7 +135,9 @@ export abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
         this.scope.register([], "Escape", this.close.bind(this));
 
         this.inputEl.addEventListener("input", this.onInputChanged.bind(this));
-        this.inputEl.addEventListener("focus", this.onInputChanged.bind(this));
+        if (options?.openOnFocus !== false) {
+            this.inputEl.addEventListener("focus", this.onInputChanged.bind(this));
+        }
         this.inputEl.addEventListener("blur", this.close.bind(this));
         this.suggestEl.on(
             "mousedown",
@@ -153,6 +166,14 @@ export abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
     }
 
     open(container: HTMLElement, inputEl: HTMLElement): void {
+        if (this.isOpen) {
+            // Already open (e.g. on every keystroke) - just reposition for the new
+            // suggestion list instead of re-pushing the scope and leaking poppers.
+            this.popper?.update();
+            return;
+        }
+        this.isOpen = true;
+
         (<any>this.app).keymap.pushScope(this.scope);
 
         container.appendChild(this.suggestEl);
@@ -182,10 +203,14 @@ export abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
     }
 
     close(): void {
+        if (!this.isOpen) return;
+        this.isOpen = false;
+
         (<any>this.app).keymap.popScope(this.scope);
 
         this.suggest.setSuggestions([]);
-        this.popper.destroy();
+        this.popper?.destroy();
+        this.popper = undefined;
         this.suggestEl.detach();
     }
 

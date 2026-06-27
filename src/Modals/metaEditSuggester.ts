@@ -6,6 +6,8 @@ import {MAIN_SUGGESTER_OPTIONS, newDataView, newYaml} from "../constants";
 import {MetaType} from "../Types/metaType";
 import {concat} from "svelte-preprocess/dist/modules/utils";
 import type {AutoProperty} from "../Types/autoProperty";
+import {getKnownPropertyNames} from "./GenericPrompt/valueSuggest";
+import {setPendingValueContext} from "./GenericPrompt/promptValueContext";
 
 export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     public app: App;
@@ -52,7 +54,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
         return concat(this.options, this.data);
     }
 
-    async onChooseItem(item: Property, evt: MouseEvent | KeyboardEvent): Promise<void> {
+    async onChooseItem(item: Property, _evt: MouseEvent | KeyboardEvent): Promise<void> {
         if (item.content === newYaml) {
             const newProperty = await this.controller.createNewProperty(this.suggestValues);
             if (!newProperty) return null;
@@ -71,7 +73,16 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
             return;
         }
 
-        await this.controller.editMetaElement(item, this.data, this.file);
+        // Hand the prompt the property it is editing so it can offer value
+        // autocomplete and a native date picker, without routing UI concerns
+        // through the controller's write/parse core. Cleared in finally so it
+        // never outlives this edit.
+        setPendingValueContext({app: this.app, key: item.key, type: item.type});
+        try {
+            await this.controller.editMetaElement(item, this.data, this.file);
+        } finally {
+            setPendingValueContext(null);
+        }
     }
 
     private deleteItem(item: FuzzyMatch<Property>) {
@@ -128,14 +139,18 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     }
 
     private setSuggestValues() {
-        const autoProps = this.plugin.settings.AutoProperties.properties;
+        const existing = new Set(this.data.map(prop => prop.key));
+        const names = new Set<string>();
 
-        this.suggestValues = autoProps.reduce((arr: string[], val: AutoProperty) => {
-            if (!this.data.find(prop => val.name === prop.key || val.name.startsWith('#'))) {
-                arr.push(val.name);
-            }
+        // Configured Auto Property names (existing behaviour).
+        for (const autoProp of this.plugin.settings.AutoProperties.properties as AutoProperty[]) {
+            if (!autoProp.name.startsWith('#')) names.add(autoProp.name);
+        }
 
-            return arr;
-        }, []);
+        // Property names already used in the vault, so the "new property" name
+        // prompt autocompletes known keys instead of free-typing them.
+        for (const name of getKnownPropertyNames(this.app)) names.add(name);
+
+        this.suggestValues = [...names].filter(name => !existing.has(name));
     }
 }
