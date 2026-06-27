@@ -39,7 +39,7 @@ export class LinkMenu {
                 this.targetFile = file;
                 this.addFileOptions(menu);
             }
-            if (file instanceof TFolder && file.children && file.children.some(f => f instanceof TFile && f.extension === "md")) {
+            if (file instanceof TFolder && this.folderHasMarkdown(file)) {
                 this.targetFolder = file;
                 this.addFolderOptions(menu);
             }
@@ -52,7 +52,7 @@ export class LinkMenu {
 
         const hasMarkdown = files.some(f =>
             (f instanceof TFile && f.extension === "md") ||
-            (f instanceof TFolder && f.children?.some(c => c instanceof TFile && c.extension === "md")));
+            (f instanceof TFolder && this.folderHasMarkdown(f)));
         if (!hasMarkdown) return;
 
         menu.addItem(item => {
@@ -62,6 +62,14 @@ export class LinkMenu {
                 await this.plugin.runBulkEditForSelection(files);
             });
         });
+    }
+
+    // The bulk flow recurses into subfolders, so the menu must appear whenever a
+    // folder contains markdown at any depth - not only as a direct child.
+    private folderHasMarkdown(folder: TFolder): boolean {
+        return folder.children?.some(child =>
+            (child instanceof TFile && child.extension === "md") ||
+            (child instanceof TFolder && this.folderHasMarkdown(child))) ?? false;
     }
 
     private addFileOptions(menu: Menu) {

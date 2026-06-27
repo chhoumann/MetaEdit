@@ -167,6 +167,55 @@ describe("MetaEdit bulk metadata edit", () => {
 		expect(result.ignoredSource).toBe(0);
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
+
+	test("offers the folder bulk item when markdown lives only in a subfolder", async () => {
+		const { obsidian, sandbox } = getContext();
+		const dir = "nested-only-folder";
+		await seed(obsidian, sandbox.path(dir), {
+			"deep/note.md": "# nested\n",
+			"side/readme.txt": "not markdown\n",
+		});
+
+		const result = await evalJsonAsync<{ nestedFolder: string[]; noMarkdown: string[] }>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const base = ${JSON.stringify(sandbox.path(dir))};
+				const makeMenu = (sink) => ({
+					addItem(cb) {
+						const item = { setIcon: () => item, setTitle: (t) => { item._t = t; return item; }, onClick: () => item };
+						cb(item);
+						sink.push(item._t);
+						return this;
+					},
+				});
+
+				// Folder whose only markdown is nested two levels down.
+				const nestedFolder = [];
+				plugin.linkMenu.onMenuOpenCallback(
+					makeMenu(nestedFolder),
+					app.vault.getAbstractFileByPath(base),
+					"file-explorer-context-menu",
+				);
+
+				// Folder containing no markdown at any depth.
+				const noMarkdown = [];
+				plugin.linkMenu.onMenuOpenCallback(
+					makeMenu(noMarkdown),
+					app.vault.getAbstractFileByPath(base + "/side"),
+					"file-explorer-context-menu",
+				);
+
+				return { nestedFolder, noMarkdown };
+			})()
+		`,
+		);
+
+		expect(result.nestedFolder).toContain("Bulk edit metadata in this folder (and subfolders)");
+		expect(result.noMarkdown).not.toContain("Bulk edit metadata in this folder (and subfolders)");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
 });
 
 // Seed a set of notes (relative paths under `baseVaultPath`) in the live vault,

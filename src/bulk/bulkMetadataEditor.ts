@@ -2,7 +2,6 @@ import { type App, type TAbstractFile, Notice, TFile, TFolder } from "obsidian";
 import type MetaEdit from "../main";
 import { EditMode } from "../Types/editMode";
 import GenericPrompt from "../Modals/GenericPrompt/GenericPrompt";
-import { log } from "../logger/logManager";
 import { BulkOptionModal } from "./BulkOptionModal";
 import {
 	type BulkOutcome,
@@ -74,7 +73,9 @@ export class BulkMetadataEditor {
 		const rawValue = await GenericPrompt.Prompt(this.app, `Value for "${key}"`, "Value").catch(
 			() => null,
 		);
-		if (rawValue === null) return;
+		// Abort on cancel or an empty value rather than writing a blank property
+		// across the whole batch, matching the prior folder command's guard.
+		if (!rawValue) return;
 
 		const conflicts = this.countExisting(files, key);
 		let policy: ConflictPolicy = "skip";
@@ -106,12 +107,15 @@ export class BulkMetadataEditor {
 			policy = choice as ConflictPolicy;
 
 			if (policy === "overwrite") {
+				// The confirmation is framed against the authoritative selection size,
+				// not the cache-derived conflict count, so the stated blast radius can
+				// never understate what the live apply will overwrite.
 				const confirm = await BulkOptionModal.Choose(this.app, {
-					title: `Overwrite "${key}" in ${conflicts} ${conflictWord}?`,
+					title: `Overwrite "${key}" across ${files.length} ${noteWord}?`,
 					description:
-						"Existing values will be replaced. Bulk edits are not undoable with Ctrl+Z.",
+						"Existing values will be replaced wherever the property is present. Bulk edits cannot be undone with Ctrl+Z.",
 					danger: true,
-					options: [{ key: "yes", label: `Overwrite ${conflicts} ${conflictWord}` }],
+					options: [{ key: "yes", label: "Overwrite" }],
 				});
 				if (confirm !== "yes") return;
 			}
@@ -136,12 +140,21 @@ export class BulkMetadataEditor {
 				const outcome = await this.applyToFile(file, key, rawValue, policy, wrapInArray);
 				recordOutcome(summary, outcome);
 			} catch (error) {
+				// Isolate the failure so one unwritable note never aborts the batch.
 				const message = error instanceof Error ? error.message : String(error);
 				summary.failed += 1;
 				summary.failures.push({ path: file.path, error: message });
-				// logWarning records without throwing, so one bad note never aborts the batch.
-				log.logWarning(`MetaEdit bulk: failed to update ${file.path}: ${message}`);
 			}
+		}
+
+		// Report failures once, as a warning, rather than per-note error Notices
+		// (LogManager.logWarning routes to logError, which would spam the UI and
+		// register as runtime errors).
+		if (summary.failures.length > 0) {
+			console.warn(
+				`MetaEdit bulk: failed to update ${summary.failures.length} note(s) for "${key}":`,
+				summary.failures,
+			);
 		}
 
 		return summary;
