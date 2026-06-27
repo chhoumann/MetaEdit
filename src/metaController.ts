@@ -9,8 +9,10 @@ import {ADD_FIRST_ELEMENT, ADD_TO_BEGINNING, ADD_TO_END} from "./constants";
 import type {ProgressProperty} from "./Types/progressProperty";
 import {ProgressPropertyOptions} from "./Types/progressPropertyOptions";
 import {MetaType} from "./Types/metaType";
-import {Notice, stringifyYaml} from "obsidian";
+import {Notice, normalizePath} from "obsidian";
 import {log} from "./logger/logManager";
+
+const fileWriteQueues: Map<string, Promise<unknown>> = new Map();
 
 export default class MetaController {
     private parser: MetaEditParser;
@@ -35,34 +37,28 @@ export default class MetaController {
         return [...tags, ...yaml, ...inlineFields];
     }
 
-    public async addYamlProp(propName: string, propValue: string, file: TFile): Promise<void> {
-        const fileContent: string = await this.app.vault.read(file);
-        const frontmatter: Property[] = await this.parser.parseFrontmatter(file);
-        const isYamlEmpty: boolean = ((!frontmatter || frontmatter.length === 0) && !fileContent.match(/^-{3}\s*\n*\r*-{3}/));
-
-        if (frontmatter.some(value => value.key === propName)) {
-            new Notice(`Frontmatter in file '${file.name}' already has property '${propName}. Will not add.'`);
-            return;
-        }
-
+    public async addYamlProp(propName: string, propValue: unknown, file: TFile): Promise<void> {
         const settings = this.plugin.settings;
         if (settings.EditMode.mode === EditMode.AllMulti ||
             (settings.EditMode.mode === EditMode.SomeMulti && settings.EditMode.properties.contains(propName))) {
-            propValue = `[${propValue}]`;
+            propValue = [propValue];
         }
 
-        const splitContent = fileContent.split("\n");
-        if (isYamlEmpty) {
-            splitContent.unshift("---");
-            splitContent.unshift(`${propName}: ${propValue}`);
-            splitContent.unshift("---");
-        }
-        else {
-            splitContent.splice(1, 0, `${propName}: ${propValue}`);
-        }
+        let propertyExists = false;
+        await this.enqueueFileWrite(file, async () => {
+            await this.processFrontMatter(file, (frontmatter) => {
+                if (Object.prototype.hasOwnProperty.call(frontmatter, propName)) {
+                    propertyExists = true;
+                    return;
+                }
 
-        const newFileContent = splitContent.join("\n");
-        await this.app.vault.modify(file, newFileContent);
+                frontmatter[propName] = propValue;
+            });
+        });
+
+        if (propertyExists) {
+            new Notice(`Frontmatter in file '${file.name}' already has property '${propName}. Will not add.'`);
+        }
     }
 
     public async addDataviewField(propName: string, propValue: string, file: TFile): Promise<void> {
@@ -99,7 +95,7 @@ export default class MetaController {
         const splitTag: string[] = property.key.split("/");
         const allButLast: string = splitTag.slice(0, splitTag.length - 1).join("/");
         const trackerPluginMethod = "Use Tracker", metaEditMethod = "Use MetaEdit", choices = [trackerPluginMethod, metaEditMethod];
-        let newValue: string;
+        let newValue: string | string[];
         let method: string = metaEditMethod;
 
         if (this.hasTrackerPlugin)
@@ -215,7 +211,7 @@ export default class MetaController {
 
     private async multiValueMode(property: Property, file: TFile): Promise<boolean> {
         const settings: MetaEditSettings = this.plugin.settings;
-        let newValue: string;
+        let newValue: string | string[];
 
 
         if (settings.EditMode.mode == EditMode.SomeMulti && !settings.EditMode.properties.includes(property.key)) {
@@ -224,18 +220,7 @@ export default class MetaController {
         }
 
         let selectedOption: string, tempValue: string, splitValues: string[];
-        let currentPropValue: string = property.content;
-
-        if (currentPropValue !== null)
-            currentPropValue = currentPropValue.toString();
-        else
-            currentPropValue = "";
-
-        if (property.type === MetaType.YAML) {
-            splitValues = currentPropValue.split('').filter(c => !c.includes("[]")).join('').split(",");
-        } else {
-            splitValues = currentPropValue.split(",").map(prop => prop.trim());
-        }
+        splitValues = this.splitMultiValue(property);
 
         if (splitValues.length == 0 || (splitValues.length == 1 && splitValues[0] == "")) {
             const options = ["Add new value"];
@@ -274,16 +259,16 @@ export default class MetaController {
                 newValue = `${[...splitValues, tempValue].join(", ")}`;
                 break;
             default:
-                if (selectedIndex)
+                if (selectedIndex !== -1)
                     splitValues[selectedIndex] = tempValue;
                 else
                     splitValues = [tempValue];
-                newValue = `${splitValues.join(", ")}`;
+                newValue = splitValues.join(", ");
                 break;
         }
 
         if (property.type === MetaType.YAML)
-            newValue = `[${newValue}]`;
+            newValue = this.splitMultiValue({...property, content: newValue});
 
         if (newValue) {
             await this.updatePropertyInFile(property, newValue, file);
@@ -304,41 +289,29 @@ export default class MetaController {
         return null;
     }
 
-    private updateYamlProperty(property: Partial<Property>, newValue: string, file: TFile): string {
-        const fileCache = this.app.metadataCache.getFileCache(file);
-        const frontMatter = fileCache.frontmatter;
-        frontMatter[property.key] = newValue;
-        return stringifyYaml(frontMatter);
-    }
+    public async updatePropertyInFile(property: Partial<Property>, newValue: unknown, file: TFile): Promise<void> {
+        if (!property.key) return;
 
-    public async updatePropertyInFile(property: Partial<Property>, newValue: string, file: TFile): Promise<void> {
-        // I'm aware this is hacky. Didn't want to spend a bunch of time rewriting old logic.
-        // This uses the new frontmatter API to update the frontmatter. Later TODO: rewrite old logic to just do this & clean.
-        if (property.type === MetaType.YAML) {
-            const updatedMetaData = `---\n${this.updateYamlProperty(property, newValue, file)}\n---`;
-            const frontmatterPosition = this.app.metadataCache.getFileCache(file).frontmatterPosition;
-            const fileContents = await this.app.vault.read(file);
-
-            const deleteFrom = frontmatterPosition.start.offset;
-            const deleteTo = frontmatterPosition.end.offset;
-
-            const newFileContents = fileContents.substring(0, deleteFrom) + updatedMetaData + fileContents.substring(deleteTo);
-
-            await this.app.vault.modify(file, newFileContents);
-            return;
-        }
-
-        const fileContent = await this.app.vault.read(file);
-
-        const newFileContent = fileContent.split("\n").map(line => {
-            if (this.lineMatch(property, line)) {
-                return this.updatePropertyLine(property, newValue, line);
+        await this.enqueueFileWrite(file, async () => {
+            if (property.type === MetaType.YAML) {
+                await this.processFrontMatter(file, (frontmatter) => {
+                    frontmatter[property.key] = newValue;
+                });
+                return;
             }
 
-            return line;
-        }).join("\n");
+            const fileContent = await this.app.vault.read(file);
 
-        await this.app.vault.modify(file, newFileContent);
+            const newFileContent = fileContent.split("\n").map(line => {
+                if (this.lineMatch(property, line)) {
+                    return this.updatePropertyLine(property, newValue, line);
+                }
+
+                return line;
+            }).join("\n");
+
+            await this.app.vault.modify(file, newFileContent);
+        });
     }
 
     private escapeSpecialCharacters(text: string): string{
@@ -346,22 +319,29 @@ export default class MetaController {
     }
 
     private lineMatch(property: Partial<Property>, line: string): boolean {
-        const propertyRegex = new RegExp(`${this.escapeSpecialCharacters(property.key)}\:{1,2}`);
+        if (!property.key) return false;
+
         const tagRegex = new RegExp(`^\s*${this.escapeSpecialCharacters(property.key)}`);
 
         if (property.key.contains('#')) {
             return tagRegex.test(line);
         }
 
+        if (property.type === MetaType.Dataview) {
+            return this.dataviewPropertyRegex(property.key).test(line);
+        }
+
+        const propertyRegex = new RegExp(`^\\s*${this.escapeSpecialCharacters(property.key)}\\s*:`);
         return propertyRegex.test(line);
     }
 
-    private updatePropertyLine(property: Partial<Property>, newValue: string, line: string) {
+    private updatePropertyLine(property: Partial<Property>, newValue: unknown, line: string) {
+        if (!property.key) return line;
+
         let newLine: string;
         switch (property.type) {
             case MetaType.Dataview:
-                const propertyRegex = new RegExp(`([\\(\\[]?)${this.escapeSpecialCharacters(property.key)}::[ ]*[^\\)\\]\n\r]*(?:\\]\])?([\\]\\)]?)`, 'g');
-                newLine = line.replace(propertyRegex, `$1${property.key}:: ${newValue}$2`);
+                newLine = line.replace(this.dataviewPropertyRegex(property.key), `$1${property.key}:: ${newValue}$4`);
                 break;
             case MetaType.YAML:
                 newLine = `${property.key}: ${newValue}`;
@@ -389,20 +369,77 @@ export default class MetaController {
     }
 
     private async updateMultipleInFile(properties: Property[], file: TFile): Promise<void> {
-        let fileContent = (await this.app.vault.read(file)).split("\n");
+        await this.enqueueFileWrite(file, async () => {
+            const yamlProperties = properties.filter(prop => prop.type === MetaType.YAML);
+            const textProperties = properties.filter(prop => prop.type !== MetaType.YAML);
 
-        for (const prop of properties) {
-            fileContent = fileContent.map(line => {
+            if (yamlProperties.length > 0) {
+                await this.processFrontMatter(file, (frontmatter) => {
+                    for (const prop of yamlProperties) {
+                        frontmatter[prop.key] = prop.content;
+                    }
+                });
+            }
 
-                if (this.lineMatch(prop, line)) {
-                    return this.updatePropertyLine(prop, prop.content, line)
-                }
+            if (textProperties.length === 0) return;
 
-                return line;
-            });
+            let fileContent = (await this.app.vault.read(file)).split("\n");
+
+            for (const prop of textProperties) {
+                fileContent = fileContent.map(line => {
+
+                    if (this.lineMatch(prop, line)) {
+                        return this.updatePropertyLine(prop, prop.content, line)
+                    }
+
+                    return line;
+                });
+            }
+            const newFileContent = fileContent.join("\n");
+
+            await this.app.vault.modify(file, newFileContent);
+        });
+    }
+
+    private dataviewPropertyRegex(propertyKey: string): RegExp {
+        return new RegExp(`(^|[\\s\\[\\(])(${this.escapeSpecialCharacters(propertyKey)})::[ ]*([^\\)\\]\\n\\r]*)(\\]\\]|[\\]\\)]?)`, "g");
+    }
+
+    private splitMultiValue(property: Partial<Property>): string[] {
+        const content = property.content;
+
+        if (Array.isArray(content)) {
+            return content.map(prop => prop?.toString().trim() ?? "").filter(Boolean);
         }
-        const newFileContent = fileContent.join("\n");
 
-        await this.app.vault.modify(file, newFileContent);
+        if (content === null || content === undefined) return [];
+
+        return content.toString()
+            .replace(/^\s*\[/, "")
+            .replace(/\]\s*$/, "")
+            .split(",")
+            .map(prop => prop.trim())
+            .filter(Boolean);
+    }
+
+    private async processFrontMatter(file: TFile, update: (frontmatter: Record<string, unknown>) => void): Promise<void> {
+        await this.app.fileManager.processFrontMatter(file, update);
+    }
+
+    private async enqueueFileWrite<T>(file: TFile, task: () => Promise<T>): Promise<T> {
+        const key = normalizePath(file.path);
+        const previous = fileWriteQueues.get(key) ?? Promise.resolve();
+        const queued = previous.catch(() => undefined).then(task);
+
+        fileWriteQueues.set(key, queued);
+
+        try {
+            return await queued;
+        }
+        finally {
+            if (fileWriteQueues.get(key) === queued) {
+                fileWriteQueues.delete(key);
+            }
+        }
     }
 }
