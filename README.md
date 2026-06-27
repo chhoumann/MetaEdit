@@ -47,6 +47,9 @@ Takes a string containing a property name. Looks for the property in user settin
 
 Returns the selected value: a `string` for a Single property, or a `string[]` for a Multi property. If nothing was selected, or the property was not found / Auto Properties are disabled, it returns `null`.
 
+For a Multi property used in a template, join the array yourself, e.g.
+`<% (await autoprop("Tags"))?.join(", ") %>`.
+
 This is an asynchronous function, so you should `await` it.
 
 ### `update(propertyName: string, propertyValue: unknown, file: TFile | string)`

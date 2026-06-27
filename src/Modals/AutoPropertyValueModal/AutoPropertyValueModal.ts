@@ -16,7 +16,9 @@ export interface AutoPropertyValueModalOptions {
  * This is deliberately its own modal (rather than the generic prompt/suggester)
  * so Auto Properties own their selection UX end to end: description display
  * (#59), pick-or-create with explicit "save as choice" (#43), multi-select
- * (#40), placeholder text and single-Enter confirm (#30).
+ * (#40), placeholder text and single-Enter confirm (#30). The small amount of
+ * filter/keyboard logic is intentionally self-contained here rather than reusing
+ * the generic suggester, whose concerns (free-text autocomplete) differ.
  */
 export default class AutoPropertyValueModal extends Modal {
     private content: AutoPropertyValueModalContent;

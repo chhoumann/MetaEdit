@@ -13,7 +13,7 @@ import {Notice, normalizePath} from "obsidian";
 import {log} from "./logger/logManager";
 import AutoPropertyValueModal from "./Modals/AutoPropertyValueModal/AutoPropertyValueModal";
 import type {AutoProperty} from "./Types/autoProperty";
-import {findAutoProperty, isMultiAutoProperty, withChoiceAdded} from "./autoProperties";
+import {findAutoProperty, isMultiAutoProperty, toValueArray, withChoiceAdded} from "./autoProperties";
 
 const fileWriteQueues: Map<string, Promise<unknown>> = new Map();
 
@@ -42,8 +42,10 @@ export default class MetaController {
 
     public async addYamlProp(propName: string, propValue: unknown, file: TFile): Promise<void> {
         const settings = this.plugin.settings;
-        if (settings.EditMode.mode === EditMode.AllMulti ||
-            (settings.EditMode.mode === EditMode.SomeMulti && settings.EditMode.properties.contains(propName))) {
+        if (!Array.isArray(propValue) &&
+            (settings.EditMode.mode === EditMode.AllMulti ||
+            (settings.EditMode.mode === EditMode.SomeMulti && settings.EditMode.properties.contains(propName)))) {
+            // A Multi auto property already produced a list; don't nest it.
             propValue = [propValue];
         }
 
@@ -121,13 +123,14 @@ export default class MetaController {
             newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`)
             this.useTrackerPlugin = true;
         } else if (method === metaEditMethod) {
-            const autoProp = await this.handleAutoProperties(allButLast);
-
-            if (autoProp)
+            if (this.getActiveAutoProperty(allButLast)) {
+                const autoProp = await this.handleAutoProperties(allButLast);
+                if (autoProp === null) return; // user cancelled the auto property prompt
                 // A tag is a single token; collapse a multi result into one string.
                 newValue = Array.isArray(autoProp) ? autoProp.join(", ") : autoProp;
-            else
+            } else {
                 newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`);
+            }
         }
 
         if (newValue) {
@@ -161,16 +164,16 @@ export default class MetaController {
         if (!propName) return null;
 
         let propValue: string | string[];
-        const autoProp = await this.handleAutoProperties(propName);
-
-        if (autoProp !== null) {
+        if (this.getActiveAutoProperty(propName)) {
+            const autoProp = await this.handleAutoProperties(propName);
+            if (autoProp === null) return null; // user cancelled the auto property prompt
             propValue = autoProp;
         } else {
-            propValue = await GenericPrompt.Prompt(this.app, "Enter a property value", "Value")
+            const entered = await GenericPrompt.Prompt(this.app, "Enter a property value", "Value")
                 .catch(() => null);
+            if (entered === null) return null;
+            propValue = entered;
         }
-
-        if (propValue === null) return null;
 
         return {propName, propValue: typeof propValue === "string" ? propValue.trim() : propValue};
     }
@@ -322,17 +325,21 @@ export default class MetaController {
     }
 
     private async persistAutoPropertyChoices(autoProp: AutoProperty, values: string[]): Promise<void> {
-        let updated = autoProp;
+        const list = this.plugin.settings.AutoProperties.properties;
+        // Prefer the exact object, but fall back to name so we still resolve if the
+        // settings tab replaced the entry while the prompt was open.
+        const idx = list.indexOf(autoProp) !== -1 ? list.indexOf(autoProp) : list.findIndex(a => a.name === autoProp.name);
+        if (idx === -1) return;
+
+        // Append to the LIVE entry's current choices so a concurrent settings-tab
+        // edit is preserved rather than overwritten with a stale snapshot.
+        let updated = list[idx];
         for (const value of values) {
             updated = withChoiceAdded(updated, value);
         }
-        if (updated === autoProp) return; // nothing new
+        if (updated === list[idx]) return; // nothing new
 
-        const list = this.plugin.settings.AutoProperties.properties;
-        const idx = list.findIndex(a => a === autoProp || a.name === autoProp.name);
-        if (idx === -1) return;
-
-        list[idx] = {...list[idx], choices: updated.choices};
+        list[idx] = updated;
         await this.plugin.saveSettings();
     }
 
@@ -453,20 +460,7 @@ export default class MetaController {
     }
 
     private splitMultiValue(property: Partial<Property>): string[] {
-        const content = property.content;
-
-        if (Array.isArray(content)) {
-            return content.map(prop => prop?.toString().trim() ?? "").filter(Boolean);
-        }
-
-        if (content === null || content === undefined) return [];
-
-        return content.toString()
-            .replace(/^\s*\[/, "")
-            .replace(/\]\s*$/, "")
-            .split(",")
-            .map(prop => prop.trim())
-            .filter(Boolean);
+        return toValueArray(property.content);
     }
 
     private async processFrontMatter(file: TFile, update: (frontmatter: Record<string, unknown>) => void): Promise<void> {

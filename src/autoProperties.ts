@@ -26,19 +26,22 @@ export function autoPropertyType(autoProp: AutoProperty): AutoPropertyType {
 }
 
 /**
- * Whether an auto property should offer multi-select. This is the UNION of two
- * independent signals, so the per-property declaration never fights the global
- * EditMode - the more permissive one wins:
- *   - the auto property is explicitly declared "Multi", or
- *   - EditMode already treats this property as multi (AllMulti, or SomeMulti and
- *     the property is in the list).
+ * Whether an auto property should offer multi-select.
+ *
+ * An explicit `type` is authoritative: "Multi" is always multi, "Single" is
+ * always single - so the per-property choice wins over the global EditMode in
+ * both directions. When `type` is absent (data from before this field existed)
+ * the property inherits the global EditMode (AllMulti, or SomeMulti and the
+ * property is in the list), preserving prior behaviour on upgrade.
  */
 export function isMultiAutoProperty(
     autoProp: AutoProperty,
     editMode: EditModeSettings,
     propertyName: string,
 ): boolean {
-    if (autoPropertyType(autoProp) === "Multi") return true;
+    if (autoProp.type === "Multi") return true;
+    if (autoProp.type === "Single") return false;
+    // No explicit type: inherit the global EditMode.
     if (editMode.mode === EditMode.AllMulti) return true;
     if (editMode.mode === EditMode.SomeMulti && editMode.properties.includes(propertyName)) {
         return true;
@@ -76,15 +79,16 @@ export function toValueArray(content: unknown): string[] {
 }
 
 /**
- * The pre-checked option list for a multi prompt: the defined choices first, then
- * any current values that are not already a choice (so editing never silently
- * drops a value the user already had).
+ * The option list for a multi prompt: the current values first, in their existing
+ * order, then the defined choices that are not already set. Current-first keeps a
+ * user's existing list order stable - newly checked choices append at the end
+ * rather than reshuffling what was already there - and never drops a value the
+ * user already had, even if it is not a defined choice.
  */
 export function multiSelectOptions(autoProp: AutoProperty, currentValue: unknown): string[] {
-    const choices = normalizeChoices(autoProp.choices);
-    const seen = new Set(choices);
-    const out = [...choices];
-    for (const value of toValueArray(currentValue)) {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const value of [...toValueArray(currentValue), ...normalizeChoices(autoProp.choices)]) {
         if (!seen.has(value)) {
             seen.add(value);
             out.push(value);

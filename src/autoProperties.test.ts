@@ -12,7 +12,7 @@ import {
 import type {AutoProperty} from "./Types/autoProperty";
 import {EditMode} from "./Types/editMode";
 
-const single: AutoProperty = {name: "status", choices: ["todo", "done"]};
+const single: AutoProperty = {name: "status", choices: ["todo", "done"], type: "Single"};
 const multi: AutoProperty = {name: "tags", choices: ["a", "b"], type: "Multi"};
 
 describe("findAutoProperty", () => {
@@ -38,20 +38,28 @@ describe("isMultiAutoProperty", () => {
 
     it("is multi when the property declares type Multi, regardless of EditMode", () => {
         expect(isMultiAutoProperty(multi, allSingle, "tags")).toBe(true);
+        expect(isMultiAutoProperty(multi, {mode: EditMode.AllSingle, properties: []}, "tags")).toBe(true);
     });
 
-    it("is single for a Single property under AllSingle", () => {
+    it("is single for an explicit Single property under AllSingle", () => {
         expect(isMultiAutoProperty(single, allSingle, "status")).toBe(false);
     });
 
-    it("is multi when EditMode is AllMulti even for a Single property", () => {
-        expect(isMultiAutoProperty(single, {mode: EditMode.AllMulti, properties: []}, "status")).toBe(true);
+    it("an explicit Single property overrides AllMulti (type is authoritative)", () => {
+        expect(isMultiAutoProperty(single, {mode: EditMode.AllMulti, properties: []}, "status")).toBe(false);
     });
 
-    it("is multi under SomeMulti only when the property is listed", () => {
+    it("a type-less property inherits the global EditMode", () => {
+        const legacy: AutoProperty = {name: "status", choices: ["todo"]};
+        expect(isMultiAutoProperty(legacy, allSingle, "status")).toBe(false);
+        expect(isMultiAutoProperty(legacy, {mode: EditMode.AllMulti, properties: []}, "status")).toBe(true);
+    });
+
+    it("a type-less property under SomeMulti is multi only when listed", () => {
+        const legacy: AutoProperty = {name: "status", choices: ["todo"]};
         const some = {mode: EditMode.SomeMulti, properties: ["status"]};
-        expect(isMultiAutoProperty(single, some, "status")).toBe(true);
-        expect(isMultiAutoProperty(single, some, "other")).toBe(false);
+        expect(isMultiAutoProperty(legacy, some, "status")).toBe(true);
+        expect(isMultiAutoProperty(legacy, some, "other")).toBe(false);
     });
 });
 
@@ -85,12 +93,16 @@ describe("toValueArray", () => {
 });
 
 describe("multiSelectOptions", () => {
-    it("lists choices first then current values not already a choice", () => {
-        expect(multiSelectOptions(multi, ["b", "custom"])).toEqual(["a", "b", "custom"]);
+    it("lists current values first (preserving order) then remaining choices", () => {
+        expect(multiSelectOptions(multi, ["b", "custom"])).toEqual(["b", "custom", "a"]);
     });
 
     it("never drops a pre-existing value that is not a defined choice", () => {
         expect(multiSelectOptions({name: "x", choices: []}, ["kept"])).toEqual(["kept"]);
+    });
+
+    it("returns the defined choices when there is no current value", () => {
+        expect(multiSelectOptions(multi, null)).toEqual(["a", "b"]);
     });
 });
 

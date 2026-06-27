@@ -45,10 +45,19 @@
         return items;
     }
 
-    function chooseSingle(item: SingleItem) {
+    async function persistChoices(values: string[]) {
+        try {
+            await onSaveChoices(values);
+        } catch (e) {
+            // The chosen value is still valid; persistence is best-effort.
+            console.error("MetaEdit: failed to save new auto property choice", e);
+        }
+    }
+
+    async function chooseSingle(item: SingleItem) {
         if (!item) return;
         if (item.kind === "save") {
-            void onSaveChoices([item.value]);
+            await persistChoices([item.value]);
         }
         onSubmit(item.value);
     }
@@ -99,7 +108,7 @@
     async function confirmMulti() {
         const result = options.filter((o) => checked.has(o));
         if (saveNew && newCheckedValues.length > 0) {
-            await onSaveChoices(newCheckedValues);
+            await persistChoices(newCheckedValues);
         }
         onSubmit(result);
     }

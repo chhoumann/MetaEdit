@@ -196,6 +196,43 @@ describe("Auto Properties value prompt", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
+	test("does not nest a Multi value into a list-of-lists under AllMulti (#40)", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		// A Multi auto property yields a string[]; addYamlProp must not wrap it
+		// again when the global EditMode is AllMulti, or it becomes [[...]].
+		const notePath = sandbox.path("ap-nested.md");
+		const result = await evalJsonAsync<{ content: string; tags: unknown }>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+				const snapshot = plugin.settings.EditMode.mode;
+				plugin.settings.EditMode.mode = "All Multi";
+				const path = ${JSON.stringify(notePath)};
+				const existing = app.vault.getAbstractFileByPath(path);
+				if (existing) await app.vault.delete(existing);
+				const file = await app.vault.create(path, "Body\\n");
+				await sleep(300);
+				try {
+					await plugin.controller.addYamlProp("tags", ["work", "urgent"], file);
+					await sleep(300);
+					const content = await app.vault.read(file);
+					const tags = app.metadataCache.getFileCache(file)?.frontmatter?.tags;
+					return { content, tags };
+				} finally {
+					plugin.settings.EditMode.mode = snapshot;
+				}
+			})()
+		`,
+		);
+
+		expect(result.tags).toEqual(["work", "urgent"]);
+		expect(result.content).not.toContain("- - ");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
 	test("treats an entry without a type as single (back-compat)", async () => {
 		const { obsidian, sandbox } = getContext();
 
