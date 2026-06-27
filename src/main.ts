@@ -1,14 +1,14 @@
-import {Plugin, TFile, TFolder} from 'obsidian';
+import {type TAbstractFile, type TFile, type TFolder, Plugin} from 'obsidian';
 import {MetaEditSettingsTab} from "./Settings/metaEditSettingsTab";
 import MetaEditSuggester from "./Modals/metaEditSuggester";
 import MetaController from "./metaController";
+import {BulkMetadataEditor} from "./bulk/bulkMetadataEditor";
 import type {MetaEditSettings} from "./Settings/metaEditSettings";
 import {DEFAULT_SETTINGS} from "./Settings/defaultSettings";
 import {LinkMenu} from "./Modals/LinkMenu";
 import type {Property} from "./parser";
 import type {IMetaEditApi} from "./IMetaEditApi";
 import {MetaEditApi} from "./MetaEditApi";
-import GenericPrompt from "./Modals/GenericPrompt/GenericPrompt";
 import {getActiveMarkdownFile} from "./utility";
 import {ConsoleErrorLogger} from "./logger/consoleErrorLogger";
 import {GuiLogger} from "./logger/guiLogger";
@@ -24,12 +24,14 @@ export default class MetaEdit extends Plugin {
     public linkMenu: LinkMenu;
     public api: IMetaEditApi;
     public controller: MetaController;
+    public bulkEditor: BulkMetadataEditor;
     private automatorManager: IAutomatorManager;
 
     async onload() {
         console.log('Loading MetaEdit');
 
         this.controller = new MetaController(this.app, this);
+        this.bulkEditor = new BulkMetadataEditor(this.app, this);
 
         await this.loadSettings();
 
@@ -124,23 +126,14 @@ export default class MetaEdit extends Plugin {
     }
 
     public async runMetaEditForFolder(targetFolder: TFolder) {
-        const pName = await GenericPrompt.Prompt(this.app, `Add a new property to all files in ${targetFolder.name} (and subfolders)`);
-        if (!pName) return;
+        const files = this.bulkEditor.collectFromFolder(targetFolder);
+        await this.bulkEditor.run(files, `${targetFolder.name} (and subfolders)`);
+    }
 
-        const pVal = await GenericPrompt.Prompt(this.app, "Enter a value");
-        if (!pVal) return;
-
-        const updateFilesInFolder = async (targetFolder: TFolder, propertyName: string, propertyValue: string) => {
-            for (const child of targetFolder.children) {
-                if (child instanceof TFile && child.extension == "md")
-                    await this.controller.addYamlProp(pName, pVal, child);
-
-                if (child instanceof TFolder)
-                    await updateFilesInFolder(child, propertyName, propertyValue);
-            }
-        }
-
-        await updateFilesInFolder(targetFolder, pName, pVal);
+    public async runBulkEditForSelection(selection: TAbstractFile[]) {
+        const files = this.bulkEditor.collectFromSelection(selection);
+        const scope = files.length === 1 ? files[0].name : `${selection.length} selected items`;
+        await this.bulkEditor.run(files, scope);
     }
 }
 
