@@ -4,7 +4,6 @@ import type MetaEdit from "./main";
 import GenericPrompt from "./Modals/GenericPrompt/GenericPrompt";
 import {EditMode} from "./Types/editMode";
 import GenericSuggester from "./Modals/GenericSuggester/GenericSuggester";
-import type {MetaEditSettings} from "./Settings/metaEditSettings";
 import {ADD_FIRST_ELEMENT, ADD_TO_BEGINNING, ADD_TO_END} from "./constants";
 import type {ProgressProperty} from "./Types/progressProperty";
 import {ProgressPropertyOptions} from "./Types/progressPropertyOptions";
@@ -14,6 +13,7 @@ import {log} from "./logger/logManager";
 import AutoPropertyValueModal from "./Modals/AutoPropertyValueModal/AutoPropertyValueModal";
 import type {AutoProperty} from "./Types/autoProperty";
 import {findAutoProperty, isMultiAutoProperty, toValueArray, withChoiceAdded} from "./autoProperties";
+import {applyMultiValueEdit, isMultiValueYamlProperty, shouldUseMultiValueEditor, type MultiValueEdit} from "./multiValue";
 
 const fileWriteQueues: Map<string, Promise<unknown>> = new Map();
 
@@ -87,8 +87,6 @@ export default class MetaController {
     }
 
     public async editMetaElement(property: Property, meta: Property[], file: TFile): Promise<void> {
-        const mode: EditMode = this.plugin.settings.EditMode.mode;
-
         if (property.type === MetaType.Tag) {
             await this.editTag(property, file);
             return;
@@ -101,7 +99,11 @@ export default class MetaController {
             return;
         }
 
-        if (mode === EditMode.AllMulti || mode === EditMode.SomeMulti)
+        // A real YAML list is inherently multi-value, so it always uses the
+        // element-aware list editor - editing it as a single text line (the
+        // `standardMode` path) would flatten the list and shred elements that
+        // contain commas or `[[wikilinks]]`.
+        if (shouldUseMultiValueEditor(property, this.plugin.settings.EditMode))
             await this.multiValueMode(property, file);
         else
             await this.standardMode(property, file);
@@ -224,70 +226,69 @@ export default class MetaController {
     }
 
     private async multiValueMode(property: Property, file: TFile): Promise<boolean> {
-        const settings: MetaEditSettings = this.plugin.settings;
-        let newValue: string | string[];
+        // A YAML list is edited element-by-element off its ORIGINAL typed array,
+        // so every element the user does not touch keeps its exact type, order,
+        // and spelling (commas and `[[wikilinks]]` included). An inline field (or
+        // a YAML value stored as a comma string) has no real array, so it is
+        // split on commas and re-joined.
+        const editsArray = isMultiValueYamlProperty(property);
+        const writeBase: unknown[] = editsArray
+            ? (property.content as unknown[])
+            : this.splitMultiValue(property);
+        // The selectable view is always strings, kept 1:1 with `writeBase` so a
+        // selection maps back to the correct element.
+        const displayValues: string[] = editsArray
+            ? writeBase.map(value => (value ?? "").toString())
+            : (writeBase as string[]);
 
-
-        if (settings.EditMode.mode == EditMode.SomeMulti && !settings.EditMode.properties.includes(property.key)) {
-            await this.standardMode(property, file);
-            return false;
-        }
-
-        let selectedOption: string, tempValue: string, splitValues: string[];
-        splitValues = this.splitMultiValue(property);
-
-        if (splitValues.length == 0 || (splitValues.length == 1 && splitValues[0] == "")) {
+        let selectedOption: string;
+        if (displayValues.length == 0 || (displayValues.length == 1 && displayValues[0] == "")) {
             const options = ["Add new value"];
             selectedOption = await GenericSuggester.Suggest(this.app, options, [ADD_FIRST_ELEMENT]);
         }
-        else if (splitValues.length == 1) {
-            const options = [splitValues[0], "Add to end", "Add to beginning"];
-            selectedOption = await GenericSuggester.Suggest(this.app, options, [splitValues[0], ADD_TO_END, ADD_TO_BEGINNING]);
+        else if (displayValues.length == 1) {
+            const options = [displayValues[0], "Add to end", "Add to beginning"];
+            selectedOption = await GenericSuggester.Suggest(this.app, options, [displayValues[0], ADD_TO_END, ADD_TO_BEGINNING]);
         } else {
-            const options = ["Add to end", ...splitValues, "Add to beginning"];
-            selectedOption = await GenericSuggester.Suggest(this.app, options, [ADD_TO_END, ...splitValues, ADD_TO_BEGINNING]);
+            const options = ["Add to end", ...displayValues, "Add to beginning"];
+            selectedOption = await GenericSuggester.Suggest(this.app, options, [ADD_TO_END, ...displayValues, ADD_TO_BEGINNING]);
         }
 
-        if (!selectedOption) return;
-        let selectedIndex;
+        if (!selectedOption) return false;
 
-        // Auto Properties are intercepted in editMetaElement; this path is free-text.
-        if (selectedOption.includes("cmd")) {
+        let tempValue: string;
+        let selectedIndex = -1;
+        // Match the add/insert sentinels EXACTLY. A substring `includes("cmd")`
+        // check would misread a real list element that merely contains "cmd"
+        // (e.g. `cmd:build`) as a command and collapse the whole list.
+        // (Auto Properties are intercepted in editMetaElement; this path is free-text.)
+        const isAddCommand =
+            selectedOption === ADD_FIRST_ELEMENT ||
+            selectedOption === ADD_TO_BEGINNING ||
+            selectedOption === ADD_TO_END;
+        if (isAddCommand) {
             tempValue = await GenericPrompt.Prompt(this.app, "Enter a new value");
         } else {
-            selectedIndex = splitValues.findIndex(el => el == selectedOption);
+            selectedIndex = displayValues.findIndex(el => el == selectedOption);
             tempValue = await GenericPrompt.Prompt(this.app, `Change ${selectedOption} to`, selectedOption);
         }
 
-        if (!tempValue) return;
-        switch(selectedOption) {
-            case ADD_FIRST_ELEMENT:
-                newValue = `${tempValue}`;
-                break;
-            case ADD_TO_BEGINNING:
-                newValue = `${[tempValue, ...splitValues].join(", ")}`;
-                break;
-            case ADD_TO_END:
-                newValue = `${[...splitValues, tempValue].join(", ")}`;
-                break;
-            default:
-                if (selectedIndex !== -1)
-                    splitValues[selectedIndex] = tempValue;
-                else
-                    splitValues = [tempValue];
-                newValue = splitValues.join(", ");
-                break;
-        }
+        if (!tempValue) return false;
 
-        if (property.type === MetaType.YAML)
-            newValue = this.splitMultiValue({...property, content: newValue});
+        const edit: MultiValueEdit =
+            selectedOption === ADD_FIRST_ELEMENT ? {kind: "addFirst", value: tempValue} :
+            selectedOption === ADD_TO_BEGINNING ? {kind: "prepend", value: tempValue} :
+            selectedOption === ADD_TO_END ? {kind: "append", value: tempValue} :
+            {kind: "replace", index: selectedIndex, value: tempValue};
 
-        if (newValue) {
-            await this.updatePropertyInFile(property, newValue, file);
-            return true;
-        }
+        const newList = applyMultiValueEdit(writeBase, edit);
 
-        return false;
+        // YAML persists a real list (round-trips as a native YAML array); an
+        // inline/tag field stores the comma-joined string per the inline convention.
+        const newValue: unknown = property.type === MetaType.YAML ? newList : newList.join(", ");
+
+        await this.updatePropertyInFile(property, newValue, file);
+        return true;
     }
 
     private getActiveAutoProperty(propertyName: string): AutoProperty | undefined {

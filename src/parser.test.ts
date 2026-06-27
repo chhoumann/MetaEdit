@@ -46,6 +46,29 @@ describe("MetaEditParser frontmatter parsing", () => {
         ]);
     });
 
+    // #94/#31: a YAML list must read back as a real array (not a joined string),
+    // so the edit/write path can keep it a native list. Exercises the position +
+    // parseYaml read path (the cache-fallback path is covered below).
+    it("reads a YAML array via the parseYaml position path as a real array", async () => {
+        const file = new TFile("tags-list.md");
+        const parser = createParser(
+            {
+                frontmatter: {tags: ["state/inprogress", "course/x"]},
+                frontmatterPosition: {
+                    start: {line: 0, col: 0, offset: 0},
+                    end: {line: 2, col: 3, offset: 0},
+                },
+            },
+            "---\ntags: [state/inprogress, course/x]\n---\nbody\n",
+        );
+
+        const props = await parser.parseFrontmatter(file);
+        expect(props).toEqual([
+            {key: "tags", content: ["state/inprogress", "course/x"], type: MetaType.YAML},
+        ]);
+        expect(Array.isArray(props[0].content)).toBe(true);
+    });
+
     it("falls back to cached frontmatter entries when no position metadata exists", async () => {
         const file = new TFile("cache-only.md");
         const parser = createParser(
