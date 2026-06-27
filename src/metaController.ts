@@ -13,6 +13,7 @@ import AutoPropertyValueModal from "./Modals/AutoPropertyValueModal/AutoProperty
 import type {AutoProperty} from "./Types/autoProperty";
 import {findAutoProperty, isMultiAutoProperty, toValueArray, withChoiceAdded} from "./autoProperties";
 import {applyMultiValueEdit, isMultiValueYamlProperty, shouldUseMultiValueEditor, type MultiValueEdit} from "./multiValue";
+import {getYamlPath, parseYamlPath, setYamlPath, YamlPathError, type SetYamlPathOptions, type YamlPathSegment} from "./yamlPath";
 
 const fileWriteQueues: Map<string, Promise<unknown>> = new Map();
 const ADD_FIRST_SELECTION = "metaedit:multi-value:add-first";
@@ -187,6 +188,11 @@ export default class MetaController {
     }
 
     public async deleteProperty(property: Property, file: TFile): Promise<void> {
+        if (property.type === MetaType.YAML && property.isNested) {
+            new Notice(`Nested YAML property '${property.key}' cannot be deleted by MetaEdit yet.`);
+            return;
+        }
+
         const fileContent = await this.app.vault.read(file);
         const splitContent = fileContent.split("\n");
         const regexp = new RegExp(`^\s*${property.key}:`);
@@ -361,7 +367,11 @@ export default class MetaController {
         await this.enqueueFileWrite(file, async () => {
             if (property.type === MetaType.YAML) {
                 await this.processFrontMatter(file, (frontmatter) => {
-                    frontmatter[property.key] = newValue;
+                    if (property.path && property.path.length > 1) {
+                        setYamlPath(frontmatter, property.path, newValue, {createParents: false});
+                    } else {
+                        frontmatter[property.key] = newValue;
+                    }
                 });
                 return;
             }
@@ -436,7 +446,7 @@ export default class MetaController {
 
     private async updateMultipleInFile(properties: Property[], file: TFile): Promise<void> {
         await this.enqueueFileWrite(file, async () => {
-            const yamlProperties = properties.filter(prop => prop.type === MetaType.YAML);
+            const yamlProperties = properties.filter(prop => prop.type === MetaType.YAML && !prop.isVirtual);
             const textProperties = properties.filter(prop => prop.type !== MetaType.YAML);
 
             if (yamlProperties.length > 0) {
@@ -473,6 +483,45 @@ export default class MetaController {
 
     private splitMultiValue(property: Partial<Property>): string[] {
         return toValueArray(property.content);
+    }
+
+    public async getYamlPath(path: string | readonly YamlPathSegment[], file: TFile): Promise<unknown> {
+        const resolvedPath = parseYamlPath(path);
+        const frontmatter = await this.parser.parseFrontmatterObject(file);
+        if (!frontmatter) return undefined;
+
+        try {
+            return getYamlPath(frontmatter, resolvedPath);
+        } catch (error) {
+            if (error instanceof YamlPathError) return undefined;
+            throw error;
+        }
+    }
+
+    public async updateYamlPath(path: string | readonly YamlPathSegment[], value: unknown, file: TFile): Promise<void> {
+        const resolvedPath = parseYamlPath(path);
+
+        await this.enqueueFileWrite(file, async () => {
+            await this.processFrontMatter(file, (frontmatter) => {
+                setYamlPath(frontmatter, resolvedPath, value, {createParents: false});
+            });
+        });
+    }
+
+    public async addOrUpdateYamlPath(
+        path: string | readonly YamlPathSegment[],
+        value: unknown,
+        file: TFile,
+        options: SetYamlPathOptions = {},
+    ): Promise<void> {
+        const resolvedPath = parseYamlPath(path);
+        const createParents = options.createParents ?? true;
+
+        await this.enqueueFileWrite(file, async () => {
+            await this.processFrontMatter(file, (frontmatter) => {
+                setYamlPath(frontmatter, resolvedPath, value, {createParents});
+            });
+        });
     }
 
     private async processFrontMatter(file: TFile, update: (frontmatter: Record<string, unknown>) => void): Promise<void> {

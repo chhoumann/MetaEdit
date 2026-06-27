@@ -30,7 +30,7 @@ export function parseYamlPath(path: string | readonly YamlPathSegment[]): YamlPa
 
 export function formatYamlPath(path: readonly YamlPathSegment[]): string {
 	const validated = validateYamlPath(path);
-	return validated.reduce((label, segment) => {
+	return validated.reduce<string>((label, segment) => {
 		if (typeof segment === "number") return `${label}[${segment}]`;
 		return label ? `${label}.${segment}` : segment;
 	}, "");
@@ -148,7 +148,6 @@ function validateYamlPath(path: readonly YamlPathSegment[]): YamlPath {
 	return path.map(segment => {
 		if (typeof segment === "string") {
 			if (!segment) throw new YamlPathError("YAML path string segments cannot be empty.");
-			if (segment.includes(".")) throw new YamlPathError(`YAML path segment '${segment}' cannot contain dots.`);
 			return segment;
 		}
 
