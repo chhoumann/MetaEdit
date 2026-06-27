@@ -1,8 +1,17 @@
 import type {App, CachedMetadata, Loc, TFile} from "obsidian";
 import {parseYaml} from "obsidian";
 import {MetaType} from "./Types/metaType";
+import {formatYamlPath, isPlainYamlObject, isYamlScalarLeaf, type YamlPath, type YamlPathSegment} from "./yamlPath";
 
-export type Property = {key: string, content: any, type: MetaType};
+export type Property = {
+	key: string,
+	content: any,
+	type: MetaType,
+	path?: YamlPath,
+	rootKey?: string,
+	isNested?: boolean,
+	isVirtual?: boolean,
+};
 export type FrontmatterPosition = {start: Loc, end: Loc};
 // `start`/`end` are the field's span in the line; `sepEnd` is the offset just
 // after `::`; `valueEnd` is where the value content ends (the closing bracket
@@ -45,16 +54,10 @@ export default class MetaEditParser {
     }
 
     public async parseFrontmatter(file: TFile): Promise<Property[]> {
-        const fileCache = this.app.metadataCache.getFileCache(file);
-        const frontmatterPosition = this.getFrontmatterPosition(fileCache);
-        const filecontent = await this.app.vault.cachedRead(file);
-        const parsedYaml = this.parseFrontmatterContent(filecontent, frontmatterPosition);
-        if (parsedYaml !== null) return this.objectToYamlProperties(parsedYaml);
-
-        const frontmatter = fileCache?.frontmatter;
+        const frontmatter = await this.parseFrontmatterObject(file);
         if (!frontmatter) return [];
 
-        return this.objectToYamlProperties(frontmatter, true);
+        return this.objectToYamlProperties(frontmatter);
     }
 
     public parseFrontmatterCache(fileCache: CachedMetadata | null | undefined): Property[] {
@@ -62,6 +65,19 @@ export default class MetaEditParser {
         if (!frontmatter) return [];
 
         return this.objectToYamlProperties(frontmatter, true);
+    }
+
+    public async parseFrontmatterObject(file: TFile): Promise<Record<string, unknown> | null> {
+        const fileCache = this.app.metadataCache.getFileCache(file);
+        const frontmatterPosition = this.getFrontmatterPosition(fileCache);
+        const filecontent = await this.app.vault.cachedRead(file);
+        const parsedYaml = this.parseFrontmatterContent(filecontent, frontmatterPosition);
+        if (this.isFrontmatterObject(parsedYaml)) return parsedYaml;
+
+        const frontmatter = fileCache?.frontmatter;
+        if (this.isFrontmatterObject(frontmatter)) return this.omitInternalFrontmatterPosition(frontmatter);
+
+        return null;
     }
 
     public getFrontmatterPosition(fileCache: CachedMetadata | null | undefined): FrontmatterPosition | null {
@@ -92,22 +108,69 @@ export default class MetaEditParser {
             typeof candidate.offset === "number";
     }
 
+    private isFrontmatterObject(value: unknown): value is Record<string, unknown> {
+        return isPlainYamlObject(value);
+    }
+
+    private omitInternalFrontmatterPosition(frontmatter: Record<string, unknown>): Record<string, unknown> {
+        if (!this.isFrontmatterPosition(frontmatter.position)) return frontmatter;
+
+        const cleaned = {...frontmatter};
+        delete cleaned.position;
+        return cleaned;
+    }
+
     private objectToYamlProperties(parsedYaml: unknown, omitInternalPosition: boolean = false): Property[] {
         // Frontmatter is only meaningful as a mapping. Malformed YAML (a bare
         // scalar, a top-level sequence, null) must not be walked with `for..in`,
         // which would surface array/string indices like `0:value` (#85).
-        if (!parsedYaml || typeof parsedYaml !== "object" || Array.isArray(parsedYaml)) return [];
+        if (!this.isFrontmatterObject(parsedYaml)) return [];
 
-        const metaYaml: Property[] = [];
+        const rootProperties: Property[] = [];
+        const nestedProperties: Property[] = [];
 
         for (const key in parsedYaml as Record<string, unknown>) {
             const value = (parsedYaml as Record<string, unknown>)[key];
             if (omitInternalPosition && key === "position" && this.isFrontmatterPosition(value)) continue;
 
-            metaYaml.push({key, content: value, type: MetaType.YAML});
+            rootProperties.push({key, content: value, type: MetaType.YAML});
+            this.collectNestedYamlProperties(value, [key], nestedProperties);
         }
 
-        return metaYaml;
+        return [...rootProperties, ...nestedProperties];
+    }
+
+    private collectNestedYamlProperties(value: unknown, path: YamlPath, properties: Property[]): void {
+        if (isYamlScalarLeaf(value)) {
+            if (path.length > 1 && !this.isRootArrayScalarItem(path)) {
+                const rootKey = String(path[0]);
+                properties.push({
+                    key: formatYamlPath(path),
+                    content: value,
+                    type: MetaType.YAML,
+                    path: [...path],
+                    rootKey,
+                    isNested: true,
+                    isVirtual: true,
+                });
+            }
+            return;
+        }
+
+        if (Array.isArray(value)) {
+            value.forEach((item, idx) => this.collectNestedYamlProperties(item, [...path, idx], properties));
+            return;
+        }
+
+        if (isPlainYamlObject(value)) {
+            for (const key in value) {
+                this.collectNestedYamlProperties(value[key], [...path, key], properties);
+            }
+        }
+    }
+
+    private isRootArrayScalarItem(path: readonly YamlPathSegment[]): boolean {
+        return path.length === 2 && typeof path[1] === "number";
     }
 
     public async parseInlineFields(file: TFile): Promise<Property[]> {
