@@ -334,7 +334,7 @@ export class MetaEditApi {
         return [
             ...this.getTagsFromCache(cache),
             ...this.parser.parseFrontmatterCache(cache),
-            ...this.parser.parseInlineContent(data, this.parser.getFrontmatterPosition(cache)),
+            ...this.parser.parseInlineContent(data),
         ];
     }
 
