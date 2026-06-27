@@ -23,6 +23,9 @@ const parseInline = (content: string): Array<{key: string, content: unknown}> =>
         .parseInlineContent(content)
         .map(({key, content: value}) => ({key, content: value}));
 
+const replaceInline = (line: string, key: string, value: string): string =>
+    new MetaEditParser({} as any).replaceInlineFieldValue(line, key, value);
+
 describe("MetaEditParser frontmatter parsing", () => {
     it("uses legacy frontmatter.position when frontmatterPosition is missing", async () => {
         const file = new TFile("legacy.md");
@@ -194,5 +197,40 @@ describe("MetaEditParser inline field parsing", () => {
         expect(parseInline("> spaced:: v")).toEqual([{key: "spaced", content: "v"}]);
         expect(parseInline(">tight:: v")).toEqual([{key: ">tight", content: "v"}]);
         expect(parseInline("-tight:: v")).toEqual([{key: "-tight", content: "v"}]);
+    });
+});
+
+describe("MetaEditParser inline value replacement", () => {
+    it("replaces a full-line value to end of line without appending a bracket (#121)", () => {
+        expect(replaceInline("ref:: [[Some Note]]", "ref", "[[Other Note]]")).toBe("ref:: [[Other Note]]");
+        expect(replaceInline("note:: foo (bar)", "note", "baz (qux)")).toBe("note:: baz (qux)");
+        expect(replaceInline("status:: open", "status", "closed")).toBe("status:: closed");
+    });
+
+    it("preserves the wrapper of a bracketed field (#67)", () => {
+        expect(replaceInline("[number:: 3]", "number", "4")).toBe("[number:: 4]");
+        expect(replaceInline("(num:: 3)", "num", "4")).toBe("(num:: 4)");
+    });
+
+    it("updates only the targeted cell of a table row", () => {
+        expect(replaceInline("| (task:: old) | (result:: None) |", "task", "DONE"))
+            .toBe("| (task:: DONE) | (result:: None) |");
+    });
+
+    it("keeps surrounding markers and trailing text intact", () => {
+        expect(replaceInline("> - bqListKey:: old", "bqListKey", "NEW")).toBe("> - bqListKey:: NEW");
+        expect(replaceInline("(ref:: old) trailing", "ref", "NEW")).toBe("(ref:: NEW) trailing");
+    });
+
+    it("treats the new value literally (no $-group injection)", () => {
+        expect(replaceInline("price:: x", "price", "$2 each")).toBe("price:: $2 each");
+    });
+
+    it("replaces every occurrence of a repeated key on the line", () => {
+        expect(replaceInline("(k:: a) (k:: b)", "k", "X")).toBe("(k:: X) (k:: X)");
+    });
+
+    it("returns the line unchanged when the key is not present", () => {
+        expect(replaceInline("foo:: bar", "other", "x")).toBe("foo:: bar");
     });
 });
