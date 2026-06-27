@@ -1,5 +1,10 @@
 import type MetaEdit from "./main";
-import type {IMetaEditApi, MetaEditPropertyValue} from "./IMetaEditApi";
+import type {
+    IMetaEditApi,
+    MetaEditMetadataChangeCallback,
+    MetaEditPropertyValue,
+    MetaEditUnsubscribe,
+} from "./IMetaEditApi";
 import type {Property} from "./parser";
 import {TFile} from "obsidian";
 import {MetaType} from "./Types/metaType";
@@ -23,6 +28,7 @@ export class MetaEditApi {
             getPropertiesInFile: this.getGetPropertiesInFile(),
             getAutoProperties: this.getGetAutoPropertiesFunction(),
             setAutoProperties: this.getSetAutoPropertiesFunction(),
+            onMetadataChange: this.getOnMetadataChangeFunction(),
         };
     }
 
@@ -155,6 +161,44 @@ export class MetaEditApi {
         }
     }
 
+    private getOnMetadataChangeFunction() {
+        return (callback: MetaEditMetadataChangeCallback): MetaEditUnsubscribe => {
+            let unsubscribed = false;
+            const previousPropertiesByPath = new Map<string, Property[]>();
+            const eventRef = this.plugin.app.metadataCache.on("changed", async (file, data, cache) => {
+                if (unsubscribed) return;
+
+                const previousProperties = previousPropertiesByPath.get(file.path) ?? null;
+                const properties = this.cloneProperties(await this.plugin.controller.getPropertiesInFile(file));
+
+                if (previousProperties && this.propertiesSignature(previousProperties) === this.propertiesSignature(properties)) {
+                    return;
+                }
+
+                previousPropertiesByPath.set(file.path, this.cloneProperties(properties));
+
+                await callback({
+                    file,
+                    data,
+                    cache,
+                    properties: this.cloneProperties(properties),
+                    previousProperties: previousProperties ? this.cloneProperties(previousProperties) : null,
+                });
+            });
+
+            const unsubscribe = () => {
+                if (unsubscribed) return;
+
+                unsubscribed = true;
+                previousPropertiesByPath.clear();
+                this.plugin.app.metadataCache.offref(eventRef);
+            };
+
+            this.plugin.register(unsubscribe);
+            return unsubscribe;
+        }
+    }
+
     private async getPropertyInFile(propertyName: string, file: TFile): Promise<Property | undefined> {
         const propsInFile: Property[] = await this.plugin.controller.getPropertiesInFile(file);
         return propsInFile.find(prop => prop.key === propertyName);
@@ -233,5 +277,40 @@ export class MetaEditApi {
         const queued = this.settingsWriteQueue.catch(() => undefined).then(task);
         this.settingsWriteQueue = queued.catch(() => undefined);
         return queued;
+    }
+
+    private cloneProperties(properties: Property[]): Property[] {
+        return properties.map(property => ({
+            key: property.key,
+            type: property.type,
+            content: this.cloneValue(property.content),
+        }));
+    }
+
+    private cloneValue(value: unknown): unknown {
+        if (value instanceof Date) {
+            return new Date(value.getTime());
+        }
+
+        if (Array.isArray(value)) {
+            return value.map(item => this.cloneValue(item));
+        }
+
+        if (value && typeof value === "object") {
+            return Object.entries(value as Record<string, unknown>).reduce((clone, [key, item]) => {
+                clone[key] = this.cloneValue(item);
+                return clone;
+            }, {} as Record<string, unknown>);
+        }
+
+        return value;
+    }
+
+    private propertiesSignature(properties: Property[]): string {
+        return JSON.stringify(properties.map(property => ({
+            key: property.key,
+            type: property.type,
+            content: property.content,
+        })));
     }
 }

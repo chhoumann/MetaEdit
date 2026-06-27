@@ -35,6 +35,7 @@ describe("MetaEdit runtime", () => {
 			"getFilesWithProperty",
 			"getPropertiesInFile",
 			"getPropertyValue",
+			"onMetadataChange",
 			"setAutoProperties",
 			"update",
 		]);
@@ -202,6 +203,78 @@ describe("MetaEdit runtime", () => {
 		expect(state.settingsAfterDuplicate).toEqual([
 			{ name: "Status", choices: ["Draft", "Done"] },
 		]);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("notifies metadata changes with parsed properties and cleans up subscriptions", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("metadata-listener.md");
+		await writeLiveFile(
+			obsidian,
+			notePath,
+			"---\nstatus: draft\n---\ninline:: one\n",
+		);
+
+		const state = await evalJsonAsync<{
+			events: {
+				status: unknown;
+				inline: unknown;
+				previousProperties: number | null;
+			}[];
+			countBeforeUnsubscribe: number;
+			countAfterUnsubscribe: number;
+		}>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const api = plugin?.api;
+				if (!api) throw new Error("MetaEdit API is not available.");
+
+				const notePath = ${JSON.stringify(notePath)};
+				const file = app.vault.getAbstractFileByPath(notePath);
+				const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+				const waitFor = async (predicate) => {
+					const started = Date.now();
+					while (Date.now() - started < 5000) {
+						if (predicate()) return;
+						await sleep(100);
+					}
+					throw new Error("Timed out waiting for metadata listener.");
+				};
+				const events = [];
+				const unsubscribe = api.onMetadataChange((change) => {
+					if (change.file.path !== notePath) return;
+
+					const status = change.properties.find((property) => property.key === "status");
+					const inline = change.properties.find((property) => property.key === "inline");
+					events.push({
+						status: status?.content,
+						inline: inline?.content,
+						previousProperties: change.previousProperties?.length ?? null,
+					});
+				});
+
+				await api.update("status", "done", notePath);
+				await waitFor(() => events.some((event) => event.status === "done" && event.inline === "one"));
+
+				const countBeforeUnsubscribe = events.length;
+				unsubscribe();
+				await api.update("status", "closed", notePath);
+				await sleep(800);
+
+				return {
+					events,
+					countBeforeUnsubscribe,
+					countAfterUnsubscribe: events.length,
+				};
+			})()
+		`,
+		);
+
+		expect(state.events.some(event => event.status === "done" && event.inline === "one")).toBe(true);
+		expect(state.countAfterUnsubscribe).toBe(state.countBeforeUnsubscribe);
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
