@@ -160,6 +160,58 @@ describe("MetaEdit runtime", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
+	// #130 follow-up: a note opening with `---` but holding malformed YAML gives
+	// Obsidian no usable frontmatter cache, so the parser's live-parse fallback is
+	// hit and `parseYaml` throws on the real runtime (the unit stub's parseYaml is
+	// permissive and cannot reproduce this). The throw must not abort the note's
+	// parse: inline `foo:: bar` and the `#mytag` tag still surface.
+	test("surfaces inline and tag metadata when frontmatter YAML is malformed", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("malformed-frontmatter.md");
+		await writeLiveFile(obsidian, notePath, "---\nstatus: : :\n---\nfoo:: bar\n#mytag\n");
+
+		const state = await evalJsonAsync<{
+			frontmatter: unknown;
+			frontmatterPosition: unknown;
+			properties: { key: string; content: unknown; type: number }[];
+		}>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const file = app.vault.getAbstractFileByPath(${JSON.stringify(notePath)});
+				// Tags come from the metadata cache, which Obsidian populates
+				// asynchronously after the file write. Wait until the tag is indexed
+				// so the assertion does not race a slow indexing pass.
+				for (let i = 0; i < 50; i++) {
+					const tags = app.metadataCache.getFileCache(file)?.tags;
+					if (tags?.some((entry) => entry.tag === "#mytag")) break;
+					await new Promise((resolve) => setTimeout(resolve, 100));
+				}
+				const cache = app.metadataCache.getFileCache(file);
+				const props = await plugin.controller.getPropertiesInFile(file);
+				return {
+					frontmatter: cache?.frontmatter ?? null,
+					frontmatterPosition: cache?.frontmatterPosition ?? cache?.frontmatter?.position ?? null,
+					properties: props.map((prop) => ({ key: prop.key, content: prop.content, type: prop.type })),
+				};
+			})()
+		`,
+		);
+
+		// Obsidian reports no usable frontmatter for the malformed block, which is
+		// exactly what routes the parser into the throwing live-parse fallback.
+		expect(state.frontmatter).toBeNull();
+		// The malformed YAML yields no frontmatter properties, but the inline field
+		// and the tag are still surfaced rather than lost to an aborted parse.
+		expect(state.properties).toEqual([
+			{ key: "#mytag", content: "#mytag", type: 2 },
+			{ key: "foo", content: "bar", type: 1 },
+		]);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
 	test("updates one numeric YAML property without changing its sibling", async () => {
 		const { obsidian, sandbox } = getContext();
 

@@ -193,7 +193,15 @@ export default class MetaEditParser {
         if (!frontmatterRange || frontmatterRange.startLine !== 0) return null;
 
         const yamlContent = lines.slice(frontmatterRange.startLine + 1, frontmatterRange.endLine).join("\n");
-        return parseYaml(yamlContent);
+        // Malformed YAML must not abort the whole note's metadata parse: treat it
+        // as non-parseable so parseFrontmatter falls back (to the cache, then to
+        // an empty result) and inline/tag parsing still runs. Mirrors the bulk
+        // preflight's BulkMetadataEditor.readLiveFrontmatter.
+        try {
+            return parseYaml(yamlContent);
+        } catch {
+            return null;
+        }
     }
 
     private parseLineFields(line: string): InlineField[] {

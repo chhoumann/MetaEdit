@@ -1,4 +1,5 @@
 import {describe, expect, it, vi} from "vitest";
+import * as obsidian from "obsidian";
 import {TFile} from "obsidian";
 import MetaEditParser from "./parser";
 import {MetaType} from "./Types/metaType";
@@ -104,6 +105,63 @@ describe("MetaEditParser frontmatter parsing", () => {
 
         const arrayFm = createParser({frontmatter: ["item1", "item2"]}, "");
         await expect(arrayFm.parseFrontmatter(new TFile("array-fm.md"))).resolves.toEqual([]);
+    });
+
+    // #130 follow-up: a note opening with `---` but holding malformed YAML gives
+    // Obsidian no usable frontmatter cache, so the live-parse path is hit. When
+    // `parseYaml` throws there, the parser must swallow it (like the bulk
+    // preflight) instead of aborting the whole note's metadata parse. The shared
+    // obsidian stub's parseYaml is permissive and never throws, so the real
+    // runtime's throw is simulated here to exercise the catch.
+    it("tolerates malformed YAML frontmatter instead of throwing", async () => {
+        const spy = vi.spyOn(obsidian, "parseYaml").mockImplementation(() => {
+            throw new Error("Nested mappings are not allowed in compact mappings");
+        });
+        try {
+            const parser = createParser(null, "---\nstatus: : :\n---\nfoo:: bar\n");
+            await expect(parser.parseFrontmatter(new TFile("malformed-fm.md"))).resolves.toEqual([]);
+            expect(spy).toHaveBeenCalled();
+        } finally {
+            spy.mockRestore();
+        }
+    });
+
+    // The catch returns null (non-parseable) rather than [] so the existing cache
+    // fallback still runs: if the live text is momentarily unparseable mid-edit
+    // but Obsidian's cache holds the prior valid frontmatter, surface that instead
+    // of dropping the metadata entirely.
+    it("falls back to cached frontmatter when the live parse throws", async () => {
+        const spy = vi.spyOn(obsidian, "parseYaml").mockImplementation(() => {
+            throw new Error("bad yaml");
+        });
+        try {
+            const parser = createParser(
+                {frontmatter: {status: "cached"}},
+                "---\nstatus: : :\n---\nfoo:: bar\n",
+            );
+            await expect(parser.parseFrontmatter(new TFile("malformed-with-cache.md"))).resolves.toEqual([
+                {key: "status", content: "cached", type: MetaType.YAML},
+            ]);
+        } finally {
+            spy.mockRestore();
+        }
+    });
+
+    // The whole point of tolerating bad frontmatter: inline metadata after it must
+    // still surface rather than being lost to the aborted parse. Inline parsing
+    // never calls parseYaml, so the permissive stub is sufficient here.
+    it("still surfaces inline fields when the frontmatter is malformed", async () => {
+        const parser = createParser(null, "---\nstatus: : :\n---\nfoo:: bar\n");
+        await expect(parser.parseInlineFields(new TFile("malformed-fm.md"))).resolves.toEqual([
+            {key: "foo", content: "bar", type: MetaType.Dataview},
+        ]);
+    });
+
+    it("still surfaces inline fields when the malformed frontmatter uses CRLF", async () => {
+        const parser = createParser(null, "---\r\nstatus: : :\r\n---\r\nfoo:: bar\r\n");
+        await expect(parser.parseInlineFields(new TFile("malformed-crlf.md"))).resolves.toEqual([
+            {key: "foo", content: "bar", type: MetaType.Dataview},
+        ]);
     });
 });
 
