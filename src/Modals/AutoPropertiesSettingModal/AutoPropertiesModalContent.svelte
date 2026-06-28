@@ -2,7 +2,7 @@
     import {untrack} from "svelte";
     import {setIcon} from "obsidian";
     import type {AutoProperty, AutoPropertyType} from "../../Types/autoProperty";
-    import {normalizeChoices, splitPastedChoices} from "../../autoProperties";
+    import {splitPastedChoices, withChoicesPasted} from "../../autoProperties";
 
     let {
         save,
@@ -63,15 +63,14 @@
     }
 
     // Paste a whole list (newline- or comma-separated) into a single value box and
-    // have it become individual choices (issue #47). A paste that is just one value
-    // falls through to the browser's default so normal single-value paste still works.
-    function pasteChoices(property: AutoProperty, event: ClipboardEvent) {
-        const text = event.clipboardData?.getData("text") ?? "";
-        const pasted = splitPastedChoices(text);
-        if (pasted.length < 2) return;
+    // have it become individual choices (issue #47). A paste that yields a single
+    // token falls through to the browser's default, so pasting one value still works.
+    function pasteChoices(property: AutoProperty, index: number, event: ClipboardEvent) {
+        const tokens = splitPastedChoices(event.clipboardData?.getData("text") ?? "");
+        if (tokens.length < 2) return;
 
         event.preventDefault();
-        property.choices = normalizeChoices([...property.choices, ...pasted]);
+        property.choices = withChoicesPasted(property.choices, index, tokens);
         saveProperties();
     }
 
@@ -133,7 +132,7 @@
                             placeholder="Value (or paste a list)"
                             bind:value={property.choices[i]}
                             onchange={saveProperties}
-                            onpaste={(e) => pasteChoices(property, e)}
+                            onpaste={(e) => pasteChoices(property, i, e)}
                         />
                         <button
                             class="clickable-icon metaedit-ap-icon"

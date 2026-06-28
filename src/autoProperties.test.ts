@@ -9,6 +9,7 @@ import {
     splitPastedChoices,
     toValueArray,
     withChoiceAdded,
+    withChoicesPasted,
 } from "./autoProperties";
 import type {AutoProperty} from "./Types/autoProperty";
 import {EditMode} from "./Types/editMode";
@@ -98,8 +99,13 @@ describe("splitPastedChoices", () => {
         ]);
     });
 
-    it("drops blank lines and de-dupes, preserving first-seen order", () => {
-        expect(splitPastedChoices("a\n\n b \na\n")).toEqual(["a", "b"]);
+    it("drops blank lines but keeps duplicates (de-duping happens at merge time)", () => {
+        expect(splitPastedChoices("a\n\n b \na\n")).toEqual(["a", "b", "a"]);
+    });
+
+    it("keeps duplicate tokens so an all-duplicate paste still reads as a list", () => {
+        expect(splitPastedChoices("a\na")).toEqual(["a", "a"]);
+        expect(splitPastedChoices("a, a")).toEqual(["a", "a"]);
     });
 
     it("yields a single token for a lone value (caller should not intercept)", () => {
@@ -111,6 +117,32 @@ describe("splitPastedChoices", () => {
         expect(splitPastedChoices("")).toEqual([]);
         expect(splitPastedChoices("   ")).toEqual([]);
         expect(splitPastedChoices("\n\n")).toEqual([]);
+    });
+});
+
+describe("withChoicesPasted", () => {
+    it("replaces the pasted (empty) row with the tokens", () => {
+        expect(withChoicesPasted(["x", ""], 1, ["a", "b"])).toEqual(["x", "a", "b"]);
+    });
+
+    it("replaces the pasted row even when it already had a value", () => {
+        expect(withChoicesPasted(["x", "y"], 0, ["a", "b"])).toEqual(["a", "b", "y"]);
+    });
+
+    it("drops tokens that duplicate a choice in another row", () => {
+        expect(withChoicesPasted(["keep", ""], 1, ["keep", "new"])).toEqual(["keep", "new"]);
+    });
+
+    it("drops duplicate tokens within the same paste, keeping first-seen order", () => {
+        expect(withChoicesPasted([""], 0, ["a", "a", "b"])).toEqual(["a", "b"]);
+    });
+
+    it("preserves untouched rows in place, including blanks elsewhere", () => {
+        expect(withChoicesPasted(["a", "", "b"], 2, ["x", "y"])).toEqual(["a", "", "x", "y"]);
+    });
+
+    it("trims tokens", () => {
+        expect(withChoicesPasted([""], 0, [" a ", "b"])).toEqual(["a", "b"]);
     });
 });
 
