@@ -8,6 +8,7 @@ type FileCache = {frontmatter?: Record<string, unknown>};
 const makeApp = (options: {
     files?: Record<string, FileCache>;
     tags?: Record<string, number>;
+    allProperties?: Record<string, {name?: string; widget?: string; occurrences?: number}>;
     assignedWidget?: (key: string) => string | null;
     typeInfo?: (key: string) => {expected?: {type?: string}} | undefined;
     noTypeManager?: boolean;
@@ -27,6 +28,7 @@ const makeApp = (options: {
             ? {}
             : {
                 metadataTypeManager: {
+                    getAllProperties: () => options.allProperties ?? {},
                     getAssignedWidget: options.assignedWidget ?? (() => null),
                     getTypeInfo: options.typeInfo ?? (() => undefined),
                 },
@@ -124,22 +126,53 @@ describe("getValueSuggestions - tags", () => {
 });
 
 describe("getKnownPropertyNames", () => {
-    it("returns the names of all properties known to Obsidian", () => {
-        const app = {
-            metadataTypeManager: {
-                getAllProperties: () => ({
-                    status: {name: "status", widget: "text", occurrences: 3},
-                    due: {name: "due", widget: "date", occurrences: 1},
-                    tags: {name: "tags", widget: "tags", occurrences: 0},
-                }),
+    it("returns curated built-ins followed by properties known to Obsidian", () => {
+        const app = makeApp({
+            allProperties: {
+                status: {name: "status", widget: "text", occurrences: 3},
+                due: {name: "due", widget: "date", occurrences: 1},
+                tags: {name: "tags", widget: "tags", occurrences: 0},
             },
-        } as never;
+        });
 
-        expect(getKnownPropertyNames(app)).toEqual(["status", "due", "tags"]);
+        expect(getKnownPropertyNames(app)).toEqual([
+            "aliases",
+            "cssclass",
+            "cssclasses",
+            "publish",
+            "tags",
+            "status",
+            "due",
+        ]);
     });
 
-    it("degrades to an empty list when the registry is unavailable", () => {
-        expect(getKnownPropertyNames({} as never)).toEqual([]);
+    it("uses registry object keys when entries do not expose a name", () => {
+        const app = makeApp({
+            allProperties: {
+                status: {widget: "text"},
+                due: {widget: "date"},
+            },
+        });
+
+        expect(getKnownPropertyNames(app)).toEqual([
+            "aliases",
+            "cssclass",
+            "cssclasses",
+            "publish",
+            "tags",
+            "status",
+            "due",
+        ]);
+    });
+
+    it("degrades to built-ins when the registry is unavailable", () => {
+        expect(getKnownPropertyNames({} as never)).toEqual([
+            "aliases",
+            "cssclass",
+            "cssclasses",
+            "publish",
+            "tags",
+        ]);
     });
 });
 
@@ -189,6 +222,18 @@ describe("getDateInputType", () => {
 
     it("falls back to inferred type when no widget is explicitly assigned", () => {
         expect(getDateInputType(dateApp(null, "date"), "due", "2026-07-01", MetaType.YAML)).toBe("date");
+    });
+
+    it("falls back to the registry widget when assignment and type info are unavailable", () => {
+        const app = makeApp({
+            allProperties: {
+                due: {name: "due", widget: "date"},
+            },
+            assignedWidget: () => null,
+            typeInfo: () => undefined,
+        });
+
+        expect(getDateInputType(app, "due", "2026-07-01", MetaType.YAML)).toBe("date");
     });
 
     it("returns 'datetime' for minute- and second-precision ISO datetime values", () => {

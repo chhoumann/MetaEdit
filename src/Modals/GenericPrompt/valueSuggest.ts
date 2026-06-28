@@ -5,6 +5,13 @@ export type DateInputType = "date" | "datetime";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/;
+const NATIVE_BUILT_IN_PROPERTY_NAMES = Object.freeze([
+    "aliases",
+    "cssclass",
+    "cssclasses",
+    "publish",
+    "tags",
+]);
 
 // Cap the rendered dropdown so a property with thousands of distinct values
 // cannot build an unbounded list. Filtering runs over the full set first, so a
@@ -86,20 +93,22 @@ export function getDateInputType(
  * can autocomplete known keys instead of free-typing them.
  */
 export function getKnownPropertyNames(app: App): string[] {
+    const names = new Set<string>();
+    for (const name of NATIVE_BUILT_IN_PROPERTY_NAMES) names.add(name);
+
     try {
-        const typeManager = (app as unknown as {
-            metadataTypeManager?: {getAllProperties?: () => Record<string, {name?: string}>};
-        }).metadataTypeManager;
+        const all = getMetadataTypeManager(app)?.getAllProperties?.();
+        if (!all) return [...names];
 
-        const all = typeManager?.getAllProperties?.();
-        if (!all) return [];
-
-        return Object.values(all)
-            .map(info => info?.name)
-            .filter((name): name is string => typeof name === "string" && name.length > 0);
+        for (const [key, info] of Object.entries(all)) {
+            addPropertyName(names, key);
+            addPropertyName(names, info?.name);
+        }
     } catch {
-        return [];
+        return [...names];
     }
+
+    return [...names];
 }
 
 /**
@@ -170,17 +179,36 @@ function rankByCount(counts: Map<string, number>): string[] {
 function readObsidianType(app: App, key: string): string | null {
     // metadataTypeManager is not in the pinned obsidian typings but is present at
     // runtime (Obsidian >= 1.4). Feature-detect and degrade to plain text.
-    const typeManager = (app as unknown as {
-        metadataTypeManager?: {
-            getAssignedWidget?: (key: string) => string | null;
-            getTypeInfo?: (key: string) => {expected?: {type?: string}} | undefined;
-        };
-    }).metadataTypeManager;
+    const typeManager = getMetadataTypeManager(app);
     if (!typeManager) return null;
 
     const assigned = typeManager.getAssignedWidget?.(key);
     if (typeof assigned === "string") return assigned;
 
+    const registered = typeManager.getAllProperties?.()?.[key]?.widget;
+    if (typeof registered === "string") return registered;
+
     const inferred = typeManager.getTypeInfo?.(key)?.expected?.type;
     return typeof inferred === "string" ? inferred : null;
+}
+
+function addPropertyName(names: Set<string>, value: unknown): void {
+    if (typeof value !== "string") return;
+
+    const trimmed = value.trim();
+    if (trimmed) names.add(trimmed);
+}
+
+function getMetadataTypeManager(app: App): {
+    getAllProperties?: () => Record<string, {name?: unknown, widget?: unknown} | undefined>;
+    getAssignedWidget?: (key: string) => string | null;
+    getTypeInfo?: (key: string) => {expected?: {type?: string}} | undefined;
+} | null {
+    return (app as unknown as {
+        metadataTypeManager?: {
+            getAllProperties?: () => Record<string, {name?: unknown, widget?: unknown} | undefined>;
+            getAssignedWidget?: (key: string) => string | null;
+            getTypeInfo?: (key: string) => {expected?: {type?: string}} | undefined;
+        };
+    }).metadataTypeManager ?? null;
 }
