@@ -1,4 +1,4 @@
-import {type App, type FuzzyMatch, FuzzySuggestModal, type TFile} from "obsidian";
+import {type App, type FuzzyMatch, FuzzySuggestModal, Notice, type TFile} from "obsidian";
 import type MetaEdit from "../main";
 import type MetaController from "../metaController";
 import type {Property} from "../parser";
@@ -139,6 +139,12 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
                 } else {
                     await this.toYaml(property);
                 }
+            } catch (error) {
+                // A transform deletes then re-adds; if the re-add fails the property
+                // is already gone, so surface it instead of letting the modal close
+                // hide the loss.
+                const reason = error instanceof Error ? error.message : String(error);
+                new Notice(`MetaEdit could not transform '${property.key}': ${reason}. It may have been removed - reopen the note to check.`);
             } finally {
                 this.close();
             }
