@@ -13,6 +13,9 @@
 export interface TagPosition {
     start: number;
     end: number;
+    // 0-based source line of the occurrence, used only to disambiguate duplicate
+    // tags in the picker.
+    line?: number;
 }
 
 /**
@@ -74,6 +77,32 @@ export function computeTagRewrite(oldTag: string, input: string, mode: TagEditMo
     return `#${normalized}`;
 }
 
+/** A Tracker token is `#tag:value` - a tag, then a `:value` suffix, no spaces. */
+export function isTrackerToken(token: string): boolean {
+    return /^#[^\s]+:[^\s]+$/.test(token);
+}
+
+/**
+ * Coerce arbitrary input into a tag token: trim, collapse leading hashes to one
+ * `#`. The result still has to pass {@link isValidTagToken}; this only guarantees
+ * a single leading `#` so a bare value from the API (`"done"`) becomes `#done`.
+ */
+export function normalizeTagToken(value: string): string {
+    const trimmed = value.trim();
+    if (trimmed === "") return "";
+    return `#${trimmed.replace(/^#+/, "")}`;
+}
+
+/**
+ * Whether `token` is a single, writable tag: one leading `#`, a non-empty body,
+ * and no whitespace, comma, or further `#` (any of which Obsidian would parse as
+ * a tag boundary, leaving stray text in the note). A Tracker `:value` suffix is
+ * allowed.
+ */
+export function isValidTagToken(token: string): boolean {
+    return /^#[^\s,#]+$/.test(token);
+}
+
 /**
  * Replace the tag occupying `position` with `newToken`, but only when the span
  * still holds the expected tag text. Returns the rewritten content, or `null`
@@ -82,7 +111,10 @@ export function computeTagRewrite(oldTag: string, input: string, mode: TagEditMo
  *
  * This is the body-tag counterpart to the inline-field splice in
  * `parser.replaceInlineFieldValue`: it rewrites one exact occurrence and leaves
- * everything else - other tags, surrounding text - byte-for-byte intact.
+ * everything else - other tags, surrounding text - byte-for-byte intact. When
+ * writing a Tracker token over a tag that already carries a `:value` suffix, the
+ * old suffix is replaced too, so re-editing a value never stacks
+ * (`#weight:80` -> `#weight:85`, not `#weight:85:80`).
  */
 export function spliceTag(
     content: string,
@@ -97,7 +129,13 @@ export function spliceTag(
     if (start < 0 || end > content.length || start >= end) return null;
     if (content.slice(start, end) !== expectedTag) return null;
 
-    return content.slice(0, start) + newToken + content.slice(end);
+    let cutEnd = end;
+    if (isTrackerToken(newToken)) {
+        const existingSuffix = content.slice(end).match(/^:[^\s]+/);
+        if (existingSuffix) cutEnd = end + existingSuffix[0].length;
+    }
+
+    return content.slice(0, start) + newToken + content.slice(cutEnd);
 }
 
 const TAG_FRONTMATTER_KEYS: ReadonlySet<string> = new Set(["tags", "tag"]);

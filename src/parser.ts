@@ -63,7 +63,7 @@ export default class MetaEditParser {
             key: tag.tag,
             content: tag.tag,
             type: MetaType.Tag,
-            position: {start: tag.position.start.offset, end: tag.position.end.offset},
+            position: {start: tag.position.start.offset, end: tag.position.end.offset, line: tag.position.start.line},
         }));
     }
 

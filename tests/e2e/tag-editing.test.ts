@@ -118,6 +118,63 @@ describe("MetaEdit tag editing", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
+	test("re-edits a Tracker #tag:value without stacking the old value", async () => {
+		const { obsidian, sandbox } = getContext();
+		const result = await editBodyTag(
+			obsidian,
+			sandbox.path("tracker.md"),
+			"#weight:80 logged today.\n",
+			"(t) => t.find((x) => x.key === '#weight')",
+			"#weight:85",
+		);
+
+		expect(result.error).toBe("");
+		// Obsidian's tag span covers only #weight; the writer replaces the trailing
+		// :80 too, instead of producing #weight:85:80.
+		expect(result.content).toBe("#weight:85 logged today.\n");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("rejects an invalid tag name (spaces) without corrupting the note", async () => {
+		const { obsidian, sandbox } = getContext();
+		const result = await editBodyTag(
+			obsidian,
+			sandbox.path("invalid.md"),
+			"#topic here.\n",
+			"(t) => t.find((x) => x.key === '#topic')",
+			"#meeting notes",
+		);
+
+		expect(result.error).toContain("not a valid tag");
+		expect(result.content).toBe("#topic here.\n");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("api.update on a body tag normalizes a bare value into a safe rename", async () => {
+		const { obsidian, sandbox } = getContext();
+		const notePath = sandbox.path("api-rename.md");
+		const content = await evalJsonAsync<string>(
+			obsidian,
+			`
+			(async () => {
+				const path = ${JSON.stringify(notePath)};
+				const body = "#status here.\\n";
+				let f = app.vault.getAbstractFileByPath(path);
+				if (f) { await app.vault.modify(f, body); } else { f = await app.vault.create(path, body); }
+				await new Promise((r) => setTimeout(r, 300));
+				await app.plugins.plugins.${PLUGIN_ID}.api.update("#status", "done", f);
+				await new Promise((r) => setTimeout(r, 200));
+				return await app.vault.read(f);
+			})()
+		`,
+		);
+
+		// "done" -> "#done" (prepended #), spliced over the tag span - not "done"
+		// dropped in as prose.
+		expect(content).toBe("#done here.\n");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
 	test("refuses to write when the tag's parsed span no longer matches the file", async () => {
 		const { obsidian, sandbox } = getContext();
 		const notePath = sandbox.path("stale.md");

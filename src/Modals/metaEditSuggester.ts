@@ -56,6 +56,12 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     }
 
     getItemText(item: Property): string {
+        // Disambiguate repeated body tags so the user can tell which occurrence
+        // they are about to edit (each row rewrites its own exact span).
+        if (item.type === MetaType.Tag && item.position?.line !== undefined &&
+            this.data.filter(d => d.type === MetaType.Tag && d.key === item.key).length > 1) {
+            return `${item.key} (line ${item.position.line + 1})`;
+        }
         return item.key;
     }
 

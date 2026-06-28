@@ -4,6 +4,9 @@ import {
     computeTagRewrite,
     isNestedTag,
     isTagsKey,
+    isTrackerToken,
+    isValidTagToken,
+    normalizeTagToken,
     splitFrontmatterTags,
     spliceTag,
     stripHash,
@@ -96,6 +99,48 @@ describe("spliceTag", () => {
         expect(spliceTag(content, {start: -1, end: 3}, "#epsilon", "#x")).toBeNull();
         expect(spliceTag(content, {start: 5, end: content.length + 10}, "#epsilon", "#x")).toBeNull();
         expect(spliceTag(content, {start: 5, end: 5}, "#epsilon", "#x")).toBeNull();
+    });
+
+    it("replaces an existing Tracker :value suffix instead of stacking it", () => {
+        const tracker = "#weight:80 logged today.";
+        // Obsidian's tag span covers only "#weight"; a Tracker re-edit must consume ":80".
+        expect(spliceTag(tracker, {start: 0, end: 7}, "#weight", "#weight:85"))
+            .toBe("#weight:85 logged today.");
+    });
+
+    it("does not consume a following :value when the new token is a plain tag", () => {
+        const tracker = "#weight:80 logged.";
+        // A plain rename keeps the existing Tracker value (renames the series).
+        expect(spliceTag(tracker, {start: 0, end: 7}, "#weight", "#mass"))
+            .toBe("#mass:80 logged.");
+    });
+});
+
+describe("tag token validation/normalization", () => {
+    it("detects Tracker tokens", () => {
+        expect(isTrackerToken("#weight:85")).toBe(true);
+        expect(isTrackerToken("#a/b:1")).toBe(true);
+        expect(isTrackerToken("#plain")).toBe(false);
+        expect(isTrackerToken("#has space:1")).toBe(false);
+    });
+
+    it("normalizes a bare value to a single-# token", () => {
+        expect(normalizeTagToken("done")).toBe("#done");
+        expect(normalizeTagToken("#done")).toBe("#done");
+        expect(normalizeTagToken("##done")).toBe("#done");
+        expect(normalizeTagToken("  done  ")).toBe("#done");
+        expect(normalizeTagToken("")).toBe("");
+    });
+
+    it("accepts valid tag tokens and rejects ones Obsidian would split", () => {
+        expect(isValidTagToken("#done")).toBe(true);
+        expect(isValidTagToken("#a/b/c")).toBe(true);
+        expect(isValidTagToken("#weight:85")).toBe(true); // Tracker
+        expect(isValidTagToken("#meeting notes")).toBe(false); // space
+        expect(isValidTagToken("#a,b")).toBe(false); // comma
+        expect(isValidTagToken("#a#b")).toBe(false); // extra #
+        expect(isValidTagToken("#")).toBe(false); // empty body
+        expect(isValidTagToken("plain")).toBe(false); // no #
     });
 });
 

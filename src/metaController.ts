@@ -14,7 +14,7 @@ import type {AutoProperty} from "./Types/autoProperty";
 import {findAutoProperty, isMultiAutoProperty, toValueArray, withChoiceAdded} from "./autoProperties";
 import {applyMultiValueEdit, isMultiValueYamlProperty, shouldUseMultiValueEditor, type MultiValueEdit} from "./multiValue";
 import {getYamlPath, isYamlParentContainerValue, parseYamlPath, setYamlPath, YamlPathError, type SetYamlPathOptions, type YamlPathSegment} from "./yamlPath";
-import {computeTagRewrite, isNestedTag, isTagsKey, splitFrontmatterTags, spliceTag, stripHash, tagLeaf, canonicalizeFrontmatterTag, type TagEditMode} from "./tagEditing";
+import {computeTagRewrite, isNestedTag, isTagsKey, isValidTagToken, normalizeTagToken, splitFrontmatterTags, spliceTag, stripHash, tagLeaf, canonicalizeFrontmatterTag, type TagEditMode} from "./tagEditing";
 import {setPendingValueContext} from "./Modals/GenericPrompt/promptValueContext";
 
 const fileWriteQueues: Map<string, Promise<unknown>> = new Map();
@@ -165,6 +165,9 @@ export default class MetaController {
             if (autoProp === null) return; // cancelled
             input = Array.isArray(autoProp) ? autoProp.join(", ") : autoProp;
         } else if (mode === "tracker") {
+            // A Tracker value is free-form data, not a tag name - clear the tag
+            // suggestion context the picker seeded so it does not autocomplete.
+            setPendingValueContext(null);
             input = await GenericPrompt.Prompt(this.app, `Enter a Tracker value for ${tag}`);
         } else {
             // Source mode-appropriate suggestions through the prompt bridge: full
@@ -178,6 +181,11 @@ export default class MetaController {
         if (input === null) return; // cancelled
         const newToken = computeTagRewrite(tag, input, mode);
         if (!newToken || newToken === tag) return; // nothing to change
+
+        if (!isValidTagToken(normalizeTagToken(newToken))) {
+            new Notice(`'${input.trim()}' is not a valid tag name. Tags cannot contain spaces or commas.`);
+            return;
+        }
 
         await this.updatePropertyFromUi(property, newToken, file);
     }
@@ -460,7 +468,15 @@ export default class MetaController {
      * unrelated text. `newValue` is the full replacement token computed by the UI.
      */
     private async writeTagOccurrence(property: Partial<Property>, newValue: unknown, file: TFile): Promise<void> {
-        const newToken = String(newValue);
+        // The UI passes a full token (`#new`, `#a/leaf`, `#tag:value`); a bare
+        // value from the API (`"done"`) is normalised to `#done`. Reject anything
+        // that is not a single valid tag rather than splice invalid text into the
+        // note (e.g. `#meeting notes`, which Obsidian would parse as `#meeting`).
+        const newToken = normalizeTagToken(String(newValue));
+        if (!isValidTagToken(newToken)) {
+            throw new Error(`'${String(newValue)}' is not a valid tag name.`);
+        }
+
         const content = await this.app.vault.read(file);
         const updated = spliceTag(content, property.position, property.key ?? "", newToken);
 
@@ -522,6 +538,30 @@ export default class MetaController {
             const tagProperties = properties.filter(prop => prop.type === MetaType.Tag);
             const textProperties = properties.filter(prop => prop.type !== MetaType.YAML && prop.type !== MetaType.Tag);
 
+            // Splice body tags FIRST, while their parsed offsets still match the
+            // file. A later processFrontMatter write only touches the frontmatter,
+            // so it preserves these body edits; doing it the other way round would
+            // shift every body offset and stale the tag spans. Highest-offset-first
+            // keeps earlier spans valid as later ones change length; a stale span
+            // is skipped, never forced, so a batch never corrupts prose.
+            if (tagProperties.length > 0) {
+                let content = await this.app.vault.read(file);
+                for (const prop of [...tagProperties].sort((a, b) => (b.position?.start ?? 0) - (a.position?.start ?? 0))) {
+                    const token = normalizeTagToken(String(prop.content));
+                    if (!isValidTagToken(token)) {
+                        log.logMessage(`MetaEdit skipped tag '${prop.key}': '${String(prop.content)}' is not a valid tag.`);
+                        continue;
+                    }
+                    const updated = spliceTag(content, prop.position, prop.key, token);
+                    if (updated === null) {
+                        log.logMessage(`MetaEdit skipped tag '${prop.key}': its position no longer matches the note.`);
+                        continue;
+                    }
+                    content = updated;
+                }
+                await this.app.vault.modify(file, content);
+            }
+
             if (yamlProperties.length > 0 || yamlPathProperties.length > 0) {
                 await this.processFrontMatter(file, (frontmatter) => {
                     for (const prop of yamlProperties) {
@@ -533,31 +573,13 @@ export default class MetaController {
                 });
             }
 
-            if (tagProperties.length === 0 && textProperties.length === 0) return;
-
-            let content = await this.app.vault.read(file);
-
-            // Splice tag occurrences highest-offset-first so earlier spans stay
-            // valid as later ones change length. A stale span is skipped, not
-            // forced, so a batch never corrupts unrelated prose.
-            for (const prop of [...tagProperties].sort((a, b) => (b.position?.start ?? 0) - (a.position?.start ?? 0))) {
-                const updated = spliceTag(content, prop.position, prop.key, String(prop.content));
-                if (updated === null) {
-                    log.logMessage(`MetaEdit skipped tag '${prop.key}': its position no longer matches the note.`);
-                    continue;
-                }
-                content = updated;
-            }
-
             if (textProperties.length > 0) {
-                let lines = content.split("\n");
+                let lines = (await this.app.vault.read(file)).split("\n");
                 for (const prop of textProperties) {
                     lines = lines.map(line => this.lineMatch(prop, line) ? this.updatePropertyLine(prop, prop.content, line) : line);
                 }
-                content = lines.join("\n");
+                await this.app.vault.modify(file, lines.join("\n"));
             }
-
-            await this.app.vault.modify(file, content);
         });
     }
 
