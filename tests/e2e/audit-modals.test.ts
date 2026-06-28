@@ -158,6 +158,43 @@ describe("MetaEdit modal + kanban flows", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
+	test("PROMPT-02: a date-typed YAML property opens a native date picker in the prompt", async () => {
+		const { obsidian, sandbox } = getContext();
+		const notePath = sandbox.path("date-prop.md");
+		const result = await evalJsonAsync<{ inputType: string; hasDateClass: boolean }>(
+			obsidian,
+			`
+			(async () => {
+				${HELPERS}
+				const itemText = (item) => ((item.querySelector(".suggestion-item-text") || item).textContent || "").trim();
+				await closeAll();
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const path = ${JSON.stringify(notePath)};
+				let f = app.vault.getAbstractFileByPath(path);
+				const body = "---\\ndue: 2026-01-01\\n---\\nbody\\n";
+				if (f) { await app.vault.modify(f, body); } else { f = await app.vault.create(path, body); }
+				await sleep(300);
+				// Assign Obsidian's "date" property type so getDateInputType returns "date".
+				app.metadataTypeManager.setType("due", "date");
+				await sleep(200);
+
+				await plugin.runMetaEditForFile(f);
+				const row = await waitFor(".suggestion-item", (i) => itemText(i).startsWith("due"));
+				row.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+				row.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+				const input = await waitFor(".metaEditPromptInput");
+				const inputType = input.getAttribute("type");
+				const hasDateClass = input.classList.contains("mod-date");
+				await closeAll();
+				return { inputType, hasDateClass };
+			})()
+		`,
+		);
+		expect(result.inputType).toBe("date");
+		expect(result.hasDateClass).toBe(true);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
 	test("KAN-02/KAN-03: configure a board mapping and display its lane headings", async () => {
 		const { obsidian, sandbox } = getContext();
 		const boardPath = sandbox.path("board.md");
