@@ -13,6 +13,7 @@ vi.mock("./BulkOptionModal", () => ({ BulkOptionModal: { Choose: vi.fn() } }));
 
 import MetaController from "../metaController";
 import { BulkMetadataEditor } from "./bulkMetadataEditor";
+import GenericPrompt from "../Modals/GenericPrompt/GenericPrompt";
 import { EditMode } from "../Types/editMode";
 
 /**
@@ -249,6 +250,24 @@ describe("BulkMetadataEditor reserved-key guard", () => {
 		).rejects.toThrow(/reserved property name/);
 
 		expect(harness.fmStarted).not.toContain(path);
+		expect(harness.files.get(path)!.content).toBe(ORIGINAL);
+	});
+
+	it("run() aborts on a reserved key before applying, so no summary can report it added", async () => {
+		// The original bug was the completion summary disagreeing with the write:
+		// "__proto__" was reported "added" though nothing landed. apply() is what
+		// produces that summary, so the interactive flow must never reach it.
+		const path = "reserved-run.md";
+		const harness = makeHarness({ [path]: ORIGINAL });
+		(GenericPrompt.Prompt as ReturnType<typeof vi.fn>).mockResolvedValueOnce("  __proto__  ");
+		const applySpy = vi.spyOn(harness.bulkEditor, "apply");
+
+		await harness.bulkEditor.run([new TFile(path)], "Folder");
+
+		// Trimmed to "__proto__", refused before the value prompt: apply (and thus
+		// any added/success summary) is never reached, and the note is untouched.
+		expect(GenericPrompt.Prompt).toHaveBeenCalledTimes(1); // key prompt only, no value prompt
+		expect(applySpy).not.toHaveBeenCalled();
 		expect(harness.files.get(path)!.content).toBe(ORIGINAL);
 	});
 
