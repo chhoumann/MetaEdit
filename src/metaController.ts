@@ -76,7 +76,7 @@ export default class MetaController {
         });
 
         if (propertyExists) {
-            new Notice(`Frontmatter in file '${file.name}' already has property '${propName}. Will not add.'`);
+            new Notice(`Frontmatter in file '${file.name}' already has property '${propName}'. Will not add.`);
         }
     }
 
