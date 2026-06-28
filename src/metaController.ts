@@ -432,22 +432,38 @@ export default class MetaController {
     }
 
     private async persistAutoPropertyChoices(autoProp: AutoProperty, values: string[]): Promise<void> {
-        const list = this.plugin.settings.AutoProperties.properties;
-        // Prefer the exact object, but fall back to name so we still resolve if the
-        // settings tab replaced the entry while the prompt was open.
-        const idx = list.indexOf(autoProp) !== -1 ? list.indexOf(autoProp) : list.findIndex(a => a.name === autoProp.name);
-        if (idx === -1) return;
+        // Serialize this read-modify-write with every other settings write (the public
+        // API's setAutoProperties, the settings tab) so two concurrent choice-adds can't
+        // lost-update each other. The mutation runs at the head of the write queue, so it
+        // re-reads the freshest list and resolves the entry there.
+        try {
+            await this.plugin.updateSettings(() => {
+                const list = this.plugin.settings.AutoProperties.properties;
+                // Prefer the exact object, but fall back to name so we still resolve if a
+                // concurrent write replaced the entry while the prompt was open.
+                const idx = list.indexOf(autoProp) !== -1 ? list.indexOf(autoProp) : list.findIndex(a => a.name === autoProp.name);
+                if (idx === -1) return false;
 
-        // Append to the LIVE entry's current choices so a concurrent settings-tab
-        // edit is preserved rather than overwritten with a stale snapshot.
-        let updated = list[idx];
-        for (const value of values) {
-            updated = withChoiceAdded(updated, value);
+                // Append to the LIVE entry's current choices so a concurrent edit is
+                // preserved rather than overwritten with a stale snapshot.
+                let updated = list[idx];
+                for (const value of values) {
+                    updated = withChoiceAdded(updated, value);
+                }
+                if (updated === list[idx]) return false; // nothing new
+
+                const previous = list[idx];
+                list[idx] = updated;
+                return () => { list[idx] = previous; }; // roll back if the save fails
+            });
+        } catch (error) {
+            // The prompt's value is still valid for the note; only the choice-list save
+            // failed. updateSettings already rolled the in-memory list back, so surface
+            // the failure rather than letting the choice silently vanish on reload.
+            const reason = error instanceof Error ? error.message : String(error);
+            new Notice(`MetaEdit could not save the Auto Property choice: ${reason}`);
+            log.logMessage(`MetaEdit could not save Auto Property choices for '${autoProp.name}': ${reason}`);
         }
-        if (updated === list[idx]) return; // nothing new
-
-        list[idx] = updated;
-        await this.plugin.saveSettings();
     }
 
     public async updatePropertyInFile(property: Partial<Property>, newValue: unknown, file: TFile): Promise<void> {

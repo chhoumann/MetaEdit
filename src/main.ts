@@ -15,6 +15,7 @@ import {GuiLogger} from "./logger/guiLogger";
 import {log} from "./logger/logManager";
 import {OnFileModifyAutomatorManager} from "./automators/onFileModifyAutomatorManager";
 import type {IAutomatorManager} from "./automators/IAutomatorManager";
+import {SettingsWriter, type SettingsMutationResult} from "./settingsWrites";
 import {KanbanHelper} from "./automators/onFileModifyAutomators/kanbanHelper";
 import {ProgressPropertyHelper} from "./automators/onFileModifyAutomators/progressPropertyHelper";
 import {OnModifyAutomatorType} from "./automators/onFileModifyAutomators/onModifyAutomatorType";
@@ -26,6 +27,11 @@ export default class MetaEdit extends Plugin {
     public controller: MetaController;
     public bulkEditor: BulkMetadataEditor;
     private automatorManager: IAutomatorManager;
+    // Every settings write - the settings tab, the API, and the controller's Auto
+    // Property choice persistence - runs through this one serialization point, so two
+    // concurrent writers can't lost-update a shared in-memory snapshot and two disk
+    // flushes can't complete out of order.
+    private readonly settingsWriter = new SettingsWriter(() => this.saveData(this.settings));
 
     async onload() {
         console.log('Loading MetaEdit');
@@ -110,7 +116,22 @@ export default class MetaEdit extends Plugin {
     }
 
     async saveSettings() {
-        await this.saveData(this.settings);
+        await this.settingsWriter.save();
+    }
+
+    /**
+     * Atomically read-modify-write the settings, serialized with every other settings
+     * write. `mutate` runs at the head of the write queue - so it re-reads the freshest
+     * `this.settings` and no other writer can interleave between its read and the save -
+     * and applies its change in place. It returns a rollback to undo the in-memory
+     * change if the disk write fails, or `false` to skip the write when nothing changed.
+     *
+     * Use this for any read-modify-write of shared settings (e.g. appending an Auto
+     * Property choice) instead of mutating `settings` and calling `saveSettings()`
+     * separately, which would race a concurrent writer.
+     */
+    public updateSettings(mutate: () => SettingsMutationResult): Promise<void> {
+        return this.settingsWriter.update(mutate);
     }
 
     public getFilesWithProperty(property: string): TFile[] {

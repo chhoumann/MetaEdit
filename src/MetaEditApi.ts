@@ -15,7 +15,6 @@ import {MetaType} from "./Types/metaType";
 import type {AutoProperty} from "./Types/autoProperty";
 
 export class MetaEditApi {
-    private settingsWriteQueue: Promise<unknown> = Promise.resolve();
     private parser: MetaEditParser;
 
     constructor(private plugin: MetaEdit) {
@@ -184,19 +183,17 @@ export class MetaEditApi {
 
     private getSetAutoPropertiesFunction() {
         return async (autoProperties: AutoProperty[]): Promise<void> => {
-            await this.enqueueSettingsWrite(async () => {
+            // Share the plugin's single settings write queue, so a full-list replace
+            // here serializes with the controller's per-choice persistence instead of
+            // racing it. Validation runs inside the critical section so a reject leaves
+            // the live settings untouched.
+            await this.plugin.updateSettings(() => {
                 const nextAutoProperties = this.validateAutoProperties(autoProperties);
-                const previousAutoProperties = this.cloneAutoProperties(this.plugin.settings.AutoProperties.properties);
+                const previousAutoProperties = this.plugin.settings.AutoProperties.properties;
 
                 this.plugin.settings.AutoProperties.properties = nextAutoProperties;
 
-                try {
-                    await this.plugin.saveSettings();
-                }
-                catch (error) {
-                    this.plugin.settings.AutoProperties.properties = previousAutoProperties;
-                    throw error;
-                }
+                return () => { this.plugin.settings.AutoProperties.properties = previousAutoProperties; };
             });
         }
     }
@@ -326,12 +323,6 @@ export class MetaEditApi {
             if (autoProperty.type !== undefined) validated.type = autoProperty.type;
             return validated;
         });
-    }
-
-    private enqueueSettingsWrite<T>(task: () => Promise<T>): Promise<T> {
-        const queued = this.settingsWriteQueue.catch(() => undefined).then(task);
-        this.settingsWriteQueue = queued.catch(() => undefined);
-        return queued;
     }
 
     private cloneProperties(properties: Property[]): Property[] {
