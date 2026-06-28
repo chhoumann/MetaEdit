@@ -10,6 +10,7 @@ import {
 	decideBulkWrite,
 	emptySummary,
 	formatSummary,
+	isReservedFrontmatterKey,
 	recordOutcome,
 } from "./bulkMetadata";
 
@@ -76,6 +77,15 @@ export class BulkMetadataEditor {
 		)?.trim();
 		if (!key) return;
 
+		// Refuse reserved object-machinery keys up front: writing them via the
+		// dynamic `frontmatter[key] = value` below would silently drop the change
+		// (or mutate the prototype) while the summary still claimed success. Abort
+		// with a clear Notice rather than prompting for a value we can never write.
+		if (isReservedFrontmatterKey(key)) {
+			new Notice(`MetaEdit: "${key}" is a reserved property name and can't be used.`);
+			return;
+		}
+
 		const rawValue = await GenericPrompt.Prompt(this.app, `Value for "${key}"`, "Value").catch(
 			() => null,
 		);
@@ -139,6 +149,12 @@ export class BulkMetadataEditor {
 		rawValue: string,
 		policy: ConflictPolicy,
 	): Promise<BulkSummary> {
+		// Reject a reserved key once for the whole batch, before any note is
+		// touched, so the result never disagrees with what was written. Doing this
+		// here (rather than letting each note fail individually) keeps one invalid
+		// argument from masquerading as N independent per-note write failures.
+		this.assertWritableKey(key);
+
 		const wrapInArray = this.wrapInArrayFor(key);
 		const summary = emptySummary(files.length);
 
@@ -174,6 +190,13 @@ export class BulkMetadataEditor {
 		policy: ConflictPolicy,
 		wrapInArray: boolean,
 	): Promise<BulkOutcome> {
+		// Defense in depth at the write boundary: `apply` already rejects reserved
+		// keys before the loop, but `applyToFile` is reachable on its own (TS
+		// `private` is not runtime-private and `plugin.bulkEditor` is public), so
+		// fail closed here too rather than letting a reserved key reach the
+		// `frontmatter[key] = ...` assignment below.
+		this.assertWritableKey(key);
+
 		let outcome: BulkOutcome = "skipped";
 
 		// Serialize through the controller's per-file write queue so this write is
@@ -245,6 +268,18 @@ export class BulkMetadataEditor {
 		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
 
 		return parsed as Record<string, unknown>;
+	}
+
+	/**
+	 * Throw if `key` is a reserved object-machinery name that cannot be written as
+	 * a frontmatter property (see `isReservedFrontmatterKey`). Centralizes the
+	 * refusal so the public `apply` boundary and the `applyToFile` write boundary
+	 * reject identically.
+	 */
+	private assertWritableKey(key: string): void {
+		if (isReservedFrontmatterKey(key)) {
+			throw new Error(`"${key}" is a reserved property name and cannot be written to frontmatter.`);
+		}
 	}
 
 	private wrapInArrayFor(key: string): boolean {

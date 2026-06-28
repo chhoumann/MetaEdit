@@ -202,3 +202,64 @@ describe("BulkMetadataEditor serialization through the controller write queue", 
 		expect(harness.files.get(path)!.content).toContain("reviewed:: yes");
 	});
 });
+
+/**
+ * Proves the deepsec finding `other-proto-key-unguarded`: a reserved
+ * object-machinery key (`__proto__`/`constructor`/`prototype`) is refused rather
+ * than silently dropped (or prototype-mutated) while the summary claims it was
+ * added. The bulk write must never report success/added for such a key, and the
+ * note must be left byte-for-byte untouched.
+ */
+describe("BulkMetadataEditor reserved-key guard", () => {
+	const RESERVED = ["__proto__", "constructor", "prototype"];
+	const ORIGINAL = "---\ntitle: Note\n---\nbody\n";
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("rejects a reserved key at the public apply() boundary without touching any note", async () => {
+		for (const key of RESERVED) {
+			const path = `reserved-apply-${key}.md`;
+			const harness = makeHarness({ [path]: ORIGINAL });
+			const file = new TFile(path);
+
+			// apply() refuses the whole batch once - it rejects rather than returning
+			// a summary that overstates the refusal as N per-note write failures.
+			await expect(harness.bulkEditor.apply([file], key, "draft", "skip")).rejects.toThrow(
+				/reserved property name/,
+			);
+
+			// processFrontMatter was never invoked and the note is byte-for-byte intact.
+			expect(harness.fmStarted).not.toContain(path);
+			expect(harness.files.get(path)!.content).toBe(ORIGINAL);
+		}
+	});
+
+	it("fails closed at the applyToFile write boundary when called directly (bypassing apply)", async () => {
+		// TS `private` is not runtime-private and `plugin.bulkEditor` is public, so
+		// applyToFile is reachable on its own. The write-boundary guard must still
+		// keep "__proto__" from reaching `frontmatter[key] = ...`.
+		const path = "reserved-applyToFile.md";
+		const harness = makeHarness({ [path]: ORIGINAL });
+		const file = new TFile(path);
+
+		await expect(
+			(harness.bulkEditor as any).applyToFile(file, "__proto__", "draft", "skip", false),
+		).rejects.toThrow(/reserved property name/);
+
+		expect(harness.fmStarted).not.toContain(path);
+		expect(harness.files.get(path)!.content).toBe(ORIGINAL);
+	});
+
+	it("still writes an ordinary key normally", async () => {
+		const path = "reserved-normal-key.md";
+		const harness = makeHarness({ [path]: ORIGINAL });
+
+		const summary = await harness.bulkEditor.apply([new TFile(path)], "status", "draft", "skip");
+
+		expect(summary.added).toBe(1);
+		expect(summary.failed).toBe(0);
+		expect(harness.files.get(path)!.content).toContain("status: draft");
+	});
+});
