@@ -1,11 +1,18 @@
 <script lang="ts">
+    import {untrack} from "svelte";
     import {setIcon} from "obsidian";
     import type {AutoProperty, AutoPropertyType} from "../../Types/autoProperty";
 
-    export let save: (autoProperties: AutoProperty[]) => void;
-    export let autoProperties: AutoProperty[] = [];
+    let {
+        save,
+        autoProperties: initialAutoProperties = [],
+    }: {
+        save: (autoProperties: AutoProperty[]) => void;
+        autoProperties?: AutoProperty[];
+    } = $props();
 
     const types: AutoPropertyType[] = ["Single", "Multi"];
+    let autoProperties = $state<AutoProperty[]>(untrack(() => cloneAutoProperties(initialAutoProperties)));
 
     // Svelte action: render a lucide icon into an element via Obsidian's setIcon.
     function icon(node: HTMLElement, name: string) {
@@ -17,46 +24,57 @@
         return {update: render};
     }
 
-    function asList(): AutoProperty[] {
-        return Array.isArray(autoProperties) ? autoProperties : [];
+    function cloneAutoProperties(properties: AutoProperty[]): AutoProperty[] {
+        if (!Array.isArray(properties)) return [];
+
+        return properties.map(property => ({
+            ...property,
+            choices: Array.isArray(property.choices) ? [...property.choices] : [],
+        }));
+    }
+
+    function indexes<T>(values: T[]): number[] {
+        return values.map((_, i) => i);
+    }
+
+    function saveProperties() {
+        save($state.snapshot(autoProperties) as AutoProperty[]);
     }
 
     function addNewProperty() {
-        autoProperties = [...asList(), {name: "", choices: [""], type: "Single"}];
-        save(autoProperties);
+        autoProperties = [...autoProperties, {name: "", choices: [""], type: "Single"}];
+        saveProperties();
     }
 
     function removeProperty(property: AutoProperty) {
-        autoProperties = asList().filter(ac => ac !== property);
-        save(autoProperties);
+        autoProperties = autoProperties.filter(ac => ac !== property);
+        saveProperties();
     }
 
     function removeChoice(property: AutoProperty, i: number) {
-        property.choices.splice(i, 1);
-        autoProperties = autoProperties; // notify Svelte
-        save(autoProperties);
+        property.choices = property.choices.filter((_, index) => index !== i);
+        saveProperties();
     }
 
     function addChoice(property: AutoProperty) {
         property.choices = [...property.choices, ""];
-        autoProperties = autoProperties; // notify Svelte
-        save(autoProperties);
+        saveProperties();
     }
 
     function setType(property: AutoProperty, value: string) {
         property.type = value as AutoPropertyType;
-        save(autoProperties);
+        saveProperties();
     }
 </script>
 
 <div class="metaedit-auto-properties">
-    {#if asList().length === 0}
+    {#if autoProperties.length === 0}
         <p class="metaedit-empty">
             No auto properties yet. Add one to define a reusable set of values for a property.
         </p>
     {/if}
 
-    {#each asList() as property (property)}
+    {#each autoProperties as property (property)}
         <div class="metaedit-ap-card">
             <div class="metaedit-ap-header">
                 <input
@@ -64,11 +82,11 @@
                     type="text"
                     placeholder="Property name"
                     bind:value={property.name}
-                    on:change={() => save(autoProperties)}
+                    onchange={saveProperties}
                 />
                 <select
                     class="dropdown metaedit-ap-type"
-                    on:change={(e) => setType(property, e.currentTarget.value)}
+                    onchange={(e) => setType(property, e.currentTarget.value)}
                     aria-label="How many values this property holds"
                 >
                     {#each types as t (t)}
@@ -78,7 +96,7 @@
                 <button
                     class="clickable-icon metaedit-ap-icon"
                     aria-label="Remove this auto property"
-                    on:click={() => removeProperty(property)}
+                    onclick={() => removeProperty(property)}
                 >
                     <span use:icon={"trash-2"}></span>
                 </button>
@@ -89,29 +107,29 @@
                 type="text"
                 placeholder="Description (shown when you pick a value) - optional"
                 bind:value={property.description}
-                on:change={() => save(autoProperties)}
+                onchange={saveProperties}
             />
 
             <div class="metaedit-ap-values">
                 <span class="metaedit-ap-label">Values</span>
-                {#each property.choices as choice, i (i)}
+                {#each indexes(property.choices) as i (i)}
                     <div class="metaedit-ap-choice">
                         <input
                             type="text"
                             placeholder="Value"
-                            bind:value={choice}
-                            on:change={() => save(autoProperties)}
+                            bind:value={property.choices[i]}
+                            onchange={saveProperties}
                         />
                         <button
                             class="clickable-icon metaedit-ap-icon"
                             aria-label="Remove value"
-                            on:click={() => removeChoice(property, i)}
+                            onclick={() => removeChoice(property, i)}
                         >
                             <span use:icon={"x"}></span>
                         </button>
                     </div>
                 {/each}
-                <button class="metaedit-ap-add-value" on:click={() => addChoice(property)}>
+                <button class="metaedit-ap-add-value" onclick={() => addChoice(property)}>
                     <span use:icon={"plus"}></span>
                     Add value
                 </button>
@@ -120,7 +138,7 @@
     {/each}
 
     <div class="metaedit-ap-footer">
-        <button on:click={addNewProperty} class="mod-cta">Add auto property</button>
+        <button onclick={addNewProperty} class="mod-cta">Add auto property</button>
     </div>
 </div>
 
