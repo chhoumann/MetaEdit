@@ -1,0 +1,795 @@
+{
+	"meta": {
+		"description": "Live test/fix/retest status per canonical story id. Source of truth for status; AUDIT_TRACKER.md is generated from this + canonical-stories.json.",
+		"statusValues": {
+			"test": [
+				"Not started",
+				"Testing",
+				"Pass",
+				"Fail",
+				"Blocked",
+				"N/A"
+			],
+			"fix": [
+				"-",
+				"Fixing",
+				"Fixed",
+				"Won't fix"
+			],
+			"retest": [
+				"-",
+				"Retesting",
+				"Pass",
+				"Fail"
+			],
+			"desktop": [
+				"-",
+				"Pass",
+				"Fail",
+				"N/A",
+				"Blocked"
+			],
+			"mobile": [
+				"-",
+				"Pass",
+				"Fail",
+				"N/A",
+				"Blocked"
+			]
+		}
+	},
+	"rows": {
+		"RUN-01": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"RUN-02": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"RUN-03": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"RUN-04": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"RUN-05": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"RUN-06": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"RUN-07": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"RUN-08": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"CTRL-01": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"CTRL-02": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"CTRL-03": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"CTRL-04": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"CTRL-05": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"CTRL-06": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"CTRL-07": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"CTRL-08": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"MULTI-01": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"MULTI-02": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"MULTI-03": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"MULTI-04": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"MULTI-05": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"MULTI-06": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"MULTI-07": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"AUTO-01": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"AUTO-02": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"AUTO-03": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"AUTO-04": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"AUTO-05": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"AUTO-06": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"AUTO-07": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"AUTO-08": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"AUTO-09": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"PROG-01": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"PROG-02": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"PROG-03": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"PROG-04": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"PROG-05": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"IGN-01": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"IGN-02": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"IGN-03": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"IGN-04": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"IGN-05": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"IGN-06": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"PROMPT-01": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"PROMPT-02": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"PROMPT-03": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"PROMPT-04": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"PROMPT-05": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"PROMPT-06": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"YAML-01": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"YAML-02": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"YAML-03": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"YAML-04": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"YAML-05": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"YAML-06": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"TAG-01": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"TAG-02": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"TAG-03": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"TAG-04": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"TAG-05": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"TAG-06": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"KAN-01": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"KAN-02": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"KAN-03": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"KAN-04": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"KAN-05": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"KAN-06": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"KAN-07": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"BULK-01": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"BULK-02": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"BULK-03": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"BULK-04": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"BULK-05": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"BULK-06": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"BULK-07": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"BULK-08": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"API-01": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"API-02": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"API-03": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"API-04": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"API-05": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"API-06": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"API-07": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"API-08": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"SET-01": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"SET-02": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"SET-03": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"SET-04": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"SET-05": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"MENU-01": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"MENU-02": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"MENU-03": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"MENU-04": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		},
+		"MENU-05": {
+			"test": "Not started",
+			"errors": "-",
+			"fix": "-",
+			"retest": "-",
+			"desktop": "-",
+			"mobile": "-"
+		}
+	}
+}
