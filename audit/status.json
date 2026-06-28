@@ -40,12 +40,13 @@
 	},
 	"rows": {
 		"RUN-01": {
-			"test": "Not started",
-			"errors": "-",
-			"fix": "-",
-			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"test": "Pass",
+			"errors": "TypeError: getActiveMarkdownFile called this.logError on a plain function -> unhandled rejection when Run invoked with no active markdown file",
+			"fix": "Fixed",
+			"retest": "Pass",
+			"desktop": "Pass",
+			"mobile": "-",
+			"evidence": "tests/e2e/audit-repro.test.ts RUN no-op; raw probe logs clean no-op"
 		},
 		"RUN-02": {
 			"test": "Not started",
@@ -152,12 +153,13 @@
 			"mobile": "-"
 		},
 		"CTRL-07": {
-			"test": "Not started",
-			"errors": "-",
-			"fix": "-",
-			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"test": "Pass",
+			"errors": "deleteProperty deleted only the key: line of a block-style YAML list (orphaned - a/- b lines, corrupt frontmatter) and bypassed the write queue",
+			"fix": "Fixed",
+			"retest": "Pass",
+			"desktop": "Pass",
+			"mobile": "-",
+			"evidence": "tests/e2e/audit-repro.test.ts deleteProperty block-list; now routes top-level YAML deletes through processFrontMatter inside enqueueFileWrite"
 		},
 		"CTRL-08": {
 			"test": "Not started",

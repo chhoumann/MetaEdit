@@ -17,6 +17,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - Silent no-op when no active file (main.ts:53-57) and when getPropertiesInFile is falsy (main.ts:89-90) gives the user no feedback.
   - getActiveMarkdownFile in utility.ts:8 calls this.logError(...) but is a plain exported function, so `this` is undefined in strict mode and logError will throw a TypeError instead of aborting silently when no active markdown file.
+- **Evidence:** tests/e2e/audit-repro.test.ts RUN no-op; raw probe logs clean no-op
 
 ### RUN-02 - List properties in the suggester and filter YAML parent containers
 
@@ -223,6 +224,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - deleteProperty is the only write method that bypasses the queue, the most dangerous for lost updates (metaController.ts:253-264).
   - Three vault reads inside one queued updateMultipleInFile task make the slot footprint large.
+- **Evidence:** tests/e2e/audit-repro.test.ts deleteProperty block-list; now routes top-level YAML deletes through processFrontMatter inside enqueueFileWrite
 
 ### CTRL-08 - Create a new property interactively (name + value prompt)
 
