@@ -63,6 +63,51 @@ export function normalizeChoices(choices: string[] | undefined): string[] {
     return out;
 }
 
+/**
+ * Split pasted text into individual choice tokens so a whole list can be added at
+ * once (issue #47).
+ *
+ * Newline-primary: when the text contains any line break, split on lines only -
+ * this keeps a single value that happens to contain a comma (e.g. "Doe, Jane" on
+ * its own line) intact. Only when there is no line break at all do we fall back to
+ * splitting on commas, since then a comma is the only plausible separator. (The
+ * trade-off: a lone, newline-free value that contains a comma - "Doe, Jane",
+ * "1,000" - is read as two tokens, since nothing distinguishes it from a CSV pair.)
+ *
+ * Tokens are trimmed and blank-dropped but NOT de-duped: the count tells a caller
+ * whether the paste was structurally a list (>= 2 tokens, even if all equal) versus
+ * a single value, so an all-duplicate paste is still treated as a list. De-duping
+ * happens later, when the tokens are merged into the existing choices.
+ */
+export function splitPastedChoices(text: string): string[] {
+    if (!text) return [];
+    const parts = /[\r\n]/.test(text) ? text.split(/\r\n|\r|\n/) : text.split(",");
+    return parts.map((p) => p.trim()).filter((p) => p !== "");
+}
+
+/**
+ * Apply a pasted list of choice `tokens` to the value at `index`: the pasted row is
+ * replaced by the tokens, expanding one box into several (issue #47). Tokens that
+ * duplicate a choice in another row, or an earlier token in the same paste, are
+ * dropped (trim-insensitive); every other row - including blanks the user left
+ * elsewhere - is preserved in place.
+ */
+export function withChoicesPasted(choices: string[], index: number, tokens: string[]): string[] {
+    const before = choices.slice(0, index);
+    const after = choices.slice(index + 1);
+    const taken = new Set(
+        [...before, ...after].map((c) => (c ?? "").trim()).filter((c) => c !== ""),
+    );
+    const inserted: string[] = [];
+    for (const raw of tokens) {
+        const choice = (raw ?? "").trim();
+        if (choice === "" || taken.has(choice)) continue;
+        taken.add(choice);
+        inserted.push(choice);
+    }
+    return [...before, ...inserted, ...after];
+}
+
 /** Coerce a stored property value (string, CSV, YAML array, or list) into values. */
 export function toValueArray(content: unknown): string[] {
     if (content === null || content === undefined) return [];
