@@ -1,5 +1,5 @@
 import type {CachedMetadata, TFile} from "obsidian";
-import type {Property} from "./parser";
+import type {InlineFieldInsertLocation, Property} from "./parser";
 import type {AutoProperty} from "./Types/autoProperty";
 import type {YamlPathSegment} from "./yamlPath";
 
@@ -8,6 +8,10 @@ export type MetaEditUnsubscribe = () => void;
 export type MetaEditYamlPath = string | readonly YamlPathSegment[];
 export type MetaEditYamlPathOptions = {
     createParents?: boolean;
+};
+export type MetaEditAppendDataviewFieldOptions = {
+    // Where to add the new inline field instance. Defaults to "afterLastMatch".
+    location?: InlineFieldInsertLocation;
 };
 
 export interface MetaEditMetadataChange {
@@ -27,6 +31,7 @@ export interface IMetaEditApi {
     getFilesWithProperty: (propertyName: string) => TFile[];
     createYamlProperty: (propertyName: string, propertyValue: MetaEditPropertyValue, file: TFile | string) => Promise<void>;
     addOrUpdateProperty: (propertyName: string, propertyValue: MetaEditPropertyValue, file: TFile | string) => Promise<void>;
+    appendDataviewField: (propertyName: string, propertyValue: MetaEditPropertyValue, file: TFile | string, options?: MetaEditAppendDataviewFieldOptions) => Promise<void>;
     getYamlPath: (path: MetaEditYamlPath, file: TFile | string) => Promise<any>;
     updateYamlPath: (path: MetaEditYamlPath, propertyValue: MetaEditPropertyValue, file: TFile | string) => Promise<void>;
     addOrUpdateYamlPath: (path: MetaEditYamlPath, propertyValue: MetaEditPropertyValue, file: TFile | string, options?: MetaEditYamlPathOptions) => Promise<void>;

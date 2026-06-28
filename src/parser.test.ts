@@ -398,6 +398,24 @@ describe("MetaEditParser inline field parsing", () => {
         ]);
     });
 
+    it("keeps a shorter inner fence from closing a longer outer fence", () => {
+        const content = [
+            "real:: yes",
+            "````md",
+            "```dataview",
+            "fake:: no",
+            "```",
+            "````",
+            "real2:: yes",
+        ].join("\n");
+        // The inner ``` is shorter than the ```` opener, so it does not close the outer
+        // block; `fake:: no` stays an example, not metadata.
+        expect(parseInline(content)).toEqual([
+            {key: "real", content: "yes"},
+            {key: "real2", content: "yes"},
+        ]);
+    });
+
     it("does not read fields inside the YAML frontmatter block", () => {
         const content = ["---", "title:: not inline", "---", "body:: yes"].join("\n");
         expect(parseInline(content)).toEqual([{key: "body", content: "yes"}]);

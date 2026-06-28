@@ -1,6 +1,7 @@
 import type MetaEdit from "./main";
 import type {
     IMetaEditApi,
+    MetaEditAppendDataviewFieldOptions,
     MetaEditMetadataChangeCallback,
     MetaEditPropertyValue,
     MetaEditYamlPath,
@@ -29,6 +30,7 @@ export class MetaEditApi {
             getFilesWithProperty: this.getGetFilesWithPropertyFunction(),
             createYamlProperty: this.getCreateYamlPropertyFunction(),
             addOrUpdateProperty: this.getAddOrUpdatePropertyFunction(),
+            appendDataviewField: this.getAppendDataviewFieldFunction(),
             getYamlPath: this.getGetYamlPathFunction(),
             updateYamlPath: this.getUpdateYamlPathFunction(),
             addOrUpdateYamlPath: this.getAddOrUpdateYamlPathFunction(),
@@ -113,6 +115,20 @@ export class MetaEditApi {
                 key: propertyName,
                 type: MetaType.YAML,
             }, propertyValue, targetFile);
+        }
+    }
+
+    private getAppendDataviewFieldFunction() {
+        return async (
+            propertyName: string,
+            propertyValue: MetaEditPropertyValue,
+            file: TFile | string,
+            options?: MetaEditAppendDataviewFieldOptions,
+        ) => {
+            const targetFile = this.getFileFromTFileOrPath(file);
+            if (!targetFile) return;
+
+            await this.plugin.controller.appendDataviewField(propertyName, propertyValue, targetFile, options);
         }
     }
 
