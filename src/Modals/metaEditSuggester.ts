@@ -1,4 +1,4 @@
-import {type App, type FuzzyMatch, FuzzySuggestModal, type TFile} from "obsidian";
+import {type App, type FuzzyMatch, FuzzySuggestModal, Notice, type TFile} from "obsidian";
 import type MetaEdit from "../main";
 import type MetaController from "../metaController";
 import type {Property} from "../parser";
@@ -18,12 +18,17 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     private readonly options: Property[];
     private controller: MetaController;
     private suggestValues: string[];
+    // Every property key actually present in the file, BEFORE the ignored/parent
+    // filtering used for the list. Used to keep already-present keys out of the
+    // "new property" name suggestions, even ones hidden by IgnoredProperties.
+    private readonly fileKeys: Set<string>;
 
     constructor(app: App, plugin: MetaEdit, data: Property[], file: TFile, controller: MetaController) {
         super(app);
         this.file = file;
         this.app = app;
         this.plugin = plugin;
+        this.fileKeys = new Set(data.map(prop => prop.key));
         const ignored = plugin.settings.IgnoredProperties;
         this.data = filterMenuItems(data, {
             enabled: ignored.enabled,
@@ -112,8 +117,13 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     private deleteItem(item: FuzzyMatch<Property>) {
         return async (evt: MouseEvent) => {
             evt.stopPropagation();
-            await this.controller.deleteProperty(item.item, this.file);
-            this.close();
+            // Always close the modal, even if the write fails, so a rejected
+            // delete never leaves the suggester stuck open over stale data.
+            try {
+                await this.controller.deleteProperty(item.item, this.file);
+            } finally {
+                this.close();
+            }
         };
     }
 
@@ -123,13 +133,21 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
             const {item: property} = item;
             if (!MetaEditSuggester.canStructureEdit(property)) return;
 
-            if (property.type === MetaType.YAML) {
-                await this.toDataview(property);
-            } else {
-                await this.toYaml(property);
+            try {
+                if (property.type === MetaType.YAML) {
+                    await this.toDataview(property);
+                } else {
+                    await this.toYaml(property);
+                }
+            } catch (error) {
+                // A transform deletes then re-adds; if the re-add fails the property
+                // is already gone, so surface it instead of letting the modal close
+                // hide the loss.
+                const reason = error instanceof Error ? error.message : String(error);
+                new Notice(`MetaEdit could not transform '${property.key}': ${reason}. It may have been removed - reopen the note to check.`);
+            } finally {
+                this.close();
             }
-
-            this.close();
         }
     }
 
@@ -160,7 +178,10 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     }
 
     private setSuggestValues() {
-        const existing = new Set(this.data.map(prop => prop.key));
+        // Exclude every key already in the file (not just the visible rows), so an
+        // ignored-but-present property is never offered as a "new" name and then
+        // rejected with the "already has property" Notice.
+        const existing = this.fileKeys;
         const names = new Set<string>();
 
         // Configured Auto Property names (existing behaviour).
