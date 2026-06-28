@@ -137,6 +137,51 @@ describe("MetaEdit audit gap coverage", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
+	test("PROG-03: only [x]/[X] tasks count as complete; custom markers count as incomplete", async () => {
+		const { obsidian, sandbox } = getContext();
+		const notePath = sandbox.path("task-counts.md");
+		const result = await evalJsonAsync<{ done: unknown; todo: unknown; total: unknown }>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const path = ${JSON.stringify(notePath)};
+				let f = app.vault.getAbstractFileByPath(path);
+				const body = "---\\ndone: 0\\ntodo: 0\\ntotal: 0\\n---\\n- [ ] a\\n- [x] b\\n- [/] c\\n- [-] d\\n- [X] e\\n";
+				if (f) { await app.vault.modify(f, body); } else { f = await app.vault.create(path, body); }
+				// Wait for the listItems/tasks cache to populate.
+				for (let i = 0; i < 60; i++) {
+					await new Promise(r => setTimeout(r, 50));
+					const li = app.metadataCache.getFileCache(f)?.listItems?.filter(x => x.task);
+					if (li && li.length === 5) break;
+				}
+				const prevEnabled = plugin.settings.ProgressProperties.enabled;
+				plugin.settings.ProgressProperties.enabled = true;
+				plugin.settings.ProgressProperties.properties = [
+					{ name: "done", type: "Completed Tasks" },
+					{ name: "todo", type: "Incomplete Tasks" },
+					{ name: "total", type: "Total Tasks" },
+				];
+				try {
+					const props = await plugin.controller.getPropertiesInFile(f);
+					await plugin.controller.handleProgressProps(props, f);
+					await new Promise(r => setTimeout(r, 300));
+					const fm = app.metadataCache.getFileCache(f)?.frontmatter ?? {};
+					return { done: fm.done, todo: fm.todo, total: fm.total };
+				} finally {
+					plugin.settings.ProgressProperties.enabled = prevEnabled;
+					plugin.settings.ProgressProperties.properties = [];
+				}
+			})()
+		`,
+		);
+		// [x] b and [X] e are complete (2); [ ] a, [/] c, [-] d are incomplete (3); total 5.
+		expect(String(result.done)).toBe("2");
+		expect(String(result.todo)).toBe("3");
+		expect(String(result.total)).toBe("5");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
 	test("BULK-05: merge policy appends uniquely into a list and is idempotent", async () => {
 		const { obsidian, sandbox } = getContext();
 		const result = await evalJsonAsync<{ first: unknown; second: unknown }>(
