@@ -63,6 +63,8 @@ This is an asynchronous function, so you should `await` it.
 
 When updating inline Dataview fields, non-string values are stringified. YAML frontmatter properties can preserve richer YAML values such as numbers, booleans, arrays, and objects.
 
+`update` is replace-by-design: when a note has several inline `name:: value` lines with the same name, it rewrites all of them to the new value. To add a new instance instead and leave the existing ones untouched, use [`appendDataviewField`](#appenddataviewfieldpropertyname-string-propertyvalue-unknown-file-tfile--string-options-location-afterlastmatch--end).
+
 ### `createYamlProperty(propertyName: string, propertyValue: unknown, file: TFile | string)`
 Creates a YAML frontmatter property in the given file.
 
@@ -74,6 +76,25 @@ This is an asynchronous function, so you should `await` it.
 Updates an existing property with the given name, or creates a YAML frontmatter property when the property does not exist.
 
 This is an asynchronous function, so you should `await` it.
+
+### `appendDataviewField(propertyName: string, propertyValue: unknown, file: TFile | string, options?: { location?: "afterLastMatch" | "end" })`
+Adds a new inline `name:: value` Dataview field instance to the body of the note, leaving any existing fields with the same name unchanged. This is the add-an-instance counterpart to `update`, which replaces every existing instance.
+
+The field is never inserted into YAML frontmatter or a fenced code block. Non-string values are stringified (arrays are joined with `, `).
+
+`options.location` controls placement:
+- `"afterLastMatch"` (default): right after the last existing `name::` line; if there is none, at the end of the note body.
+- `"end"`: always at the end of the note body.
+
+If the file is a string, it should be the file path. Otherwise, a `TFile` is fine.
+
+This is an asynchronous function, so you should `await` it.
+
+For example, a Dataview/Templater wishlist that appends a new pick without disturbing earlier ones:
+```js
+const {appendDataviewField} = this.app.plugins.plugins["metaedit"].api;
+await appendDataviewField("watch", "[[Dune: Part Two]]", tp.file.path);
+```
 
 ### `getPropertyValue(propertyName: string, file: TFile | string)`
 Gets the value of the given property in the given file.
