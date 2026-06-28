@@ -1,6 +1,8 @@
 # Unified Tag Editing - Design Spike
 
-Status: Draft for review (design spike, no implementation). Adversarially reviewed.
+Status: Approved and IMPLEMENTED as Option B (Repair + clarify), Decision D = rename.
+The implementation lives in the same branch/PR (Fixes #49); this document is the
+design record it was built from. Originally a design spike, adversarially reviewed.
 Prompted by: issue #49 ("How to use this new feature 'Edit last value in tags'?")
 Base: `origin/master`
 Runtime verified against: Obsidian 1.12.7 (isolated E2E vault), current build.
