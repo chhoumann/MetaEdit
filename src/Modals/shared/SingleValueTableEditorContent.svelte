@@ -1,17 +1,29 @@
 <script lang="ts">
-    export let save: (properties: string[]) => void;
-    export let properties: string[] = [];
+    import {untrack} from "svelte";
+
+    let {
+        save,
+        properties: initialProperties = [],
+    }: {
+        save: (properties: string[]) => void;
+        properties?: string[];
+    } = $props();
+
+    let properties = $state(untrack(() => [...initialProperties]));
+    let propertyIndexes = $derived(properties.map((_, i) => i));
+
+    function saveProperties() {
+        save($state.snapshot(properties));
+    }
 
     function addNewProperty() {
-        properties.push("");
-        properties = properties; // Svelte
-        save(properties);
+        properties = [...properties, ""];
+        saveProperties();
     }
 
     function removeProperty(i: number) {
-        properties.splice(i, 1);
-        properties = properties; // Svelte
-        save(properties);
+        properties = properties.filter((_, index) => index !== i);
+        saveProperties();
     }
 </script>
 
@@ -24,13 +36,13 @@
         </tr>
         </thead>
         <tbody>
-            {#each properties as property, i (i)}
+            {#each propertyIndexes as i (i)}
                 <tr>
                     <td>
-                        <input type="button" value="❌" class="not-a-button" on:click={() => removeProperty(i)}/>
+                        <input type="button" value="❌" class="not-a-button" onclick={() => removeProperty(i)}/>
                     </td>
                     <td>
-                        <input on:change={async () => save(properties)} style="width: 100%;" type="text" placeholder="Property name" bind:value={property}>
+                        <input onchange={saveProperties} style="width: 100%;" type="text" placeholder="Property name" bind:value={properties[i]}>
                     </td>
                 </tr>
             {/each}
@@ -38,7 +50,7 @@
     </table>
 
     <div class="buttonContainer">
-        <button on:click={addNewProperty} class="mod-cta">Add</button>
+        <button onclick={addNewProperty} class="mod-cta">Add</button>
     </div>
 </div>
 

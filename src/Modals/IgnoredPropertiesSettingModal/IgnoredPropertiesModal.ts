@@ -1,6 +1,6 @@
 import {type App, Modal} from "obsidian";
 import type MetaEdit from "../../main";
-import IgnoredPropertiesModalContent from "./IgnoredPropertiesModalContent.svelte";
+import SingleValueTableEditorContent from "../shared/SingleValueTableEditorContent.svelte";
 import {type MountedSvelteComponent, mountSvelteComponent, unmountSvelteComponent} from "../../svelteMount";
 
 export default class IgnoredPropertiesModal extends Modal{
@@ -20,10 +20,10 @@ export default class IgnoredPropertiesModal extends Modal{
         );
 
         this.content = mountSvelteComponent(
-            IgnoredPropertiesModalContent,
+            SingleValueTableEditorContent,
             this.contentEl,
             {
-                ignoredProperties,
+                properties: ignoredProperties,
                 save: (ignoredProperties: string[]) => {
                     this.ignoredProperties = ignoredProperties;
                     this.close();

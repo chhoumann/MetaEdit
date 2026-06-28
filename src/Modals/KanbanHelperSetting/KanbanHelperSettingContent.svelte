@@ -2,51 +2,73 @@
     import type {KanbanProperty} from "../../Types/kanbanProperty";
     import {KanbanHelperSettingSuggester} from "./KanbanHelperSettingSuggester";
     import type {App, TFile} from "obsidian";
-    import {onDestroy, onMount} from "svelte";
+    import {untrack} from "svelte";
     import {log} from "../../logger/logManager";
 
-    export let save: (kanbanProperties: KanbanProperty[]) => void;
-    export let kanbanProperties: KanbanProperty[] = [];
-    export let boards: TFile[];
-    export let app: App;
-    let suggestEl: HTMLInputElement;
-    let suggester: KanbanHelperSettingSuggester;
-    let inputValue: string;
+    let {
+        save,
+        kanbanProperties: initialKanbanProperties = [],
+        boards,
+        app,
+    }: {
+        save: (kanbanProperties: KanbanProperty[]) => void;
+        kanbanProperties?: KanbanProperty[];
+        boards: TFile[];
+        app: App;
+    } = $props();
 
-    onMount(() => {
-        suggester = new KanbanHelperSettingSuggester(app, suggestEl, boards);
-    })
+    const initialApp = untrack(() => app);
+    const initialBoards = untrack(() => boards);
+    let kanbanProperties = $state<KanbanProperty[]>(untrack(() => initialKanbanProperties.map(property => ({...property}))));
+    let suggestEl = $state<HTMLInputElement>();
+    let suggester: KanbanHelperSettingSuggester | undefined;
+    let inputValue = $state("");
 
-    onDestroy(() => suggester?.close())
+    let didInitialise = false;
+    $effect(() => {
+        const el = suggestEl;
+        if (!el || didInitialise) return;
+        didInitialise = true;
+
+        suggester = new KanbanHelperSettingSuggester(initialApp, el, initialBoards);
+        return () => {
+            suggester?.close();
+            suggester = undefined;
+        };
+    });
+
+    function saveProperties() {
+        save($state.snapshot(kanbanProperties) as KanbanProperty[]);
+    }
 
     function addNewProperty() {
-        const board: TFile = boards.find(board => board.basename === inputValue);
-        const exists: boolean = !!kanbanProperties.find(kp => kp.boardName === board.basename);
-        if (!board || exists) return;
+        const board = initialBoards.find(board => board.basename === inputValue);
+        if (!board) return;
 
-        kanbanProperties.push({
+        const exists: boolean = !!kanbanProperties.find(kp => kp.boardName === board.basename);
+        if (exists) return;
+
+        kanbanProperties = [...kanbanProperties, {
             property: "",
             boardName: board.basename
-        });
+        }];
 
-        kanbanProperties = kanbanProperties; // Svelte
-        save(kanbanProperties);
+        saveProperties();
     }
 
     function removeProperty(i: number) {
-        kanbanProperties.splice(i, 1);
-        kanbanProperties = kanbanProperties; // Svelte
-        save(kanbanProperties);
+        kanbanProperties = kanbanProperties.filter((_, index) => index !== i);
+        saveProperties();
     }
 
     function getHeadingsInBoard(boardName: string): string {
-        const file = boards.find(board => board.basename === boardName)
+        const file = initialBoards.find(board => board.basename === boardName)
         if (!file) {
             log.logWarning(`file ${boardName} not found.`);
             return "FILE NOT FOUND";
         }
 
-        const headings = app.metadataCache.getFileCache(file).headings;
+        const headings = initialApp.metadataCache.getFileCache(file).headings;
         if (!headings) return "";
 
         return headings.map(heading => heading.heading).join(", ");
@@ -67,13 +89,13 @@
             {#each kanbanProperties as kanbanProperty, i (kanbanProperty.boardName)}
                 <tr>
                     <td>
-                        <input type="button" value="❌" class="not-a-button" on:click={() => removeProperty(i)}/>
+                        <input type="button" value="❌" class="not-a-button" onclick={() => removeProperty(i)}/>
                     </td>
                     <td>
                         {kanbanProperty.boardName}
                     </td>
                     <td>
-                        <input on:change={() => save(kanbanProperties)} type="text" placeholder="Property name" bind:value={kanbanProperty.property}>
+                        <input onchange={saveProperties} type="text" placeholder="Property name" bind:value={kanbanProperty.property}>
                     </td>
                     <td>
                             {getHeadingsInBoard(kanbanProperty.boardName)}
@@ -85,7 +107,7 @@
 
     <input bind:this={suggestEl} bind:value={inputValue} type="text">
     <div class="buttonContainer">
-        <button on:click={addNewProperty} class="mod-cta">Add</button>
+        <button onclick={addNewProperty} class="mod-cta">Add</button>
     </div>
 </div>
 
