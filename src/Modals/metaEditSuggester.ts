@@ -37,7 +37,8 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
 
         this.setInstructions([
             {command: "❌", purpose: "Delete property"},
-            {command: "🔃", purpose: "Transform to YAML/Dataview"}
+            {command: "🔃", purpose: "Transform to YAML/Dataview"},
+            {command: "#tag", purpose: "Select to rename here · vault-wide rename: Obsidian Tag pane"},
         ])
     }
 

@@ -16,7 +16,7 @@
 - Delete properties easily
 - Auto update properties in files linked to from Kanban boards on lane change
 - Edit metadata through a filemenu
-- Edit last value in tags - works with [Obsidian Tracker](https://github.com/pyrochlore/obsidian-tracker), too.
+- Edit tags wherever they live - rename a body `#tag` in place or edit a frontmatter `tags:` list (see [Editing tags](#editing-tags-guide))
 - API to use in other plugins and Templater templates.
 
 ## Installation
@@ -31,6 +31,21 @@ This plugin is in the community plugin browser in Obsidian. Search for MetaEdit 
 https://user-images.githubusercontent.com/29108628/119513092-3223e000-bd74-11eb-9060-3e0cae4dbef3.mp4
 
 ## Guides
+### Editing tags guide
+Run MetaEdit on a note and it lists that note's tags from **both** homes:
+
+- **Body `#tags`** show up as `#tag` rows. Selecting one lets you:
+  - **Rename tag** - replace the whole tag for that one occurrence (e.g. `#draft` -> `#published`). The rest of the line, and any other occurrence of the same tag, are left untouched.
+  - **Edit last segment** (nested tags only) - change just the leaf, e.g. `#area/old` -> `#area/new`.
+  - **Tracker value** - when the [Obsidian Tracker](https://github.com/pyrochlore/obsidian-tracker) plugin is installed, write its `#tag:value` data syntax. This choice is made per edit and never leaks into later edits.
+- **Frontmatter `tags:`** show up as the `tags` property. Editing it strips a leading `#` you type, accepts a list / single value / comma- or space-separated string, stores the canonical `#`-free YAML list, and removes the key entirely when you clear the last tag.
+
+What MetaEdit deliberately leaves to Obsidian (verified against Obsidian 1.12.7):
+
+- **Vault-wide rename** (rename a tag across every note) - use Obsidian's **Tag pane**: right-click a tag and choose *Rename*.
+- **The rich frontmatter tag widget** (pills, type-ahead) - Obsidian's native **Properties** editor.
+- **Deleting a body tag** - edit the note directly; MetaEdit no longer offers a delete/transform action on body `#tags` (it could not target them safely).
+
 ### Kanban Helper Guide
 https://user-images.githubusercontent.com/29108628/121333246-ebf48200-c918-11eb-889b-23b9a80299b2.mp4
 
