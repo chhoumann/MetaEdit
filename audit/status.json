@@ -158,7 +158,7 @@
 			"fix": "Fixed",
 			"retest": "Pass",
 			"desktop": "Pass",
-			"mobile": "-",
+			"mobile": "Pass",
 			"evidence": "tests/e2e/audit-repro.test.ts deleteProperty block-list; now routes top-level YAML deletes through processFrontMatter inside enqueueFileWrite"
 		},
 		"CTRL-08": {
