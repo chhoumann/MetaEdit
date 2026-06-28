@@ -68,7 +68,7 @@
             return "FILE NOT FOUND";
         }
 
-        const headings = initialApp.metadataCache.getFileCache(file).headings;
+        const headings = initialApp.metadataCache.getFileCache(file)?.headings;
         if (!headings) return "";
 
         return headings.map(heading => heading.heading).join(", ");
