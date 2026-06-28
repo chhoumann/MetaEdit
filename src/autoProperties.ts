@@ -63,6 +63,25 @@ export function normalizeChoices(choices: string[] | undefined): string[] {
     return out;
 }
 
+/**
+ * Split pasted text into individual choice tokens so a whole list can be added at
+ * once (issue #47).
+ *
+ * Newline-primary: when the text contains any line break, split on lines only -
+ * this keeps a single value that happens to contain a comma (e.g. "Doe, Jane" on
+ * its own line) intact. Only when there is no line break at all do we fall back to
+ * splitting on commas, since then a comma is the only plausible separator.
+ *
+ * Results are trimmed, blank-dropped, and de-duped (via `normalizeChoices`),
+ * preserving first-seen order. A paste that yields fewer than two tokens is not a
+ * "list" - callers should let the browser paste it normally rather than intercept.
+ */
+export function splitPastedChoices(text: string): string[] {
+    if (!text) return [];
+    const parts = /[\r\n]/.test(text) ? text.split(/\r\n|\r|\n/) : text.split(",");
+    return normalizeChoices(parts);
+}
+
 /** Coerce a stored property value (string, CSV, YAML array, or list) into values. */
 export function toValueArray(content: unknown): string[] {
     if (content === null || content === undefined) return [];

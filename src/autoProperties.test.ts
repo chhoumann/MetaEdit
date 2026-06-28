@@ -6,6 +6,7 @@ import {
     isNewChoice,
     multiSelectOptions,
     normalizeChoices,
+    splitPastedChoices,
     toValueArray,
     withChoiceAdded,
 } from "./autoProperties";
@@ -70,6 +71,46 @@ describe("normalizeChoices", () => {
 
     it("handles undefined", () => {
         expect(normalizeChoices(undefined)).toEqual([]);
+    });
+});
+
+describe("splitPastedChoices", () => {
+    it("splits a newline-separated list and trims each value", () => {
+        expect(splitPastedChoices("todo\n in progress \ndone")).toEqual([
+            "todo",
+            "in progress",
+            "done",
+        ]);
+    });
+
+    it("handles CRLF and bare-CR line endings", () => {
+        expect(splitPastedChoices("a\r\nb\rc")).toEqual(["a", "b", "c"]);
+    });
+
+    it("splits on commas only when there is no line break", () => {
+        expect(splitPastedChoices("a, b ,c")).toEqual(["a", "b", "c"]);
+    });
+
+    it("keeps a comma-containing value intact when it is on its own line", () => {
+        expect(splitPastedChoices("Doe, Jane\nSmith, John")).toEqual([
+            "Doe, Jane",
+            "Smith, John",
+        ]);
+    });
+
+    it("drops blank lines and de-dupes, preserving first-seen order", () => {
+        expect(splitPastedChoices("a\n\n b \na\n")).toEqual(["a", "b"]);
+    });
+
+    it("yields a single token for a lone value (caller should not intercept)", () => {
+        expect(splitPastedChoices("just one")).toEqual(["just one"]);
+        expect(splitPastedChoices("trailing\n")).toEqual(["trailing"]);
+    });
+
+    it("returns [] for empty or whitespace-only text", () => {
+        expect(splitPastedChoices("")).toEqual([]);
+        expect(splitPastedChoices("   ")).toEqual([]);
+        expect(splitPastedChoices("\n\n")).toEqual([]);
     });
 });
 
