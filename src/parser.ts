@@ -44,6 +44,32 @@ const FULL_LINE_PREFIX = /^\s*(?:>\s+)*(?:[-*+]\s+|\d+[.)]\s+)?/;
 // spaces. Inline fields inside code blocks are examples, not metadata.
 const CODE_FENCE = /^\s{0,3}(`{3,}|~{3,})/;
 
+type OpenFence = {char: string, len: number};
+
+// A potential fence line: the run's character, its length, and whether the run is
+// followed only by whitespace. A closing fence must be "bare" (no info string);
+// an opening fence may carry an info string (e.g. ```dataview).
+function matchFenceLine(line: string): {char: string, len: number, bare: boolean} | null {
+    const match = line.match(CODE_FENCE);
+    if (!match) return null;
+    const run = match[1];
+    return {char: run[0], len: run.length, bare: line.slice(match[0].length).trim() === ""};
+}
+
+// Advance fenced-code state by one line. A block closes only on a run of the SAME
+// character at least as long as the opener, followed by whitespace - so a shorter
+// inner fence (e.g. ``` shown inside a ```` block) does not close the outer block
+// early and leak its example fields as metadata.
+function nextFenceState(openFence: OpenFence | null, line: string): {open: OpenFence | null, boundary: "open" | "close" | null} {
+    const fence = matchFenceLine(line);
+    if (!fence) return {open: openFence, boundary: null};
+    if (openFence === null) return {open: {char: fence.char, len: fence.len}, boundary: "open"};
+    if (fence.char === openFence.char && fence.len >= openFence.len && fence.bare) {
+        return {open: null, boundary: "close"};
+    }
+    return {open: openFence, boundary: null};
+}
+
 export default class MetaEditParser {
     private app: App;
 
@@ -184,7 +210,7 @@ export default class MetaEditParser {
         const properties: Property[] = [];
         const lines = this.splitContentLines(content);
         const frontmatterInfo = this.getFrontmatterInfo(content);
-        let openFence: string | null = null;
+        let openFence: OpenFence | null = null;
 
         for (const {text: line, start} of lines) {
 
@@ -194,19 +220,10 @@ export default class MetaEditParser {
             }
 
             // Skip fenced code blocks so example fields are not treated as metadata.
-            const fence = line.match(CODE_FENCE);
-            if (fence) {
-                const marker = fence[1][0];
-                if (openFence === null) {
-                    openFence = marker;
-                    continue;
-                }
-                if (openFence === marker) {
-                    openFence = null;
-                    continue;
-                }
-            }
-            if (openFence !== null) continue;
+            const {open, boundary} = nextFenceState(openFence, line);
+            openFence = open;
+            if (boundary) continue;       // an opening or closing fence marker line
+            if (openFence !== null) continue; // inside a fenced code block
 
             if (!line.includes("::")) continue;
 
@@ -428,7 +445,7 @@ export default class MetaEditParser {
         const lines = this.splitContentLines(content);
         const frontmatterInfo = this.getFrontmatterInfo(content);
 
-        let openFence: string | null = null;
+        let openFence: OpenFence | null = null;
         let lastMatchIdx = -1;   // last body line that declares `name`
         let lastAnchorIdx = -1;  // last line we may insert AFTER (body content or a closing fence)
         let firstBodyIdx = -1;   // first line at/after the frontmatter block
@@ -440,19 +457,14 @@ export default class MetaEditParser {
             if (frontmatterInfo?.exists && start < frontmatterInfo.contentStart) continue;
             if (firstBodyIdx === -1) firstBodyIdx = i;
 
-            const fence = line.match(CODE_FENCE);
-            if (fence) {
-                const marker = fence[1][0];
-                if (openFence === null) {
-                    openFence = marker;   // opening marker: inserting after it would land inside the fence
-                    continue;
-                }
-                if (openFence === marker) {
-                    openFence = null;     // closing marker: inserting after it is outside the fence
-                    lastAnchorIdx = i;
-                    continue;
-                }
-                // A fence-looking line of a different marker while inside a fence is interior content.
+            const {open, boundary} = nextFenceState(openFence, line);
+            openFence = open;
+            // An opening marker is not a valid anchor (inserting after it lands inside the fence);
+            // a closing marker is (inserting after it is outside the fence).
+            if (boundary === "open") continue;
+            if (boundary === "close") {
+                lastAnchorIdx = i;
+                continue;
             }
             if (openFence !== null) continue; // fence interior - never a target
 

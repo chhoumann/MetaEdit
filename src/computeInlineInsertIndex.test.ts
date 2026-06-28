@@ -108,6 +108,16 @@ describe("computeInlineInsertIndex - never inside fenced code blocks", () => {
         // `watch:: fake` sits inside the still-open ``` fence, so it is not a match.
         expect(append(content, "watch", "new")).toBe(["```", "~~~", "watch:: fake", "```", "after", "watch:: new"].join("\n"));
     });
+
+    it("does not close a four-backtick fence on a shorter inner three-backtick fence", () => {
+        const content = ["````md", "```dataview", "watch:: fake", "```", "````", "real:: x"].join("\n");
+
+        // The inner ``` is shorter than the ```` opener, so `watch:: fake` stays inside
+        // the outer block and is not a match; append lands after the real body field.
+        expect(append(content, "watch", "new")).toBe(
+            ["````md", "```dataview", "watch:: fake", "```", "````", "real:: x", "watch:: new"].join("\n"),
+        );
+    });
 });
 
 describe("computeInlineInsertIndex - location: end", () => {
