@@ -84,7 +84,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
             if (!newProperty) return null;
 
             const {propName, propValue} = newProperty;
-            await this.controller.addDataviewField(propName, propValue, this.file);
+            await this.controller.appendDataviewField(propName, propValue, this.file);
             return;
         }
 
@@ -133,7 +133,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
 
     private async toDataview(property: Property) {
         await this.controller.deleteProperty(property, this.file);
-        await this.controller.addDataviewField(property.key, property.content, this.file);
+        await this.controller.appendDataviewField(property.key, property.content, this.file);
     }
 
     private createButton(el: HTMLElement, content: string, callback: (evt: MouseEvent) => void) {

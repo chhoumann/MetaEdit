@@ -1,4 +1,4 @@
-import MetaEditParser, {type Property} from "./parser";
+import MetaEditParser, {type InlineFieldInsertLocation, type Property} from "./parser";
 import type {App, TFile} from "obsidian";
 import type MetaEdit from "./main";
 import GenericPrompt from "./Modals/GenericPrompt/GenericPrompt";
@@ -80,24 +80,36 @@ export default class MetaController {
         }
     }
 
-    public async addDataviewField(propName: string, propValue: unknown, file: TFile): Promise<void> {
+    /**
+     * Append a NEW inline `name:: value` field instance, leaving any existing
+     * same-named fields untouched. This is the add-an-instance counterpart to
+     * {@link updatePropertyInFile}, which replaces every existing instance.
+     *
+     * Placement is computed by {@link MetaEditParser.computeInlineInsertIndex} so the
+     * field is never inserted inside frontmatter or a fenced code block. The write goes
+     * through the per-file queue, so it serializes with other MetaEdit writes instead of
+     * racing them (the previous implementation read and wrote outside the queue, and
+     * silently no-opped when the chosen line index was 0).
+     */
+    public async appendDataviewField(
+        propName: string,
+        propValue: unknown,
+        file: TFile,
+        options: {location?: InlineFieldInsertLocation} = {},
+    ): Promise<void> {
         const valueStr = Array.isArray(propValue) ? propValue.join(", ") : String(propValue);
-        const fileContent: string = await this.app.vault.read(file);
-        const lines = fileContent.split("\n").reduce((obj: {[key: string]: string}, line: string, idx: number) => {
-            obj[idx] = !!line ? line : "";
-            return obj;
-        }, {});
+        const location = options.location ?? "afterLastMatch";
 
-        const appendAfter: string = await GenericSuggester.Suggest(this.app, Object.values(lines), Object.keys(lines));
-        if (!appendAfter) return;
+        await this.enqueueFileWrite(file, async () => {
+            const content = await this.app.vault.read(file);
+            // Preserve the file's existing newline so a CRLF note does not gain a stray LF.
+            const newline = content.includes("\r\n") ? "\r\n" : "\n";
+            const lines = content.split(/\r?\n/);
+            const insertIndex = this.parser.computeInlineInsertIndex(content, propName, location);
+            lines.splice(insertIndex, 0, `${propName}:: ${valueStr}`);
 
-        const splitContent: string[] = fileContent.split("\n");
-        if (typeof appendAfter === "number" || parseInt(appendAfter)) {
-            splitContent.splice(parseInt(appendAfter), 0, `${propName}:: ${valueStr}`);
-        }
-        const newFileContent = splitContent.join("\n");
-
-        await this.app.vault.modify(file, newFileContent);
+            await this.app.vault.modify(file, lines.join(newline));
+        });
     }
 
     public async editMetaElement(property: Property, meta: Property[], file: TFile): Promise<void> {
