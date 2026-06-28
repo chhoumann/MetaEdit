@@ -16,6 +16,15 @@
 		const existing = app.vault.getAbstractFileByPath(path);
 		if (existing) await app.vault.delete(existing);
 	};
+	const deleteEmptyFolder = async (path) => {
+		const existing = app.vault.getAbstractFileByPath(path);
+		if (!existing) return;
+		const listed = await app.vault.adapter.list(path).catch(() => null);
+		if (listed && listed.files.length === 0 && listed.folders.length === 0) {
+			await app.vault.delete(existing);
+			cleanup.deleted.push(path);
+		}
+	};
 	const waitFor = async (predicate, label, timeout = 10000) => {
 		const start = Date.now();
 		while (Date.now() - start < timeout) {
@@ -34,6 +43,7 @@
 				await app.vault.delete(existing);
 				cleanup.deleted.push(NOTE_PATH);
 			}
+			await deleteEmptyFolder(SCRATCH_DIR);
 		} catch (error) {
 			cleanup.errors.push(String(error?.stack || error));
 		}

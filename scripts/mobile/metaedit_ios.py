@@ -154,9 +154,10 @@ async def ev(session: Any, expr: str, timeout: float = 30.0) -> Any:
 		f"(()=>{{const __bytes=Uint8Array.from(atob(window.{SOURCE_TOKEN}),c=>c.charCodeAt(0));"
 		f"const __source=new TextDecoder('utf-8').decode(__bytes);"
 		f"window.{TOKEN}=undefined;"
+		f"const __formatError=e=>String(e&&e.message?e.message+'\\n'+(e.stack||''):(e&&e.stack)||e);"
 		f"(async()=>{{try{{const __runner=new Function('return (async()=>{{return await ('+__source+');}})()');"
 		f"window.{TOKEN}={{ok:JSON.stringify(await __runner())}}}}"
-		f"catch(e){{window.{TOKEN}={{err:String((e&&e.stack)||e)}}}}}})();return 0}})()"
+		f"catch(e){{window.{TOKEN}={{err:__formatError(e)}}}}}})();return 0}})()"
 	)
 	await runtime_evaluate(session, kickoff)
 
@@ -491,6 +492,12 @@ async def cmd_restore(lockdown: Any, args: argparse.Namespace) -> None:
 			if not local_plugin_dir.is_dir():
 				raise SystemExit(f"Backup plugin folder not found: {local_plugin_dir}")
 			await afc.push(str(local_plugin_dir), remote_parent)
+			local_manifest = collect_local_file_manifest(local_plugin_dir)
+			remote_manifest = await collect_remote_file_manifest(afc, remote_plugin_dir)
+			if remote_manifest != local_manifest:
+				raise SystemExit(
+					"Restore verification failed; remote plugin folder does not match the backup."
+				)
 			print(f"Restored {local_plugin_dir} -> {remote_plugin_dir}")
 		else:
 			print(f"Removed {remote_plugin_dir}; backup recorded that no plugin dir existed before deploy.")

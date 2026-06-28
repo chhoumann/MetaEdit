@@ -179,6 +179,11 @@ async def cmd_diagnose(args: argparse.Namespace) -> None:
 
 
 async def cmd_deploy(args: argparse.Namespace) -> None:
+	if not args.confirm_scratch_vault:
+		raise SystemExit(
+			"Refusing to deploy without --confirm-scratch-vault. "
+			"Android deploy has no backup/restore path and is intended only for disposable scratch vaults."
+		)
 	deploy_artifacts(args.vault_path)
 	forward_cdp(args.port)
 	result = await enable_metaedit()
@@ -244,6 +249,11 @@ async def main() -> None:
 	p_deploy = sub.add_parser("deploy")
 	p_deploy.add_argument("--vault-path", default=DEFAULT_VAULT_PATH)
 	p_deploy.add_argument("--port", type=int, default=CDP_PORT)
+	p_deploy.add_argument(
+		"--confirm-scratch-vault",
+		action="store_true",
+		help="Required: acknowledge Android deploy has no backup/restore path and targets a disposable scratch vault.",
+	)
 
 	p_reload = sub.add_parser("reload")
 	p_reload.add_argument("--port", type=int, default=CDP_PORT)

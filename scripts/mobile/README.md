@@ -108,7 +108,7 @@ MetaEdit Mobile Debug/issue-99-frontmatter.md
 ```
 
 It verifies the frontmatter path that #99 reported, then removes the scratch note
-after collecting the returned evidence:
+and any empty scratch folder after collecting the returned evidence:
 
 - blank YAML values read as `null`, not the literal string `"null"`;
 - MetaEdit can create a YAML key through the public API;
@@ -122,10 +122,11 @@ older mobile APIs may keep an internal cache key named `position`.
 
 ## Core Smoke Probe
 
-`scripts/mobile/probes/core_smoke.js` creates scratch files under:
+`scripts/mobile/probes/core_smoke.js` creates scratch files under a unique
+per-run folder:
 
 ```text
-MetaEdit Mobile Debug/core-smoke/
+MetaEdit Mobile Debug/core-smoke-<timestamp>/
 ```
 
 It checks:
@@ -136,14 +137,18 @@ It checks:
 - Progress Properties update YAML without rewriting matching body text;
 - the Kanban helper updates a linked note when a card moves lanes.
 
-The smoke probe keeps settings changes in memory and removes the scratch files it
-created after collecting evidence. If Web Inspector disconnects mid-run, rerun
-`restore`/`reload` before continuing.
+The smoke probe keeps settings changes in memory and removes the scratch files
+and empty scratch folders it created after collecting evidence. It uses unique
+per-run paths and a unique Kanban board name so repeated runs do not collide with
+the automator's path-content cache or existing board names. If Web Inspector
+disconnects mid-run, rerun `restore`/`reload` before continuing.
 
 ## Android
 
 The Android harness uses `adb` plus WebView CDP forwarding. It expects Obsidian
-to be running and a scratch vault to be open.
+to be running and a disposable scratch vault to be open. Android deploy does not
+snapshot or restore plugin files, so it refuses to deploy unless
+`--confirm-scratch-vault` is passed.
 
 Optional emulator setup:
 
@@ -175,7 +180,7 @@ Install Obsidian's official Android APK, create/open a scratch vault at
 
 ```bash
 uv run --no-project --with websockets python scripts/mobile/metaedit_android.py diagnose
-uv run --no-project --with websockets python scripts/mobile/metaedit_android.py deploy
+uv run --no-project --with websockets python scripts/mobile/metaedit_android.py deploy --confirm-scratch-vault
 uv run --no-project --with websockets python scripts/mobile/metaedit_android.py eval --file scripts/mobile/probes/issue99_frontmatter.js
 uv run --no-project --with websockets python scripts/mobile/metaedit_android.py eval --file scripts/mobile/probes/core_smoke.js
 ```

@@ -1,7 +1,9 @@
 (async () => {
 	const PLUGIN_ID = "metaedit";
 	const SCRATCH_DIR = "MetaEdit Mobile Debug";
-	const ROOT = `${SCRATCH_DIR}/core-smoke`;
+	const RUN_ID = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
+	const ROOT = `${SCRATCH_DIR}/core-smoke-${RUN_ID}`;
+	const BOARD_NAME = `Roadmap-${RUN_ID}`;
 	const CLEANUP = true;
 	const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 	const failures = [];
@@ -21,6 +23,15 @@
 	const deleteIfExists = async (path) => {
 		const existing = app.vault.getAbstractFileByPath(path);
 		if (existing) await app.vault.delete(existing);
+	};
+	const deleteEmptyFolder = async (path) => {
+		const existing = app.vault.getAbstractFileByPath(path);
+		if (!existing) return;
+		const listed = await app.vault.adapter.list(path).catch(() => null);
+		if (listed && listed.files.length === 0 && listed.folders.length === 0) {
+			await app.vault.delete(existing);
+			cleanup.deleted.push(path);
+		}
 	};
 	const createFreshFile = async (path, content) => {
 		const folder = path.split("/").slice(0, -1).join("/");
@@ -66,6 +77,12 @@
 				cleanup.errors.push(`${path}: ${String(error?.stack || error)}`);
 			}
 		}
+		try {
+			await deleteEmptyFolder(ROOT);
+			await deleteEmptyFolder(SCRATCH_DIR);
+		} catch (error) {
+			cleanup.errors.push(`folders: ${String(error?.stack || error)}`);
+		}
 		return cleanup;
 	};
 	const textOfSuggestion = (element) => {
@@ -77,6 +94,11 @@
 	if (!plugin?.api) throw new Error("MetaEdit plugin API is not available.");
 	const settingsSnapshot = JSON.parse(JSON.stringify(plugin.settings));
 	const results = {};
+	const resetAutomators = () => {
+		plugin.settings.KanbanHelper.enabled = false;
+		plugin.settings.ProgressProperties.enabled = false;
+		plugin.toggleAutomators();
+	};
 
 	try {
 		await ensureFolder(ROOT);
@@ -146,6 +168,7 @@
 			"Body line should stay literal: readProgress: 0",
 			"",
 		].join("\n"));
+		resetAutomators();
 		plugin.settings.ProgressProperties.enabled = true;
 		plugin.settings.ProgressProperties.properties = [{ name: "readProgress", type: "Total Tasks" }];
 		const progressProps = await plugin.controller.getPropertiesInFile(progressFile);
@@ -157,7 +180,7 @@
 		if (!progressContent.includes("Body line should stay literal: readProgress: 0")) failures.push("Progress Properties rewrote matching body text.");
 
 		const cardFile = await createFreshFile(`${ROOT}/Project A.md`, "---\nstatus: Backlog\n---\n\nbody\n");
-		const boardPath = `${ROOT}/Roadmap.md`;
+		const boardPath = `${ROOT}/${BOARD_NAME}.md`;
 		const backlogBoard = [
 			"---",
 			"kanban-plugin: board",
@@ -183,9 +206,10 @@
 			"",
 		].join("\n");
 		const boardFile = await createFreshFile(boardPath, backlogBoard);
+		resetAutomators();
 		plugin.settings.KanbanHelper = {
 			enabled: true,
-			boards: [{ boardName: "Roadmap", property: "status" }],
+			boards: [{ boardName: BOARD_NAME, property: "status" }],
 		};
 		plugin.toggleAutomators();
 		await sleep(1800);
@@ -198,6 +222,7 @@
 		if (!kanbanContent.includes("status: In Progress")) failures.push("Kanban helper did not update linked card lane.");
 	} finally {
 		await closeTransientUi();
+		resetAutomators();
 		plugin.settings = settingsSnapshot;
 		plugin.toggleAutomators();
 		await cleanupScratch();
