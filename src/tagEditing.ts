@@ -77,9 +77,13 @@ export function computeTagRewrite(oldTag: string, input: string, mode: TagEditMo
     return `#${normalized}`;
 }
 
-/** A Tracker token is `#tag:value` - a tag, then a `:value` suffix, no spaces. */
+// A Tracker value is a simple, space-free token (typically numeric). Bounded so
+// a suffix splice never reaches into adjacent punctuation/markup (`,` `)` `#`).
+const TRACKER_VALUE = "[A-Za-z0-9._+-]+";
+
+/** A Tracker token is `#tag:value` - a tag, then a bounded `:value` suffix. */
 export function isTrackerToken(token: string): boolean {
-    return /^#[^\s]+:[^\s]+$/.test(token);
+    return new RegExp(`^#[^\\s:]+:${TRACKER_VALUE}$`).test(token);
 }
 
 /**
@@ -94,13 +98,22 @@ export function normalizeTagToken(value: string): string {
 }
 
 /**
- * Whether `token` is a single, writable tag: one leading `#`, a non-empty body,
- * and no whitespace, comma, or further `#` (any of which Obsidian would parse as
- * a tag boundary, leaving stray text in the note). A Tracker `:value` suffix is
- * allowed.
+ * Whether `token` is a single, writable tag that Obsidian indexes as ONE tag:
+ * one leading `#`, then only tag characters (Unicode letters, digits, `_`, `-`,
+ * `/`), with at least one non-digit so a purely numeric `#2024` (which Obsidian
+ * renders as text) is rejected. Punctuation like `.`/`!`/space/comma ends a tag
+ * in Obsidian, so it is rejected here rather than spliced in as a broken tag. An
+ * optional Tracker `:value` suffix is allowed.
  */
 export function isValidTagToken(token: string): boolean {
-    return /^#[^\s,#]+$/.test(token);
+    if (!token.startsWith("#")) return false;
+
+    // Peel off an optional Tracker `:value` suffix; validate the tag part only.
+    const tracker = token.match(new RegExp(`^(#.+?):${TRACKER_VALUE}$`, "u"));
+    const body = (tracker ? tracker[1] : token).slice(1);
+
+    if (!/^[\p{L}\p{N}_/-]+$/u.test(body)) return false;
+    return /[^\d/]/u.test(body);
 }
 
 /**
@@ -131,7 +144,9 @@ export function spliceTag(
 
     let cutEnd = end;
     if (isTrackerToken(newToken)) {
-        const existingSuffix = content.slice(end).match(/^:[^\s]+/);
+        // Only consume a bounded Tracker value, never adjacent punctuation/markup:
+        // `#weight:80,#other` keeps `,#other`; `(#weight:80)` keeps `)`.
+        const existingSuffix = content.slice(end).match(new RegExp(`^:${TRACKER_VALUE}`));
         if (existingSuffix) cutEnd = end + existingSuffix[0].length;
     }
 
@@ -153,17 +168,22 @@ export function canonicalizeFrontmatterTag(value: string): string {
 /**
  * Split a frontmatter `tags` value into individual tags. Obsidian accepts a YAML
  * list, a single scalar, or a comma/whitespace-separated string - all collapse
- * to the same set of canonical (no-`#`, trimmed, non-empty) tags here.
+ * to the same set of canonical (no-`#`, trimmed, non-empty) tags. Every element
+ * (list item or scalar) is itself split on whitespace/comma, so a stray
+ * `"alpha beta"` becomes two tags rather than one invalid one. Non-primitive
+ * items (objects, nested arrays) are skipped, so a garbage value like `{x:1}`
+ * never stringifies into `"[object Object]"`.
  */
 export function splitFrontmatterTags(content: unknown): string[] {
-    const raw = Array.isArray(content)
-        ? content.map(v => (v ?? "").toString())
-        : (content ?? "").toString().split(/[\s,]+/);
+    const items = Array.isArray(content) ? content : [content];
 
     const out: string[] = [];
-    for (const token of raw) {
-        const tag = canonicalizeFrontmatterTag(token);
-        if (tag) out.push(tag);
+    for (const item of items) {
+        if (item === null || item === undefined || typeof item === "object") continue;
+        for (const token of String(item).split(/[\s,]+/)) {
+            const tag = canonicalizeFrontmatterTag(token);
+            if (tag) out.push(tag);
+        }
     }
     return out;
 }

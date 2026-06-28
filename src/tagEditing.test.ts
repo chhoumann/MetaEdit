@@ -114,6 +114,14 @@ describe("spliceTag", () => {
         expect(spliceTag(tracker, {start: 0, end: 7}, "#weight", "#mass"))
             .toBe("#mass:80 logged.");
     });
+
+    it("bounds the Tracker suffix so it never eats adjacent tags or markup", () => {
+        // The :value must stop at punctuation, not run to the next whitespace.
+        expect(spliceTag("#weight:80,#other", {start: 0, end: 7}, "#weight", "#weight:85"))
+            .toBe("#weight:85,#other");
+        expect(spliceTag("(#weight:80)", {start: 1, end: 8}, "#weight", "#weight:85"))
+            .toBe("(#weight:85)");
+    });
 });
 
 describe("tag token validation/normalization", () => {
@@ -135,12 +143,22 @@ describe("tag token validation/normalization", () => {
     it("accepts valid tag tokens and rejects ones Obsidian would split", () => {
         expect(isValidTagToken("#done")).toBe(true);
         expect(isValidTagToken("#a/b/c")).toBe(true);
+        expect(isValidTagToken("#in-progress")).toBe(true);
+        expect(isValidTagToken("#year_2024")).toBe(true);
+        expect(isValidTagToken("#café")).toBe(true); // unicode letters
         expect(isValidTagToken("#weight:85")).toBe(true); // Tracker
         expect(isValidTagToken("#meeting notes")).toBe(false); // space
         expect(isValidTagToken("#a,b")).toBe(false); // comma
         expect(isValidTagToken("#a#b")).toBe(false); // extra #
         expect(isValidTagToken("#")).toBe(false); // empty body
         expect(isValidTagToken("plain")).toBe(false); // no #
+    });
+
+    it("rejects tokens Obsidian does not index as a single tag", () => {
+        expect(isValidTagToken("#v1.2")).toBe(false); // dot ends the tag
+        expect(isValidTagToken("#done!")).toBe(false); // punctuation
+        expect(isValidTagToken("#2024")).toBe(false); // purely numeric -> text
+        expect(isValidTagToken("#12/34")).toBe(false); // numeric segments only
     });
 });
 
@@ -171,5 +189,15 @@ describe("frontmatter tag helpers", () => {
         expect(splitFrontmatterTags(null)).toEqual([]);
         expect(splitFrontmatterTags(undefined)).toEqual([]);
         expect(splitFrontmatterTags(["", "  ", "ok"])).toEqual(["ok"]);
+    });
+
+    it("splits each list element and skips non-primitive garbage", () => {
+        // A stray multi-word list item becomes two tags, not one invalid tag.
+        expect(splitFrontmatterTags(["alpha beta", "gamma"])).toEqual(["alpha", "beta", "gamma"]);
+        // Objects / nested arrays are skipped instead of stringified to garbage.
+        expect(splitFrontmatterTags([{x: 1}, "ok"])).toEqual(["ok"]);
+        expect(splitFrontmatterTags({x: 1})).toEqual([]);
+        // Numbers/booleans stringify to a single token.
+        expect(splitFrontmatterTags([1, true, "ok"])).toEqual(["1", "true", "ok"]);
     });
 });

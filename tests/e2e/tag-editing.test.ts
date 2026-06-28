@@ -150,6 +150,37 @@ describe("MetaEdit tag editing", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
+	test("rejects a purely numeric tag (Obsidian renders it as text)", async () => {
+		const { obsidian, sandbox } = getContext();
+		const result = await editBodyTag(
+			obsidian,
+			sandbox.path("numeric.md"),
+			"#topic here.\n",
+			"(t) => t.find((x) => x.key === '#topic')",
+			"#2024",
+		);
+
+		expect(result.error).toContain("not a valid tag");
+		expect(result.content).toBe("#topic here.\n");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("Tracker re-edit keeps adjacent tags and markup intact", async () => {
+		const { obsidian, sandbox } = getContext();
+		const result = await editBodyTag(
+			obsidian,
+			sandbox.path("tracker-adjacent.md"),
+			"#weight:80,#other and (#mood:3) end.\n",
+			"(t) => t.find((x) => x.key === '#weight')",
+			"#weight:85",
+		);
+
+		expect(result.error).toBe("");
+		// The bounded :value suffix stops at the comma; #other and (#mood:3) survive.
+		expect(result.content).toBe("#weight:85,#other and (#mood:3) end.\n");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
 	test("api.update on a body tag normalizes a bare value into a safe rename", async () => {
 		const { obsidian, sandbox } = getContext();
 		const notePath = sandbox.path("api-rename.md");

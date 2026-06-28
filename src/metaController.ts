@@ -14,7 +14,7 @@ import type {AutoProperty} from "./Types/autoProperty";
 import {findAutoProperty, isMultiAutoProperty, toValueArray, withChoiceAdded} from "./autoProperties";
 import {applyMultiValueEdit, isMultiValueYamlProperty, shouldUseMultiValueEditor, type MultiValueEdit} from "./multiValue";
 import {getYamlPath, isYamlParentContainerValue, parseYamlPath, setYamlPath, YamlPathError, type SetYamlPathOptions, type YamlPathSegment} from "./yamlPath";
-import {computeTagRewrite, isNestedTag, isTagsKey, isValidTagToken, normalizeTagToken, splitFrontmatterTags, spliceTag, stripHash, tagLeaf, canonicalizeFrontmatterTag, type TagEditMode} from "./tagEditing";
+import {computeTagRewrite, isNestedTag, isTagsKey, isValidTagToken, normalizeTagToken, splitFrontmatterTags, spliceTag, stripHash, tagLeaf, tagParent, canonicalizeFrontmatterTag, type TagEditMode} from "./tagEditing";
 import {setPendingValueContext} from "./Modals/GenericPrompt/promptValueContext";
 
 const fileWriteQueues: Map<string, Promise<unknown>> = new Map();
@@ -169,9 +169,10 @@ export default class MetaController {
 
         let input: string | null;
         // Preserve the Auto Property hook for the leaf of a nested tag (the only
-        // case it ever matched): an Auto Property named after the parent path
-        // supplies the new leaf value.
-        const parentPath = stripHash(tag).split("/").slice(0, -1).join("/");
+        // case it ever matched): an Auto Property named after the parent path -
+        // WITH the leading `#`, matching the historical key (`#area` for `#area/x`)
+        // - supplies the new leaf value.
+        const parentPath = tagParent(tag);
         if (mode === "leaf" && this.getActiveAutoProperty(parentPath)) {
             const autoProp = await this.handleAutoProperties(parentPath);
             if (autoProp === null) return; // cancelled
