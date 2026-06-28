@@ -27,7 +27,7 @@ export default class GenericSuggester extends FuzzySuggestModal<string>{
         return this.items;
     }
 
-    onChooseItem(item: string, evt: MouseEvent | KeyboardEvent): void {
+    onChooseItem(item: string, _evt: MouseEvent | KeyboardEvent): void {
         this.resolvePromise(item);
     }
     

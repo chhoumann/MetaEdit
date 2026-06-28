@@ -42,8 +42,8 @@ export class DataviewHelper {
         if (item.addedCheckboxes) return;
         item.addedCheckboxes = true;
 
-        const dvJS = document.getElementsByClassName('block-language-dataviewjs');
-        const dv = document.getElementsByClassName('block-language-dataview');
+        const dvJS = activeDocument.getElementsByClassName('block-language-dataviewjs');
+        const dv = activeDocument.getElementsByClassName('block-language-dataview');
 
         const dataviewBlocks: HTMLElement[] = [
             ...Array.prototype.slice.call(dvJS),
@@ -75,7 +75,7 @@ export class DataviewHelper {
                             this.selectedValues.push(valuesInRow);
                         });
                     } else {
-                        newCell.style.border = "none";
+                        newCell.classList.add("metaedit-dataview-empty-header");
                     }
                 }
             })

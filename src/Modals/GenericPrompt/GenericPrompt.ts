@@ -46,7 +46,7 @@ export default class GenericPrompt extends Modal {
     onOpen() {
         super.onOpen();
 
-        const modalPrompt = document.querySelector('.metaEditPrompt');
+        const modalPrompt = activeDocument.querySelector('.metaEditPrompt');
         const modalInput = modalPrompt?.querySelector('.metaEditPromptInput') as HTMLInputElement | null;
         modalInput?.focus();
         // select() is only meaningful (and only safe) on text inputs - calling it
