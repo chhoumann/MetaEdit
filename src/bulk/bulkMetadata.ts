@@ -2,9 +2,10 @@
  * Pure decision logic for applying a single YAML frontmatter property across a
  * set of notes. This module is intentionally free of any Obsidian dependency so
  * it can be unit-tested in the jsdom-free node environment, and so the
- * read-decide-write step can run atomically inside
- * `app.fileManager.processFrontMatter` (the same safe frontmatter primitive the
- * controller write path uses) - never against the eventually-consistent
+ * read-decide-write step can run atomically inside a single
+ * `processFrontMatter` callback - dispatched through the controller's per-file
+ * write queue (`MetaController.enqueueFrontmatterWrite`) so it serializes with
+ * every other MetaEdit write to the note - never against the eventually-consistent
  * metadata cache.
  */
 

@@ -17,12 +17,18 @@ import {
  * Drives the bulk "add/update a YAML property across many notes" flow shared by
  * the folder context-menu item and the multi-select (`files-menu`) item.
  *
- * Writes go through Obsidian's `app.fileManager.processFrontMatter` - the exact
- * frontmatter primitive the rewritten controller write path is built on (see
- * metaController.processFrontMatter) - never hand-rolled YAML text edits. The
- * read, the conflict decision, and the write all happen inside a single
- * processFrontMatter callback per note, so each note's decision is made against
- * its live frontmatter rather than the lazily-updated metadata cache.
+ * Writes go through `MetaController.enqueueFrontmatterWrite`, which wraps
+ * Obsidian's `app.fileManager.processFrontMatter` in the controller's per-file
+ * write queue (`enqueueFileWrite`, keyed by normalized path). Routing through the
+ * queue is what makes bulk safe: Obsidian only serializes processFrontMatter
+ * against another processFrontMatter, so a bare bulk write could otherwise be lost
+ * when it raced a controller `vault.read`+`vault.modify` whole-file edit to the
+ * same note (a concurrent public-API write, or a user-invoked Edit-Meta command).
+ * On the queue, bulk serializes with every other MetaEdit controller/API write to
+ * that note (not arbitrary third-party vault writes MetaEdit never sees). The read,
+ * the conflict decision, and the write still all happen inside a single
+ * processFrontMatter callback per note, so each note's decision is made against its
+ * live frontmatter rather than the lazily-updated metadata cache.
  */
 export class BulkMetadataEditor {
 	constructor(private app: App, private plugin: MetaEdit) {}
@@ -170,7 +176,11 @@ export class BulkMetadataEditor {
 	): Promise<BulkOutcome> {
 		let outcome: BulkOutcome = "skipped";
 
-		await this.app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
+		// Serialize through the controller's per-file write queue so this write is
+		// never lost to a concurrent controller `vault.read`+`vault.modify` edit to
+		// the same note (see the module docstring). The decision is still made
+		// against live frontmatter inside the single processFrontMatter callback.
+		await this.plugin.controller.enqueueFrontmatterWrite(file, (frontmatter: Record<string, unknown>) => {
 			const exists = Object.prototype.hasOwnProperty.call(frontmatter, key);
 			const decision = decideBulkWrite({
 				exists,
