@@ -42,9 +42,11 @@
     }
 
     function addNewProperty() {
-        const board: TFile = initialBoards.find(board => board.basename === inputValue);
+        const board = initialBoards.find(board => board.basename === inputValue);
+        if (!board) return;
+
         const exists: boolean = !!kanbanProperties.find(kp => kp.boardName === board.basename);
-        if (!board || exists) return;
+        if (exists) return;
 
         kanbanProperties = [...kanbanProperties, {
             property: "",

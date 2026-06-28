@@ -6,7 +6,6 @@ import ProgressPropertiesModalContent
 import AutoPropertiesModalContent from "../Modals/AutoPropertiesSettingModal/AutoPropertiesModalContent.svelte";
 import KanbanHelperSettingContent from "../Modals/KanbanHelperSetting/KanbanHelperSettingContent.svelte";
 import SingleValueTableEditorContent from "../Modals/shared/SingleValueTableEditorContent.svelte";
-import IgnoredPropertiesModalContent from "../Modals/IgnoredPropertiesSettingModal/IgnoredPropertiesModalContent.svelte";
 import type {ProgressProperty} from "../Types/progressProperty";
 import type {AutoProperty} from "../Types/autoProperty";
 import type {KanbanProperty} from "../Types/kanbanProperty";
@@ -165,10 +164,10 @@ export class MetaEditSettingsTab extends PluginSettingTab {
             div.createEl("p", {text: "Hide specific properties by name:", cls: "metaedit-table-label"});
 
             const modal = mountSvelteComponent(
-                IgnoredPropertiesModalContent,
+                SingleValueTableEditorContent,
                 div,
                 {
-                    ignoredProperties: this.plugin.settings.IgnoredProperties.properties,
+                    properties: this.plugin.settings.IgnoredProperties.properties,
                     save: async (ignoredProperties: string[]) => {
                         this.plugin.settings.IgnoredProperties.properties = ignoredProperties;
                         await this.plugin.saveSettings();
