@@ -38,6 +38,9 @@ for (const s of stories) {
 
 const cell = (v) =>
 	String(v ?? "")
+		// Escape backslashes first so the pipe-escape introducer is unambiguous,
+		// then escape table-breaking pipes and fold newlines to <br>.
+		.replace(/\\/g, "\\\\")
 		.replace(/\|/g, "\\|")
 		.replace(/\r?\n/g, "<br>")
 		.trim();
