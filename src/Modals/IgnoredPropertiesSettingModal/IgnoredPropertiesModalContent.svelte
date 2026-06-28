@@ -1,17 +1,29 @@
 <script lang="ts">
-    export let save: (ignoredProperties: string[]) => void;
-    export let ignoredProperties: string[] = [];
+    import {untrack} from "svelte";
+
+    let {
+        save,
+        ignoredProperties: initialIgnoredProperties = [],
+    }: {
+        save: (ignoredProperties: string[]) => void;
+        ignoredProperties?: string[];
+    } = $props();
+
+    let ignoredProperties = $state(untrack(() => [...initialIgnoredProperties]));
+    let ignoredPropertyIndexes = $derived(ignoredProperties.map((_, i) => i));
+
+    function saveProperties() {
+        save($state.snapshot(ignoredProperties));
+    }
 
     function addNewProperty() {
-        ignoredProperties.push("");
-        ignoredProperties = ignoredProperties; // Svelte
-        save(ignoredProperties);
+        ignoredProperties = [...ignoredProperties, ""];
+        saveProperties();
     }
 
     function removeProperty(i: number) {
-        ignoredProperties.splice(i, 1);
-        ignoredProperties = ignoredProperties; // Svelte
-        save(ignoredProperties);
+        ignoredProperties = ignoredProperties.filter((_, index) => index !== i);
+        saveProperties();
     }
 </script>
 
@@ -24,13 +36,13 @@
         </tr>
         </thead>
         <tbody>
-            {#each ignoredProperties as property, i (i)}
+            {#each ignoredPropertyIndexes as i (i)}
                 <tr>
                     <td>
-                        <input type="button" value="❌" class="not-a-button" on:click={() => removeProperty(i)}/>
+                        <input type="button" value="❌" class="not-a-button" onclick={() => removeProperty(i)}/>
                     </td>
                     <td>
-                        <input on:change={async () => save(ignoredProperties)} style="width: 100%;" type="text" placeholder="Property name" bind:value={property}>
+                        <input onchange={saveProperties} style="width: 100%;" type="text" placeholder="Property name" bind:value={ignoredProperties[i]}>
                     </td>
                 </tr>
             {/each}
@@ -38,7 +50,7 @@
     </table>
 
     <div class="buttonContainer">
-        <button on:click={addNewProperty} class="mod-cta">Add</button>
+        <button onclick={addNewProperty} class="mod-cta">Add</button>
     </div>
 </div>
 
