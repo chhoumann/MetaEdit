@@ -1,0 +1,561 @@
+[
+  {
+    "area": "Run command + Edit Meta suggester",
+    "title": "Misplaced period in 'already has property' Notice produces garbled UI message",
+    "storyIds": [
+      "RUN-03",
+      "RUN-04"
+    ],
+    "severity": "ux",
+    "rootCause": "src/metaController.ts:79 — the template literal places the period inside the property-name quotes: `'${propName}. Will not add.'` instead of `'${propName}'. Will not add.`",
+    "repro": "Note: `---\\nstatus: draft\\n---\\n`. 1) Run MetaEdit command. 2) Select 'New YAML property'. 3) Type 'status' and press Enter. 4) Type any value and press Enter. Notice fires and reads: \"Frontmatter in file 'note.md' already has property 'status. Will not add.'\" — the period is inside the quoted key name.",
+    "expected": "Notice reads: \"Frontmatter in file 'note.md' already has property 'status'. Will not add.\"",
+    "actual": "Notice reads: \"Frontmatter in file 'note.md' already has property 'status. Will not add.'\" — the period is part of the property name quotation, making the message look like the property name is 'status.'",
+    "fixSketch": "Move the period outside the closing apostrophe in metaController.ts:79: change `'${propName}. Will not add.'` to `'${propName}'. Will not add.`",
+    "confidence": "high"
+  },
+  {
+    "area": "Run command + Edit Meta suggester",
+    "title": "Missing try/catch in deleteItem and transformProperty leaves modal open on write failure",
+    "storyIds": [
+      "RUN-06",
+      "RUN-07"
+    ],
+    "severity": "functional",
+    "rootCause": "src/Modals/metaEditSuggester.ts:112-118 (deleteItem) and 120-134 (transformProperty) — `this.close()` is called unconditionally after the awaited write, but there is no try/finally or try/catch. If `deleteProperty` or `appendDataviewField`/`addYamlProp` throws (e.g., `processFrontMatter` rejects on a filesystem error or locked file), `this.close()` is never reached, leaving the modal stuck open with potentially stale data.",
+    "repro": "Note: `---\\nstatus: draft\\n---\\n`. 1) Open the MetaEdit suggester. 2) Simulate a write failure by monkey-patching `app.fileManager.processFrontMatter` to throw: `app.fileManager.processFrontMatter = async () => { throw new Error('disk full'); }`. 3) Click the ❌ (delete) button on 'status'. The modal remains open instead of closing. Same for the 🔃 (transform) button.",
+    "expected": "On write failure the modal closes (or shows an error), never leaving the UI in a permanently open/stuck state.",
+    "actual": "The modal stays open because `this.close()` after an awaited throw is never executed. In the transform path, a failed `appendDataviewField` after a successful `deleteProperty` also orphans the property permanently.",
+    "fixSketch": "Wrap the body of `deleteItem`'s returned handler in try/finally with `this.close()` in the finally block. Do the same for `transformProperty`. For the transform path, also consider adding a rollback Notice if the second write fails.",
+    "confidence": "high"
+  },
+  {
+    "area": "Run command + Edit Meta suggester",
+    "title": "Ignored properties are re-offered as 'new property' name suggestions, leading to a confusing dead-end Notice",
+    "storyIds": [
+      "RUN-05"
+    ],
+    "severity": "ux",
+    "rootCause": "src/Modals/metaEditSuggester.ts:163 — `existing` is built from `this.data`, which is already filtered by `filterMenuItems`. Properties hidden by `IgnoredProperties` are absent from `this.data`, so they are absent from `existing`, and therefore are NOT excluded from `suggestValues`. They appear in the new-property name autocomplete despite already existing in the file.",
+    "repro": "Note: `---\\nstatus: draft\\n---\\n`. Settings: IgnoredProperties enabled, 'status' in ignored list. 1) Run MetaEdit command. 2) Select 'New YAML property'. 3) Observe that 'status' appears in the name autocomplete (since it is in vault property names but not in `existing`). 4) Select 'status', enter any value. Notice fires: 'already has property status. Will not add.' — no property created, user is confused why a suggested name is rejected.",
+    "expected": "Properties already present in the file (even if hidden by IgnoredProperties) are excluded from the 'new property' name suggestions, or the user receives a clearer message that the property already exists.",
+    "actual": "An ignored-but-present property (e.g. 'status') appears in the new-property name autocomplete, the user selects it, and receives a confusing Notice without any property being created.",
+    "fixSketch": "In `setSuggestValues`, build `existing` from the unfiltered `data` argument passed to the constructor (before filterMenuItems is applied), not from the post-filter `this.data`. Alternatively, after filtering, union `existing` with the full set of property keys from the original `data` array passed in.",
+    "confidence": "high"
+  },
+  {
+    "area": "MetaController read/write core",
+    "title": "standardMode silently no-ops when user clears a property value to an empty string",
+    "storyIds": [
+      "CTRL-01",
+      "MULTI-01"
+    ],
+    "severity": "functional",
+    "rootCause": "src/metaController.ts:311 — `if (newValue)` is falsy for the empty string, so a GenericPrompt submission of \"\" never reaches updatePropertyFromUi.",
+    "repro": "Note content: `---\\nstatus: draft\\n---\\n`. Open Edit Meta menu (AllSingle mode), select `status`. In the prompt, clear the pre-filled value `draft` to empty and press Enter. Expected: `status:` in frontmatter is set to an empty value. Actual: nothing happens, the file is unchanged, no feedback given.",
+    "expected": "Submitting an empty string in the value prompt should write an empty value (or at minimum show a notice explaining the field cannot be left empty).",
+    "actual": "The `if (newValue)` guard at line 311 treats `\"\"` as falsy and returns without writing. No error or notice is shown to the user, giving the impression the edit was saved.",
+    "fixSketch": "Change `if (newValue)` to `if (newValue !== null)` (since cancel resolves to null). This allows empty-string submissions through while still no-opping actual cancels.",
+    "confidence": "high"
+  },
+  {
+    "area": "MetaController read/write core",
+    "title": "multiValueMode silently no-ops when user tries to replace a list element with an empty string",
+    "storyIds": [
+      "CTRL-01",
+      "MULTI-04"
+    ],
+    "severity": "functional",
+    "rootCause": "src/metaController.ts:375 — `if (!tempValue) return false` uses falsy check, rejecting an empty-string submission from GenericPrompt.",
+    "repro": "Note content: `---\\nauthors:\\n  - Smith, John\\n---\\n`. Open Edit Meta menu (AllSingle or AllMulti), select `authors`, then select `Smith, John`. Clear the pre-filled value to empty and press Enter. Expected: the list element is set to `\"\"`. Actual: no write, no feedback.",
+    "expected": "Submitting empty string to replace an existing list element should update that element to an empty string (YAML list element `\"\"` is valid).",
+    "actual": "`if (!tempValue)` is falsy for `\"\"`, so `return false` fires before any write. No notice or error is surfaced.",
+    "fixSketch": "Change `if (!tempValue) return false` to `if (tempValue === null || tempValue === undefined) return false`. GenericPrompt resolves to `null` on cancel and to a string (possibly `\"\"`) on submit.",
+    "confidence": "high"
+  },
+  {
+    "area": "MetaController read/write core",
+    "title": "addYamlProp 'already exists' Notice has a misplaced period inside the property-name quote",
+    "storyIds": [
+      "CTRL-03"
+    ],
+    "severity": "ux",
+    "rootCause": "src/metaController.ts:79 — the template literal places the closing quote for propName after `. Will not add.`, so the notice reads `'status. Will not add.'` instead of `'status'. Will not add.`",
+    "repro": "Note with `---\\nstatus: draft\\n---`. Call `controller.addYamlProp('status', 'done', file)` (or attempt to create a new YAML property named `status` via the suggester when `status` already exists). Observe the Notice message.",
+    "expected": "Notice reads: `Frontmatter in file 'note.md' already has property 'status'. Will not add.`",
+    "actual": "Notice reads: `Frontmatter in file 'note.md' already has property 'status. Will not add.'` — the sentence-ending period and clause appear inside the property-name quotes.",
+    "fixSketch": "Change line 79 to: `new Notice(\\`Frontmatter in file '${file.name}' already has property '${propName}'. Will not add.\\`);`",
+    "confidence": "high"
+  },
+  {
+    "area": "Single vs Multi value editing",
+    "title": "standardMode silently no-ops when user clears a property value to the empty string",
+    "storyIds": [
+      "MULTI-01"
+    ],
+    "severity": "functional",
+    "rootCause": "src/metaController.ts:311 — `if (newValue)` rejects both null (cancel) and \"\" (blank submission). GenericPrompt.Prompt returns null for Escape/cancel and \"\" when the user clears the input field and presses Enter, so the two cases are conflated and a genuine clear-to-empty is silently discarded.",
+    "repro": "Note content: `---\\nstatus: done\\n---\\nbody`. Settings: EditMode = All Single. Action: Edit Meta → pick 'status' → clear the pre-filled 'done' text → press Enter. Expected: `status: ` (empty). Actual: file unchanged, no notice.",
+    "expected": "The property is updated to an empty string (YAML: `status: `) reflecting the user's explicit intent to blank the field.",
+    "actual": "The `if (newValue)` guard at line 311 evaluates `\"\"` as falsy and returns without calling `updatePropertyFromUi`. The file is not written and no feedback is shown.",
+    "fixSketch": "Change `if (newValue)` to `if (newValue !== null)` so that a deliberately submitted empty string is accepted as a real value while a null (cancel) still aborts.",
+    "confidence": "high"
+  },
+  {
+    "area": "Single vs Multi value editing",
+    "title": "multiValueMode silently no-ops when user blanks a list element (or an add-to-end/beginning prompt) to the empty string",
+    "storyIds": [
+      "MULTI-04",
+      "MULTI-05"
+    ],
+    "severity": "functional",
+    "rootCause": "src/metaController.ts:375 — `if (!tempValue) return false` treats \"\" (blank Enter) identically to null (cancel). GenericPrompt.Prompt returns \"\" when the user submits a blank prompt, so editing a list element to blank is silently dropped.",
+    "repro": "Note content: `---\\nauthors:\\n  - Smith, John\\n  - Doe, Jane\\n---\\nbody`. Settings: EditMode = All Single (YAML array auto-routes to multi-value editor). Action: Edit Meta → authors → pick 'Doe, Jane' → clear the pre-filled value → press Enter. Expected: 'Doe, Jane' replaced with '' (empty string element). Actual: list unchanged, no notice.",
+    "expected": "The selected list element is replaced with an empty string in the YAML list.",
+    "actual": "`!tempValue` is true for \"\" so the function returns false at line 375 without writing. File is unchanged with no user feedback.",
+    "fixSketch": "Change `if (!tempValue) return false` to `if (tempValue === null) return false`. Because `GenericPrompt.Prompt` returns `null` for cancellation and `\"\"` for blank-Enter, the null check precisely distinguishes cancel from an intentional blank.",
+    "confidence": "high"
+  },
+  {
+    "area": "Single vs Multi value editing",
+    "title": "SomeMulti settings table persists an empty-string entry to disk on every 'Add' click before the user types a property name",
+    "storyIds": [
+      "MULTI-03"
+    ],
+    "severity": "ux",
+    "rootCause": "src/Modals/shared/SingleValueTableEditorContent.svelte:19-21 — `addNewProperty()` appends \"\" to the array and immediately calls `saveProperties()`. If the user clicks 'Add' without typing a name and then navigates away (closes settings, opens a different tab, reloads), the empty-string entry `\"\"` is persisted in `EditMode.properties` and survives plugin reload.",
+    "repro": "Settings: set EditMode to 'Some Multi'. Open plugin settings → Edit Mode section → gear icon → click 'Add' without typing anything → close the settings tab. Re-open settings. Inspect raw settings via `app.plugins.plugins['metaedit'].settings.EditMode.properties`. Expected: no empty-string entry. Actual: `[\"\"]` (or more, one per click).",
+    "expected": "No entry is persisted until the user actually commits a property name (on blur / onchange).",
+    "actual": "`saveProperties()` is called inside `addNewProperty()` before the input has any content, writing the empty string to disk immediately. Empty-string entries accumulate across sessions since they never match any real property and are never auto-cleaned.",
+    "fixSketch": "Remove the `saveProperties()` call from `addNewProperty()` so the new row is staged in `$state` only. Add a placeholder that saves when the user commits the field value (the existing `onchange` handler already does this). Alternatively, keep the immediate save but filter out blank entries in the save callback.",
+    "confidence": "high"
+  },
+  {
+    "area": "Single vs Multi value editing",
+    "title": "Editing a quoted-bracket YAML scalar ('[a, b]') via multi-value mode strips the brackets and quotes on write-back",
+    "storyIds": [
+      "MULTI-07"
+    ],
+    "severity": "ux",
+    "rootCause": "src/autoProperties.ts:117-120 — `toValueArray` called by `splitMultiValue` (metaController.ts:622) strips a leading `[` and trailing `]` from any string value before splitting on commas. When the edit result is joined with `\", \"` (metaController.ts:391), the original bracket wrapper is not restored. A YAML property whose value is a quoted string like `\"[active, pending]\"` is parsed by Obsidian as the plain string `[active, pending]`. After `toValueArray` it becomes `[\"active\", \"pending\"]`, and after one edit it is written back as `active, pending`.",
+    "repro": "Note content: `---\\nstatus: \"[active, pending]\"\\n---\\nbody`. Settings: EditMode = All Multi. Action: Edit Meta → status → pick 'active' → type 'testing' → Enter. Expected: `status: \"[testing, pending]\"` (brackets preserved). Actual: `status: testing, pending` (brackets and quotes lost, YAML scalar type changed).",
+    "expected": "The scalar value is round-tripped with its bracket wrapper intact, or the user is shown the raw string value so they can edit it as-is without silent structural mutation.",
+    "actual": "`toValueArray(\"[active, pending]\")` strips the `[...]` and splits to `[\"active\", \"pending\"]`. After the edit, `newList.join(\", \")` produces `\"testing, pending\"` — the brackets are gone. The YAML property that was a single quoted string value is now a plain unquoted CSV.",
+    "fixSketch": "In `splitMultiValue`, detect that the scalar starts and ends with brackets and record whether to re-wrap. Alternatively, use the raw string as the single editable element when `editsArray` is false and the value does not contain a comma outside the brackets. At minimum, document that bracket-wrapped scalars will have their brackets removed on the first edit.",
+    "confidence": "medium"
+  },
+  {
+    "area": "Auto Properties",
+    "title": "Multi-type leaf-tag Auto Property silently fails when user selects 2+ values",
+    "storyIds": [
+      "AUTO-08"
+    ],
+    "severity": "functional",
+    "rootCause": "src/metaController.ts:179 — when a Multi-type Auto Property supplies the leaf for a nested tag edit, the array result is joined with `\", \"` before being passed to `computeTagRewrite`. The joined string (e.g. `\"work, personal\"`) produces `#area/work, personal`, which always fails `isValidTagToken` because the body contains a space and comma. A Notice fires and no write occurs.",
+    "repro": "1. Create a note with body text `#area/project`. 2. In MetaEdit settings, create an Auto Property named `#area` with type `Multi` and choices `[\"work\", \"personal\"]`. Enable Auto Properties. 3. Open the Edit Meta menu on the note, select the `#area/project` tag row. 4. Choose \"Edit last segment\". 5. The Auto Property modal opens in multi-select mode. 6. Check both \"work\" and \"personal\". Press Confirm. 7. Observe: Notice appears saying '\"work, personal\" is not a valid tag name. Tags cannot contain spaces or commas.' The tag is unchanged. Selecting only one choice succeeds.",
+    "expected": "Selecting a single value from a Multi Auto Property for a nested tag leaf replaces the leaf with that value. If multi-select is not meaningful for a tag leaf (tags cannot contain spaces), the modal should either open in Single mode or warn the user before they select.",
+    "actual": "The Auto Property modal opens in multi-select mode (because the property is type Multi). When 2+ values are selected, the leaf input becomes `\"val1, val2\"` which fails tag validation with a confusing error message, leaving the tag unchanged. The multi-select UX is broken for tag leaf editing.",
+    "fixSketch": "In `editTag` at the leaf-mode Auto Property branch (metaController.ts:175-179), force single-select by calling `handleAutoProperties` with `isMulti:false` (or open the modal directly with `AutoPropertyValueModal.Show` overriding `isMulti:false`). Alternatively, after joining with `\", \"` check for spaces/commas and show a targeted error before tag validation fires. The cleanest fix is to always open in single mode for tag leaf editing, since a tag leaf cannot contain spaces.",
+    "confidence": "high"
+  },
+  {
+    "area": "Progress Properties",
+    "title": "Custom task states (-, >, ?, etc.) are always counted as 'complete', inflating the completed count",
+    "storyIds": [
+      "PROG-03"
+    ],
+    "severity": "functional",
+    "rootCause": "src/metaController.ts:216 — `complete = tasks.filter(i => i.task != \" \").length;` treats every non-space task character as complete, including cancelled (`-`), forwarded (`>`), questioned (`?`), and other custom checkbox states that Obsidian supports via community plugins (Tasks, Dataview). Only `' '` (space) is 'incomplete'; everything else increments 'complete'.",
+    "repro": "Note content:\n```\n---\ncompleted: 0\ntotal: 0\n---\n- [ ] open task\n- [x] done task\n- [-] cancelled task\n- [>] forwarded task\n```\nSettings: ProgressProperties enabled, two rules: `{name:'completed', type:'Completed Tasks'}` and `{name:'total', type:'Total Tasks'}`.\nCall: `plugin.controller.handleProgressProps(await plugin.controller.getPropertiesInFile(file), file)`",
+    "expected": "With 1 open task, 1 done task, 1 cancelled task, 1 forwarded task: completed = 1 (only `[x]`); total = 4; incomplete = 3.",
+    "actual": "completed = 3 (x, -, > all pass the `!= ' '` test); incomplete = 1 (only the `[ ]` space task).",
+    "fixSketch": "Define a set of 'done' characters (e.g. `'x'` and `'X'`) and filter with `tasks.filter(i => i.task === 'x' || i.task === 'X').length`, or expose a user-configurable set of 'complete' characters. Alternatively, document the behavior so it is intentional.",
+    "confidence": "high"
+  },
+  {
+    "area": "Progress Properties",
+    "title": "Two progress-property rules targeting the same frontmatter key: last rule's value silently overwrites first (duplicate-name conflict)",
+    "storyIds": [
+      "PROG-02",
+      "PROG-03"
+    ],
+    "severity": "functional",
+    "rootCause": "src/metaController.ts:285-303 (progressPropHelper) — `meta.find()` is called for every rule and pushes two Property objects with the same key into the result array if two rules share the same `name`. src/metaController.ts:598-599 (updateMultipleInFile) — `frontmatter[prop.key] = prop.content` is called sequentially for each property in `yamlProperties`, so the second assignment silently overrides the first within the same `processFrontMatter` callback.",
+    "repro": "Settings: ProgressProperties enabled, two rules:\n  - `{name: 'done', type: 'Total Tasks'}`\n  - `{name: 'done', type: 'Completed Tasks'}`\nNote content:\n```\n---\ndone: 0\n---\n- [ ] a\n- [x] b\n```\nCall: `plugin.controller.handleProgressProps(await plugin.controller.getPropertiesInFile(file), file)`",
+    "expected": "No UI feedback, but at minimum the second rule should not silently discard the first. Ideally a warning is shown that the same key is targeted twice.",
+    "actual": "`done` is written to `2` (Completed Tasks count, i.e. the second rule wins). The Total Tasks value from the first rule is silently discarded. With tasks=2 and complete=1: `done: 1` (completed) instead of `done: 2` (total).",
+    "fixSketch": "In `progressPropHelper`, skip a rule (and log a warning) if another rule with the same `el.name` was already added to `obj`. Or, in `updateMultipleInFile`, deduplicate YAML properties by key before writing, preferring the last or first occurrence and logging the conflict.",
+    "confidence": "high"
+  },
+  {
+    "area": "Progress Properties",
+    "title": "Progress-property rule name input uses `onchange` (fires on blur/Enter only): typing then closing the settings tab without blurring loses the last-typed name",
+    "storyIds": [
+      "PROG-02"
+    ],
+    "severity": "ux",
+    "rootCause": "src/Modals/ProgressPropertiesSettingModal/ProgressPropertiesModalContent.svelte:47 — the name `<input>` uses `onchange={saveProperties}`, which fires only on blur or Enter, not on every keystroke. If the user types a new rule name and then navigates away from the settings tab (via keyboard shortcut, clicking elsewhere, or closing the settings pane) without first pressing Tab or Enter, the `change` event never fires and `saveProperties()` is never called.",
+    "repro": "1. Open Obsidian settings → MetaEdit → enable Progress Properties → expand the gear panel.\n2. Click 'Add' to create a new rule (saved immediately with empty name).\n3. Click the name input and type 'myProp'.\n4. Without pressing Tab or Enter, close the settings window (Esc or click outside).\n5. Reopen settings.",
+    "expected": "The rule name 'myProp' is persisted.",
+    "actual": "The rule is saved with an empty name (the initial save from 'Add'). The typed text is lost.",
+    "fixSketch": "Change `onchange={saveProperties}` to `oninput={saveProperties}` on the name input (line 47 of ProgressPropertiesModalContent.svelte), matching the per-keystroke save pattern used in other Svelte settings components (e.g. AutoPropertiesModalContent).",
+    "confidence": "high"
+  },
+  {
+    "area": "Ignored Properties / menu filtering",
+    "title": "Gear (extra) button is always rendered but is a silent no-op when menu filtering is disabled",
+    "storyIds": [
+      "IGN-01"
+    ],
+    "severity": "ux",
+    "rootCause": "src/Settings/metaEditSettingsTab.ts:146 — `setting.addExtraButton(b => b.onClick(() => hidden = toggleHiddenEl(div, hidden)))` runs unconditionally. When `IgnoredProperties.enabled` is false, `div` is `undefined` (line 142-144) and `toggleHiddenEl(undefined, hidden)` returns `hidden` unchanged without touching the DOM (line 15: `if (!el) return hidden;`). The `metaedit-setting-with-details` class is also never applied (line 145 guard skips it), so there is no collapsible panel for the button to open.",
+    "repro": "1. Open Obsidian Settings → MetaEdit. 2. Ensure 'Edit Meta menu' toggle is OFF (IgnoredProperties.enabled = false). 3. Click the gear/extra-button icon on the 'Edit Meta menu' row. Expected: sub-panel opens to allow configuring the ignore list. Actual: nothing happens — the button is visible and clickable but produces no visible change.",
+    "expected": "Either (a) the gear button is hidden when the feature is disabled, or (b) clicking it enables the feature first and then reveals the sub-panel, or (c) the sub-panel is always accessible regardless of the enabled state.",
+    "actual": "The gear button is rendered (line 146) but `div` is undefined, so `toggleHiddenEl` is a no-op. The user sees a clickable icon that silently does nothing. To configure the ignore list, the user must first enable the toggle, at which point `this.display()` is called (line 138) and the panel is re-mounted with a functional gear button.",
+    "fixSketch": "Guard the `addExtraButton` call: only register it when `div` is defined. Alternatively, always create `div` (start hidden) so the gear has a panel to show/hide regardless of the enabled state.",
+    "confidence": "high"
+  },
+  {
+    "area": "Ignored Properties / menu filtering",
+    "title": "Hidden (ignored) properties appear as 'new property' name suggestions even though they exist in the file",
+    "storyIds": [
+      "IGN-05",
+      "IGN-02"
+    ],
+    "severity": "ux",
+    "rootCause": "src/Modals/metaEditSuggester.ts:163,175 — `setSuggestValues()` builds `existing` from `this.data` (the already-filtered list). Properties excluded by `filterMenuItems` are not in `this.data`, so they are not in `existing`. The filter at line 175 (`!existing.has(name)`) lets them through into `suggestValues`, and `getKnownPropertyNames` will have returned these keys from the vault registry. When a user opens 'New YAML property', the name autocomplete dropdown suggests keys that already exist on this note.",
+    "repro": "1. Create a note with frontmatter: `---\nstatus: open\ntitle: My Note\n---`. 2. In MetaEdit settings, enable 'Edit Meta menu' and add 'status' to the ignored-properties list. 3. Invoke 'Edit Meta' on the note (run command or right-click). 4. Choose 'New YAML property'. 5. Observe the name autocomplete: 'status' appears as a suggestion. 6. Select 'status' and confirm. MetaEdit shows a Notice 'Already has property: status. Will not add.' — the ignored key pollutes the autocomplete.",
+    "expected": "Properties already present in the file (whether visible or hidden by the ignore list) should not appear in the 'new property' name autocomplete.",
+    "actual": "Hidden properties are absent from `this.data`, so they are absent from the `existing` Set, and they pass the `!existing.has(name)` guard into `suggestValues`. They appear as autocomplete suggestions and cause a confusing rejection Notice when selected.",
+    "fixSketch": "Build the `existing` set from the *unfiltered* `data` argument before `filterMenuItems` is applied, or separately track ignored keys and exclude them from `suggestValues`.",
+    "confidence": "high"
+  },
+  {
+    "area": "Value prompt + suggesters",
+    "title": "datetime-local input missing step=\"1\" when initial value has no seconds — user-entered seconds silently discarded",
+    "storyIds": [
+      "PROMPT-02"
+    ],
+    "severity": "functional",
+    "rootCause": "src/Modals/GenericPrompt/GenericPromptContent.svelte:45 — `datetimeStep` is derived from `initialValue` only. When the property's current value is minute-only (e.g. `2026-07-01T09:00`), the regex `/T\\d{2}:\\d{2}:\\d{2}/` does not match and `datetimeStep` is `undefined`. The `datetime-local` input therefore renders without `step=\"1\"`. The browser's default step for datetime-local is 60 s (1 min), so any seconds component the user enters is silently rounded/dropped before submission.",
+    "repro": "1. Open a note with frontmatter: `---\\nwhen: 2026-07-01T09:00\\n---`. 2. In Obsidian, assign the `when` property the type `datetime` via the Properties pane. 3. Open MetaEdit on that note via the Edit Meta menu. 4. Select `when`. 5. The datetime-local picker opens pre-filled with `2026-07-01T09:00`. 6. Change the time to `09:30:45` (add seconds). 7. Press Enter. 8. Observe that the saved value is `2026-07-01T09:30` (seconds stripped) because the input's default step=60 s caused the browser to truncate to the nearest minute.",
+    "expected": "When a user enters a datetime value with seconds (e.g. `2026-07-01T09:30:45`), the submitted and saved value should preserve the seconds.",
+    "actual": "The `datetime-local` input renders without `step=\"1\"` (browser default step = 60 s). The browser silently discards the seconds field, so the submitted value loses the sub-minute precision the user explicitly entered.",
+    "fixSketch": "In GenericPromptContent.svelte line 45, always apply `step=\"1\"` for `dateInputType === \"datetime\"` regardless of whether the initial value has seconds. Change: `const datetimeStep = dateInputType === \"datetime\" ? \"1\" : undefined;`. This is safe because HTML date inputs ignore irrelevant step for the date-only input type, and browsers show/keep seconds only when step<60.",
+    "confidence": "high"
+  },
+  {
+    "area": "Value prompt + suggesters",
+    "title": "filterSuggestions collapse check is case-sensitive — dropdown stays open with a redundant single entry when user's case differs from stored value",
+    "storyIds": [
+      "PROMPT-04"
+    ],
+    "severity": "ux",
+    "rootCause": "src/Modals/GenericPrompt/valueSuggest.ts:126 — `if (filtered.length === 1 && filtered[0] === inputStr) return [];` uses strict (case-sensitive) equality. The filter at line 123 is case-insensitive (`.toLowerCase().includes(query)`), so e.g. the stored value `\"Reading\"` is matched when the user types `\"reading\"`. But `filtered[0]` is `\"Reading\"` and `inputStr` is `\"reading\"`, so `\"Reading\" === \"reading\"` is false and the dropdown stays open showing a single entry the user has effectively already typed.",
+    "repro": "1. Have at least one note with `status: Reading` in frontmatter. 2. Open MetaEdit on any note and choose `status` (a YAML property). 3. In the value prompt, type `reading` (all lowercase). 4. The suggestion dropdown remains open showing `Reading` as the only match, even though the user has already typed an equivalent value. Pressing Enter submits `reading`; clicking the suggestion substitutes `Reading`. The extra dropdown click is the friction.",
+    "expected": "When the user's input matches a single suggestion in a case-insensitive way (typed value and stored value differ only in case), the dropdown should collapse just as it would for an exact-case match.",
+    "actual": "The dropdown stays open with one redundant entry because the collapse guard uses strict equality. The user must either press Enter (ignoring the suggestion) or click the suggestion (to accept the stored capitalisation).",
+    "fixSketch": "Change line 126 of valueSuggest.ts to a case-insensitive collapse check: `if (filtered.length === 1 && filtered[0].toLowerCase() === inputStr.toLowerCase()) return [];`",
+    "confidence": "high"
+  },
+  {
+    "area": "Nested YAML path editing",
+    "title": "Progress Properties automation silently fails when a root-key rule and nested-path rule share the same root key",
+    "storyIds": [
+      "YAML-06"
+    ],
+    "severity": "functional",
+    "rootCause": "src/metaController.ts:567-602 — updateMultipleInFile writes yamlProperties (plain key assignments, no path) before yamlPathProperties (setYamlPath). If one property in yamlProperties overwrites a root key with a scalar (e.g. frontmatter['tasks'] = '2'), then a subsequent setYamlPath call for a nested path under that root (e.g. ['tasks', 'total']) finds a string where it expects an object and throws YamlPathError. The processFrontMatter callback throws so Obsidian rolls back (no file write), but handleProgressProps at line 222 catches all errors with only log.logError(e) — no Notice to the user.",
+    "repro": "Note content: `---\\ntasks:\\n  total: 0\\n---\\n- [ ] one\\n- [x] two\\n`. Settings: Progress Properties enabled, rules = [{name: 'tasks', type: 'Total Tasks'}, {name: 'tasks.total', type: 'Total Tasks'}]. Save the note. Expected: both tasks and tasks.total update. Actual: processFrontMatter callback throws 'is not an object', Obsidian rolls back, file is unchanged, user sees no error — automation silently no-ops.",
+    "expected": "Either the two updates both succeed (writing tasks.total as a nested path and not clobbering the tasks object), or the user receives a Notice explaining the conflicting rules.",
+    "actual": "The yamlProperties loop (line 598-600) first sets frontmatter['tasks'] = '2' (string). Then setYamlPath tries to walk frontmatter['tasks']['total'] but 'tasks' is now a string, not an object. It throws. Obsidian rolls back the write. handleProgressProps catches the error and only calls log.logError — no Notice, no file write. The user's Progress Properties counts are not updated.",
+    "fixSketch": "In updateMultipleInFile, detect when a yamlProperty key is a prefix of any yamlPathProperty root and either (a) skip the plain write in favour of the nested path write, or (b) emit a Notice and skip the conflicting rule. Alternatively, process all YAML properties (plain and path) inside a single ordered pass that applies path writes for path properties and plain writes only for non-path properties.",
+    "confidence": "medium"
+  },
+  {
+    "area": "Nested YAML path editing",
+    "title": "updateYamlPath and addOrUpdateYamlPath surface raw YamlPathError to callers with no Notice or log, unlike all other controller write paths",
+    "storyIds": [
+      "YAML-02",
+      "YAML-03"
+    ],
+    "severity": "ux",
+    "rootCause": "src/metaController.ts:655-679 — updateYamlPath (line 655) and addOrUpdateYamlPath (line 665) have no try/catch around setYamlPath. A missing path (createLeaf:false), scalar parent, or out-of-range array index causes setYamlPath to throw YamlPathError, which propagates out of enqueueFileWrite to the public API caller as an unhandled rejection. Compare to updatePropertyFromUi (line 625) and handleProgressProps (line 206) which both catch errors and either show a Notice or log them.",
+    "repro": "Templater/QuickAdd script: `const api = app.plugins.plugins['metaedit'].api; const file = app.vault.getActiveFile(); await api.updateYamlPath('nonexistent.path', 'value', file);`. With a note that has no 'nonexistent' key in frontmatter, this call throws an unhandled rejection visible in the Obsidian Developer Console. No Notice appears. The same occurs for `api.addOrUpdateYamlPath('scalar.sub', 5, file)` when 'scalar' is a non-object frontmatter value.",
+    "expected": "A user-visible Notice with the error reason is shown (consistent with how updatePropertyInFile errors are surfaced via updatePropertyFromUi), or at minimum the error is logged via log.logMessage so it appears in the MetaEdit log.",
+    "actual": "The YamlPathError propagates as an unhandled rejection. Third-party scripts get a raw exception with no indication from MetaEdit that the write failed. The Obsidian console shows the error but the user gets no in-app feedback.",
+    "fixSketch": "Wrap the enqueueFileWrite body in updateYamlPath and addOrUpdateYamlPath with a try/catch that calls new Notice(`MetaEdit could not update path '${formatYamlPath(resolvedPath)}': ${error.message}`) and log.logMessage, mirroring the pattern in updatePropertyFromUi.",
+    "confidence": "high"
+  },
+  {
+    "area": "Nested YAML path editing",
+    "title": "formatYamlPath round-trip is broken when the first path segment is a number",
+    "storyIds": [
+      "YAML-01"
+    ],
+    "severity": "minor",
+    "rootCause": "src/yamlPath.ts:34-40 — formatYamlPath reduces a path array to a string. When the first segment is a number (e.g. [0, 'name']), the reduce starts with '' and a numeric segment is formatted as '[0]', producing '[0].name'. parseYamlPath('[0].name') then calls readPathPart('[0]', ...) which requires the part to match /^([^\\[\\]]+)/ (non-bracket characters first), but '[0]' starts with '[', so keyMatch is null and it throws 'Bracket paths must follow a property name.' The round-trip contract (formatYamlPath(parseYamlPath(s)) === s) breaks for any path with a numeric first segment.",
+    "repro": "In a Templater/QuickAdd script or browser console with MetaEdit loaded: `const {formatYamlPath, parseYamlPath} = app.plugins.plugins['metaedit']._yamlPathModule; const formatted = formatYamlPath([0, 'name']); parseYamlPath(formatted);` — the second call throws YamlPathError. Alternatively, `api.getYamlPath([0, 'name'], file)` produces a confusing error label '[0].name' in the thrown error message.",
+    "expected": "formatYamlPath([0, 'name']) either (a) throws because a numeric-first path is not a valid frontmatter path, or (b) produces a string that parseYamlPath can re-parse.",
+    "actual": "formatYamlPath([0, 'name']) returns '[0].name' without error. parseYamlPath('[0].name') throws. The formatted string cannot be used as a path string anywhere else in the API, breaking round-trip use cases.",
+    "fixSketch": "In formatYamlPath (or validateYamlPath), throw a YamlPathError when the first segment is a number, since frontmatter roots are always objects. Alternatively, document that formatYamlPath output for numeric-first paths is not re-parseable as a dotted string path.",
+    "confidence": "low"
+  },
+  {
+    "area": "Tag editing",
+    "title": "Multi-type Auto Property for nested tag parent always fails leaf edit with misleading Notice",
+    "storyIds": [
+      "TAG-02"
+    ],
+    "severity": "functional",
+    "rootCause": "metaController.ts:179 — when handleAutoProperties returns a string[] (Multi-type Auto Property), the array is joined with \", \" before being passed to computeTagRewrite in leaf mode. The resulting token (e.g. \"#area/val1, val2\") fails isValidTagToken at line 198 because it contains a comma and space. The edit is always rejected with the misleading Notice \"'val1, val2' is not a valid tag name. Tags cannot contain spaces or commas.\"",
+    "repro": "1. In Auto Properties settings, add an entry named '#area' with type 'Multi' and choices ['val1', 'val2']. 2. Create a note with body text '#area/old here.' 3. Open Edit Meta menu, select '#area/old', choose 'Edit last segment'. 4. The Multi Auto Property picker appears. Check both 'val1' and 'val2' and confirm. Result: Notice fires, file unchanged.",
+    "expected": "Either (a) the leaf is set to the first selection and the edit succeeds, or (b) only Single-type Auto Properties are used for leaf editing, or (c) multi-selections are joined with '/' for a nested path.",
+    "actual": "isValidTagToken(normalizeTagToken('#area/val1, val2')) returns false. Notice: \"'val1, val2' is not a valid tag name. Tags cannot contain spaces or commas.\" No write occurs. The designed AUTO-08 feature is completely broken for Multi-type Auto Properties.",
+    "fixSketch": "In editTag at line 179, when the Auto Property is multi and mode is 'leaf', either (a) take only the first element of the array: `input = Array.isArray(autoProp) ? autoProp[0] : autoProp;`, or (b) explicitly disallow multi-type Auto Properties for leaf mode by calling isMultiAutoProperty and falling through to the GenericPrompt when it's multi.",
+    "confidence": "high"
+  },
+  {
+    "area": "Tag editing",
+    "title": "TAG-05 validation Notice always blames 'spaces or commas' regardless of the actual rejection reason",
+    "storyIds": [
+      "TAG-05"
+    ],
+    "severity": "ux",
+    "rootCause": "metaController.ts:199 — the Notice text is hardcoded as \"Tags cannot contain spaces or commas\" but isValidTagToken also rejects dots (e.g. '#v1.2'), purely numeric tokens ('#2024'), missing '#', and any other invalid character. The message is factually wrong for most rejection cases.",
+    "repro": "1. Create a note with body '#topic here.' 2. Open Edit Meta menu, select '#topic', choose 'Rename tag'. 3. Type 'v1.2' and confirm. Result: Notice says \"'v1.2' is not a valid tag name. Tags cannot contain spaces or commas.\" The note is unchanged (correct) but the reason given is wrong.",
+    "expected": "Notice says something like \"'v1.2' is not a valid Obsidian tag name (dots, spaces, commas, and purely-numeric names are not allowed).\"",
+    "actual": "Notice reads \"'v1.2' is not a valid tag name. Tags cannot contain spaces or commas.\" — no dots or digit-only tokens are mentioned, confusing the user about why their input was rejected.",
+    "fixSketch": "Change the Notice message at metaController.ts:199 to a more general message, e.g. `'${input.trim()}' is not a valid Obsidian tag name. Tags must start with a letter and cannot contain spaces, commas, or dots.`",
+    "confidence": "high"
+  },
+  {
+    "area": "Kanban board helper",
+    "title": "KAN-03: getFileCache null crash crashes the Kanban settings panel",
+    "storyIds": [
+      "KAN-03"
+    ],
+    "severity": "functional",
+    "rootCause": "src/Modals/KanbanHelperSetting/KanbanHelperSettingContent.svelte:71 — `initialApp.metadataCache.getFileCache(file).headings` is called without a null-check on the return value of `getFileCache`. When `getFileCache` returns `null` (unindexed file), accessing `.headings` on `null` throws a TypeError.",
+    "repro": "1. Add a Kanban board entry in MetaEdit settings (Settings → MetaEdit → Kanban Helper). 2. While the settings tab is open and the board file has not yet been indexed by Obsidian's metadata cache (e.g., right after vault open, or after renaming the file while the settings tab is open), the Svelte template calls `getHeadingsInBoard` for each configured board row. 3. `getFileCache(file)` returns `null`; accessing `.headings` on `null` throws `TypeError: Cannot read properties of null (reading 'headings')`, which propagates up and crashes the entire settings panel render, leaving a blank settings panel.",
+    "expected": "The 'Possible values' column shows an empty string (no headings yet) or 'FILE NOT FOUND', and the rest of the settings panel renders normally.",
+    "actual": "A TypeError is thrown inside the Svelte template render, crashing the Kanban settings component so the entire settings panel becomes blank/broken.",
+    "fixSketch": "Add a null-guard: `const cache = initialApp.metadataCache.getFileCache(file); const headings = cache?.headings;` and then check `if (!headings) return '';` before `.map(...)`. Replace line 71 with `const cache = initialApp.metadataCache.getFileCache(file); const headings = cache?.headings; if (!headings) return '';`",
+    "confidence": "high"
+  },
+  {
+    "area": "Kanban board helper",
+    "title": "KAN-02: Property name in settings input is lost when the user types but does not blur before closing the tab",
+    "storyIds": [
+      "KAN-02"
+    ],
+    "severity": "ux",
+    "rootCause": "src/Modals/KanbanHelperSetting/KanbanHelperSettingContent.svelte:98 — `<input onchange={saveProperties} ...>` fires only on the `change` event (which requires the user to blur the input or press Enter), not on every `input` keystroke. If the user types a property name and then closes the settings tab without first clicking away from the field, `saveProperties` is never called and the typed value is lost.",
+    "repro": "1. Open MetaEdit Settings → Kanban Helper. 2. Add a board row (click Add). A new row appears with an empty 'Property in link' input. 3. Click the property input and type a property name (e.g., 'status'). 4. Without blurring the field (do NOT click anywhere else or press Tab/Enter), close the settings tab by pressing Escape or clicking the X. 5. Reopen Settings → Kanban Helper. The 'Property in link' field for that board is still empty.",
+    "expected": "The typed property name is saved and persists when the settings tab is reopened.",
+    "actual": "The property name is lost silently because `saveProperties` was never triggered (no blur/change event fired before tab close).",
+    "fixSketch": "Change the event handler from `onchange` to `oninput` so each keystroke saves: `<input oninput={saveProperties} type=\"text\" placeholder=\"Property name\" bind:value={kanbanProperty.property}>`. This matches the approach used in other settings inputs in the plugin.",
+    "confidence": "high"
+  },
+  {
+    "area": "Kanban board helper",
+    "title": "KAN-01: A Kanban board file without YAML frontmatter is silently skipped by the automator pipeline",
+    "storyIds": [
+      "KAN-01"
+    ],
+    "severity": "functional",
+    "rootCause": "src/automators/onFileModifyAutomatorManager.ts:62 — The automator manager's `onFileModify` only dispatches to registered automators (including KanbanHelper) when `metadata?.frontmatter != null`. A board file with no frontmatter block fails this guard and never reaches `KanbanHelper.onFileModify`.",
+    "repro": "1. Create a markdown file named 'MyBoard.md' with content: `## Backlog\\n\\n- [ ] [[Note]]\\n\\n## Done\\n` (no frontmatter — no leading `---` block). 2. In MetaEdit Settings → Kanban Helper, add 'MyBoard' with property 'status'. 3. Create 'Note.md' with `---\\nstatus: Done\\n---`. 4. Save or modify 'MyBoard.md'. 5. Observe: the 'status' property in 'Note.md' is never updated.",
+    "expected": "The KanbanHelper runs on any configured board file modification, regardless of whether the board itself has frontmatter.",
+    "actual": "The automator pipeline skips 'MyBoard.md' entirely because the `metadata?.frontmatter != null` guard returns false, so KanbanHelper.onFileModify is never called and no card properties are updated.",
+    "fixSketch": "In `onFileModifyAutomatorManager.ts`, decouple the Excalidraw check from the broader frontmatter null-guard, or move the queue/notify logic outside the frontmatter guard so automators run even for files without frontmatter. The Excalidraw exclusion can remain: check keys only when frontmatter exists and only bail if an excalidraw key is found, but still enqueue and notify otherwise.",
+    "confidence": "medium"
+  },
+  {
+    "area": "Bulk metadata editor",
+    "title": "Merge policy seeds new notes as a YAML list regardless of EditMode.AllSingle",
+    "storyIds": [
+      "BULK-05",
+      "BULK-07"
+    ],
+    "severity": "functional",
+    "rootCause": "src/bulk/bulkMetadata.ts:56 — when `!exists`, the new-key branch always writes `[rawValue]` under merge policy (`policy === \"merge\" ? [rawValue] : wrapScalar(rawValue, wrapInArray)`), ignoring `wrapInArray` (and thus EditMode). AllSingle users expect scalar writes everywhere, but notes without the key get a YAML list `[\"v\"]` instead of a scalar `\"v\"` when the user chooses the merge policy.",
+    "repro": "Settings: EditMode = AllSingle. Folder with two notes: `a.md` has `---\\nproject: old\\n---\\n` (causes conflict count = 1, so the policy modal appears); `b.md` has no frontmatter. Run bulk via the folder context-menu → key = `project`, value = `new`. In the conflict modal choose **Merge into a list**. After apply: `a.md` correctly gets `project: [old, new]` (merged list); `b.md` gets `project:\\n  - new` (a YAML list), not `project: new` (a scalar). AllSingle mode is violated for the seeded note.",
+    "expected": "Under EditMode.AllSingle, notes without the key should receive a scalar value (`project: new`), consistent with how skip/overwrite policies add new notes in AllSingle mode.",
+    "actual": "Notes without the key receive a YAML list (`- new`) regardless of EditMode when the user chose merge policy. The user's AllSingle setting is silently ignored for the newly-added bucket.",
+    "fixSketch": "In `decideBulkWrite` (bulkMetadata.ts:56), change the not-exists branch for merge to also respect `wrapInArray`: `const value = policy === \"merge\" ? wrapScalar(rawValue, true) : wrapScalar(rawValue, wrapInArray)`. Alternatively, only force list seeding when `wrapInArray` is already true. Add a unit test covering `wrapInArray:false` + `policy:\"merge\"` + `exists:false`.",
+    "confidence": "high"
+  },
+  {
+    "area": "Bulk metadata editor",
+    "title": "Conflict count understates for malformed-YAML notes that processFrontMatter can still parse",
+    "storyIds": [
+      "BULK-03",
+      "BULK-08"
+    ],
+    "severity": "ux",
+    "rootCause": "src/bulk/bulkMetadataEditor.ts:220–237 — `readLiveFrontmatter` catches any `parseYaml` exception and returns `null`, so malformed-YAML notes are never counted as conflicts. However, `applyToFile` calls Obsidian's `processFrontMatter`, which uses Obsidian's own (more lenient) YAML parser. If that parser successfully reads the frontmatter and finds the target key, the policy is applied on a note the user was told had no conflict.",
+    "repro": "Create a note `bad.md` with `---\\nstatus: : :\\n---\\n\\nbody\\n` (Obsidian may still parse `status` from this). Create a second note `good.md` with `---\\nstatus: draft\\n---\\n`. Run bulk → key = `status`, value = `new`. `countExisting` returns 1 (only `good.md`). Choose **Merge**. If Obsidian's `processFrontMatter` can parse `status` from `bad.md`, `bad.md` will also be merged — but the user was told only 1 note had the key. The e2e test (`does not abort conflict preflight on malformed frontmatter`) confirms the count is 0 for this exact malformed pattern; the write path outcome is untested.",
+    "expected": "The conflict count shown to the user should match the number of notes that `applyToFile` will treat as having the key.",
+    "actual": "Notes where `readLiveFrontmatter` throws a YAML parse error are excluded from the conflict count (shown as 0 conflicts), but Obsidian's `processFrontMatter` may still detect and act on their existing key value, silently applying the merge/overwrite policy without the user's informed consent.",
+    "fixSketch": "Replace the hand-rolled conflict-detection loop with a `processFrontMatter` dry-run pass that checks `hasOwnProperty` inside the callback but sets no values (just counts). This makes the conflict count authoritative against the same parser path as the actual writes. Alternatively, document clearly that the count is a lower-bound estimate.",
+    "confidence": "medium"
+  },
+  {
+    "area": "Public API",
+    "title": "api.update on a Dataview inline field silently strips all \\r, converting CRLF notes to LF",
+    "storyIds": [
+      "API-02"
+    ],
+    "severity": "data-loss",
+    "rootCause": "src/metaController.ts:483-489 — updatePropertyInFile's inline/Dataview branch does fileContent.split(\"\\n\") then .join(\"\\n\"), discarding every \\r character. There is no CRLF detection here, unlike appendDataviewField (which uses split(/\\r?\\n/) and detects the newline style).",
+    "repro": "Note content: \"status:: open\\r\\nother:: keep\\r\\n\" (CRLF). Call api.update(\"status\", \"closed\", file). After the write, vault.read() returns \"status:: closed\\nother:: keep\\n\" — all \\r gone.",
+    "expected": "The updated file retains CRLF line endings: \"status:: closed\\r\\nother:: keep\\r\\n\"",
+    "actual": "All \\r characters are stripped, the file is permanently converted from CRLF to LF.",
+    "fixSketch": "Replace the split/join block at metaController.ts:481-491 with the same pattern already used in appendDataviewField: detect `const newline = fileContent.includes('\\r\\n') ? '\\r\\n' : '\\n'`; split with `/\\r?\\n/`; join with `newline`.",
+    "confidence": "high"
+  },
+  {
+    "area": "Public API",
+    "title": "api.getPropertiesInFile returns undefined (not Property[]) when the file path cannot be resolved, causing a runtime TypeError for any caller that iterates the result",
+    "storyIds": [
+      "API-07"
+    ],
+    "severity": "functional",
+    "rootCause": "src/MetaEditApi.ts:170 — `if (!targetFile) return;` returns undefined implicitly, but the declared return type is Promise<Property[]>. TypeScript callers and the IMetaEditApi interface both declare Property[], so external plugin code doing `(await api.getPropertiesInFile(badPath)).map(...)` throws `Cannot read properties of undefined (reading 'map')`.",
+    "repro": "Call `api.getPropertiesInFile(\"nonexistent/path.md\")` from an external plugin. The returned promise resolves to undefined. Then calling `.length` or `.map()` on the result throws a TypeError at runtime.",
+    "expected": "Returns an empty array `[]` when the file cannot be found, consistent with the declared return type.",
+    "actual": "Returns undefined, breaking any caller that does not defensively check for undefined before accessing array methods.",
+    "fixSketch": "Change the early-return at MetaEditApi.ts:170 to `if (!targetFile) return [];`",
+    "confidence": "high"
+  },
+  {
+    "area": "Public API",
+    "title": "api.getFilesWithProperty silently excludes files whose property has a falsy value (false, 0, \"\", null)",
+    "storyIds": [
+      "API-03"
+    ],
+    "severity": "functional",
+    "rootCause": "src/main.ts:126 — `if (fileFrontmatter && fileFrontmatter[property])` is a truthy check. A note with `count: 0`, `published: false`, `title: \"\"`, or `rating: null` evaluates as falsy and is excluded even though the property is present.",
+    "repro": "Create two notes: note-a.md with `count: 0` and note-b.md with `count: 5`. Call `api.getFilesWithProperty(\"count\")`. Only note-b.md is returned; note-a.md is silently excluded despite having the property.",
+    "expected": "Both files are returned because both declare the `count` frontmatter key.",
+    "actual": "note-a.md is omitted because `0` is falsy. The same happens for `false`, `null`, and empty string.",
+    "fixSketch": "Replace the truthy check with a hasOwnProperty guard: `if (fileFrontmatter && Object.prototype.hasOwnProperty.call(fileFrontmatter, property))`.",
+    "confidence": "high"
+  },
+  {
+    "area": "Public API",
+    "title": "updateMultipleInFile text/Dataview batch path strips \\r from CRLF files",
+    "storyIds": [
+      "API-02"
+    ],
+    "severity": "data-loss",
+    "rootCause": "src/metaController.ts:608,612 — the textProperties branch reads the file then does `.split(\"\\n\")` and `.join(\"\\n\")`, same bare LF split/join as the single-property inline path. This path is taken whenever a progress-property rule or batch-update touches a Dataview/inline field.",
+    "repro": "Note with CRLF content: \"key:: old\\r\\nother:: keep\\r\\n\" and a progress-property or batch update that updates a Dataview field. After `updateMultipleInFile`, the note becomes LF-only.",
+    "expected": "CRLF preserved across the batch write.",
+    "actual": "All \\r characters stripped from the file.",
+    "fixSketch": "In the textProperties branch of updateMultipleInFile (metaController.ts:607-613), detect the newline style from the file content and use split(/\\r?\\n/) + join(newline), mirroring the deleteProperty and appendDataviewField patterns.",
+    "confidence": "high"
+  },
+  {
+    "area": "Public API",
+    "title": "onMetadataChange fires spurious callbacks when frontmatter object keys are reordered without any value change",
+    "storyIds": [
+      "API-08"
+    ],
+    "severity": "ux",
+    "rootCause": "src/MetaEditApi.ts:384-394 — propertiesSignature serializes with JSON.stringify. For a Property whose `content` is a plain object (nested YAML map), JSON.stringify is not key-order-stable. If the metadata cache returns the same object with keys in a different insertion order on successive 'changed' events, the signature differs and the callback fires even though no user-visible value changed.",
+    "repro": "Note with frontmatter `metadata:\\n  b: 1\\n  a: 2`. Subscribe via `api.onMetadataChange`. Make an unrelated edit (e.g. update a sibling key). If Obsidian's cache reconstructs the `metadata` map with keys in alphabetical order while the first snapshot had insertion order, propertiesSignature produces two different strings and the callback fires with `previousProperties` differing only in key order.",
+    "expected": "The callback fires only when a property's logical value changes, not when only key-ordering of an object value changes.",
+    "actual": "A pure key-reordering of an object value (same logical content) triggers an extra callback invocation.",
+    "fixSketch": "Replace JSON.stringify with a deterministic serializer for object values inside propertiesSignature, or use a deep-equal comparison instead of a string signature for object-typed content fields.",
+    "confidence": "medium"
+  },
+  {
+    "area": "Settings + migration",
+    "title": "Gear button for Edit Meta menu sub-panel is visible and clickable but inert when IgnoredProperties is disabled",
+    "storyIds": [
+      "SET-03",
+      "SET-04"
+    ],
+    "severity": "ux",
+    "rootCause": "src/Settings/metaEditSettingsTab.ts:142-146 — when IgnoredProperties.enabled is false, div is undefined and metaedit-setting-with-details is not added, but addExtraButton() at line 146 still unconditionally renders a gear icon. Clicking it calls toggleHiddenEl(undefined, hidden) which returns early at line 15 with no DOM change, so the gear is a visible dead affordance.",
+    "repro": "1. Open Obsidian Settings → MetaEdit. 2. Ensure 'Edit Meta menu' toggle is OFF (IgnoredProperties.enabled=false). 3. Observe that a gear/extra-button icon still appears next to the 'Edit Meta menu' row. 4. Click the gear icon — nothing happens.",
+    "expected": "When the master toggle is off, the gear icon should either be absent or display a tooltip/notice explaining it is inactive.",
+    "actual": "The gear icon renders unconditionally (addExtraButton is called regardless of enabled state). Clicking it is a silent no-op because div is undefined and toggleHiddenEl bails out at line 15.",
+    "fixSketch": "Conditionally call `setting.addExtraButton(...)` only when `div` is defined, or add a guard inside the onClick callback to show a notice when `div` is undefined.",
+    "confidence": "high"
+  },
+  {
+    "area": "Settings + migration",
+    "title": "Toggling the Edit Meta menu master switch calls display() and destroys unsaved Svelte state in all other panels",
+    "storyIds": [
+      "SET-03",
+      "SET-05"
+    ],
+    "severity": "ux",
+    "rootCause": "src/Settings/metaEditSettingsTab.ts:138 — the IgnoredProperties toggle onChange calls this.display() after saving, which triggers destroySvelteElements() (line 33) and containerEl.empty() (line 34), unmounting every Svelte component and clearing the entire settings DOM.",
+    "repro": "1. Open MetaEdit settings. 2. Expand the 'Progress Properties' gear panel; type a new rule name in the name input but do NOT blur (do not press Tab/Enter). 3. While that name is still focused/unblurred, click the 'Edit Meta menu' master toggle. 4. Observe that the 'Progress Properties' panel collapses and the name you were typing is lost.",
+    "expected": "Toggling the Edit Meta menu master switch should affect only its own sub-panel (show or hide the ignore-list and hideFileTags controls), leaving other panels intact.",
+    "actual": "this.display() is called unconditionally, wiping and re-mounting the entire settings tab DOM, discarding all unblurred/unsaved input in other Svelte panels.",
+    "fixSketch": "Instead of calling this.display(), surgically toggle the visibility of only the Edit Meta sub-panel div. Create the div unconditionally (start hidden when disabled) and show/hide it on toggle, updating the setting label and extra-button state without a full re-render.",
+    "confidence": "high"
+  },
+  {
+    "area": "Settings + migration",
+    "title": "saveSettings has no error handling; disk-full or permission errors silently discard settings changes",
+    "storyIds": [
+      "SET-05"
+    ],
+    "severity": "ux",
+    "rootCause": "src/main.ts:112-114 — saveSettings() does `await this.saveData(this.settings)` with no try/catch. All callers in metaEditSettingsTab.ts (e.g. lines 63, 100, 137, 160, 173) also lack error handling. A rejected saveData promise propagates as an unhandled rejection.",
+    "repro": "1. Simulate a disk-full or write-denied condition (e.g., make the plugin data file read-only: chmod 444 ~/.config/obsidian/<vault>/<plugin-id>/data.json). 2. Open MetaEdit settings and toggle any feature on or off. 3. Observe: no error message or notice appears to the user, but the setting change is not persisted.",
+    "expected": "A failure in saveData should surface an Obsidian Notice or logged error so the user knows the change was not persisted.",
+    "actual": "The promise rejects silently; the in-memory state reflects the toggle but the on-disk data.json is unchanged. On next reload the old (pre-toggle) setting is restored with no indication to the user.",
+    "fixSketch": "Wrap the saveData call in try/catch inside saveSettings(), show a Notice on failure (e.g. 'MetaEdit: failed to save settings. Check your disk space or file permissions.'), and optionally revert the in-memory change.",
+    "confidence": "high"
+  },
+  {
+    "area": "Settings + migration",
+    "title": "migrateIgnoredProperties mutates in-memory settings but if saveSettings fails, migration re-triggers on every subsequent load",
+    "storyIds": [
+      "SET-02"
+    ],
+    "severity": "minor",
+    "rootCause": "src/Settings/settingsMigration.ts:64-75 + src/main.ts:107-109 — migrateIgnoredProperties mutates settings.IgnoredProperties.enabled in place, then returns true so the caller does await saveSettings(). If saveSettings() throws (disk full / permissions), the in-memory settings have the migrated enabled=true but disk still has the old hideFileTags-absent shape. On next load, loadData returns the old un-migrated data, isPreVersionData is true again, and the migration fires a second time, re-flipping enabled=true even if the user had since manually disabled it.",
+    "repro": "1. Create a pre-migration data.json: IgnoredProperties: {enabled: false, properties: ['status']} (no hideFileTags field). 2. Make data.json temporarily read-only so saveSettings() fails. 3. Load the plugin — migrateIgnoredProperties flips enabled=true in memory, saveSettings throws silently. 4. Restore write access to data.json. 5. Disable IgnoredProperties.enabled in settings, which calls saveSettings successfully (enabled=false is written with hideFileTags present). 6. Restart Obsidian — this time data.json has hideFileTags, so migration does NOT re-fire. Correct. HOWEVER: if step 4 never happens (disk permanently full), every subsequent load re-runs the migration and re-flips enabled=true after every restart, overriding the user's disable choice each session.",
+    "expected": "Once migrated (in-memory), the setting should not re-migrate on a subsequent load even if the first save failed.",
+    "actual": "The re-migration guard relies solely on the presence of hideFileTags in the stored (on-disk) data. If the first save fails, hideFileTags is never written, so every subsequent load re-triggers the migration and re-enables the feature.",
+    "fixSketch": "Add try/catch in saveSettings and show a notice on failure (fixing SET-05). Alternatively, update the migration sentinel check to also consider the in-memory merged state (hideFileTags always present after mergeSettings), so the migration logic is idempotent regardless of whether the save succeeded.",
+    "confidence": "medium"
+  },
+  {
+    "area": "Right-click Edit Meta menu + folder/selection bulk",
+    "title": "Bulk-selection scope label shows raw selected-item count, not resolved markdown-file count",
+    "storyIds": [
+      "MENU-03"
+    ],
+    "severity": "ux",
+    "rootCause": "src/main.ts:142 — `scope` is built with `selection.length` (the raw TAbstractFile[] passed by the files-menu event, which includes TFolder objects and non-.md files) instead of `files.length` (the resolved markdown-only list returned by collectFromSelection). When the user selects folders or non-markdown files, the two counts diverge.",
+    "repro": "1. Create a vault folder 'notes/' containing five .md files and one .png. 2. Select the 'notes/' folder plus the .png file in the file explorer (two items selected). 3. Right-click → 'Bulk edit metadata in selected notes'. 4. Observe the GenericPrompt header: it reads 'Property to add/update across 5 notes in 2 selected items'. The word 'items' refers to 2 (folder + png), while 5 notes will actually be edited. A user reading '2 selected items' has no way to know the true scope is 5 notes.",
+    "expected": "The scope label should reflect the number of resolved markdown files (e.g. '5 notes' or '5 markdown files') so the user knows how many notes the bulk edit will touch.",
+    "actual": "The label says '2 selected items' (counting raw selection entries), while the prompt text says '5 notes', creating an inconsistency. The user may believe they are editing 2 items when 5 notes are in scope.",
+    "fixSketch": "In main.ts:142, change `selection.length` to `files.length`: `const scope = files.length === 1 ? files[0].name : \\`${files.length} notes\\`;`. This makes the scope count match the actual edited count shown in the prompt.",
+    "confidence": "high"
+  },
+  {
+    "area": "Right-click Edit Meta menu + folder/selection bulk",
+    "title": "Instance-field targetFile/targetFolder stale between menu-open and menu-item click",
+    "storyIds": [
+      "MENU-01",
+      "MENU-02"
+    ],
+    "severity": "functional",
+    "rootCause": "src/Modals/LinkMenu.ts:39,43,80,90 — onMenuOpenCallback stores the current file/folder in instance fields this.targetFile and this.targetFolder, then addFileOptions/addFolderOptions register async onClick callbacks that read those same instance fields at click-time. If a second file-menu event fires (e.g. a programmatic workspace.trigger('file-menu', ...) or a quickly-fired link-context-menu event) before the user clicks the still-open menu item, the instance field is overwritten and the onClick reads the wrong target.",
+    "repro": "1. Open a vault with two markdown files: 'A.md' and 'B.md'. 2. Right-click 'A.md' in the file explorer so the context menu appears (file-menu event fires, this.targetFile = A.md). 3. Before clicking 'Edit Meta', trigger a second file-menu event for 'B.md' programmatically: app.workspace.trigger('file-menu', menu, bFile, 'file-explorer-context-menu'). This sets this.targetFile = B.md. 4. Click 'Edit Meta' from A.md's still-rendered menu. 5. The MetaEditSuggester opens for B.md, not A.md.",
+    "expected": "Clicking 'Edit Meta' from a context menu opened for A.md should always open the suggester for A.md, regardless of any subsequent file-menu events.",
+    "actual": "Because onClick closes over `this` (the LinkMenu instance) rather than a local snapshot of the file, this.targetFile (read at click-time) may have been overwritten to a different file since the menu opened.",
+    "fixSketch": "Capture the file locally inside onMenuOpenCallback and pass it directly to addFileOptions/addFolderOptions, then close over the local variable instead of the instance field. E.g., change addFileOptions to accept a `file: TFile` parameter and use that in the onClick closure, eliminating this.targetFile entirely.",
+    "confidence": "medium"
+  }
+]

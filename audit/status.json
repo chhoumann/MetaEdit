@@ -49,28 +49,31 @@
 			"evidence": "tests/e2e/audit-repro.test.ts RUN no-op; raw probe logs clean no-op"
 		},
 		"RUN-02": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "-",
+			"evidence": "metaedit-runtime: nested leaf rows (parent containers excluded); menu-filter"
 		},
 		"RUN-03": {
-			"test": "Not started",
-			"errors": "-",
-			"fix": "-",
-			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"test": "Pass",
+			"errors": "Garbled duplicate Notice (period inside quotes)",
+			"fix": "Fixed",
+			"retest": "Pass",
+			"desktop": "Pass",
+			"mobile": "-",
+			"evidence": "audit-suggester: create-new-yaml + dup-notice"
 		},
 		"RUN-04": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "-",
+			"evidence": "audit-suggester create flow + audit-api appendDataviewField + transform-to-dataview"
 		},
 		"RUN-05": {
 			"test": "Not started",
@@ -81,20 +84,22 @@
 			"mobile": "-"
 		},
 		"RUN-06": {
-			"test": "Not started",
-			"errors": "-",
-			"fix": "-",
-			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"test": "Pass",
+			"errors": "Modal stuck open if delete write fails",
+			"fix": "Fixed",
+			"retest": "Pass",
+			"desktop": "Pass",
+			"mobile": "-",
+			"evidence": "audit-suggester: X-button delete closes modal"
 		},
 		"RUN-07": {
-			"test": "Not started",
-			"errors": "-",
-			"fix": "-",
-			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"test": "Pass",
+			"errors": "Modal stuck open if transform write fails; delete-then-add no rollback (noted)",
+			"fix": "Fixed",
+			"retest": "Pass",
+			"desktop": "Pass",
+			"mobile": "-",
+			"evidence": "audit-suggester: transform YAML->Dataview"
 		},
 		"RUN-08": {
 			"test": "Not started",
@@ -658,60 +663,67 @@
 			"mobile": "-"
 		},
 		"API-02": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "-",
+			"evidence": "audit-api update no-op + metaedit-runtime update; CRLF preserved (audit-repro2)"
 		},
 		"API-03": {
-			"test": "Not started",
-			"errors": "-",
-			"fix": "-",
-			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"test": "Pass",
+			"errors": "getFilesWithProperty used truthy check, excluded falsy values",
+			"fix": "Fixed",
+			"retest": "Pass",
+			"desktop": "Pass",
+			"mobile": "-",
+			"evidence": "audit-repro2 API-03"
 		},
 		"API-04": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "-",
+			"evidence": "audit-api create/upsert + metaedit-runtime"
 		},
 		"API-05": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "-",
+			"evidence": "audit-api appendDataviewField"
 		},
 		"API-06": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "-",
+			"evidence": "audit-api yamlpath trio + metaedit-runtime nested"
 		},
 		"API-07": {
-			"test": "Not started",
-			"errors": "-",
-			"fix": "-",
-			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"test": "Pass",
+			"errors": "getPropertiesInFile returned undefined for bad path",
+			"fix": "Fixed",
+			"retest": "Pass",
+			"desktop": "Pass",
+			"mobile": "-",
+			"evidence": "audit-repro2 API-07 + audit-api"
 		},
 		"API-08": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "-",
+			"evidence": "audit-api onMetadataChange + metaedit-runtime listener tests"
 		},
 		"SET-01": {
 			"test": "Not started",

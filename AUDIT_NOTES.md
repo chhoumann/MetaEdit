@@ -32,6 +32,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - The two option rows are always at the top and are fuzzy-matchable, so typing 'new'/'yaml'/'dataview' surfaces them alongside property names.
   - A YAML property with isNested:true but isVirtual:false that is also a parent container passes the filter and is shown with no buttons; choosing it calls editMetaElement, which may not handle a parent-container value safely (metaEditSuggester.ts:157-160).
+- **Evidence:** metaedit-runtime: nested leaf rows (parent containers excluded); menu-filter
 
 ### RUN-03 - Create a new YAML frontmatter property from the suggester
 
@@ -44,6 +45,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - onChooseItem returns null (not undefined) when createNewProperty is falsy (metaEditSuggester.ts:83), a type mismatch with the Promise<void> signature.
   - No guard prevents choosing a key that already exists on the note; controller dedup is the only protection.
+- **Evidence:** audit-suggester: create-new-yaml + dup-notice
 
 ### RUN-04 - Create a new Dataview inline field from the suggester
 
@@ -56,6 +58,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - Same null-return type mismatch as the YAML branch (metaEditSuggester.ts:92).
   - The field is always appended, never inserted at a chosen location.
+- **Evidence:** audit-suggester create flow + audit-api appendDataviewField + transform-to-dataview
 
 ### RUN-05 - New-property name autocomplete from vault property names
 
@@ -83,6 +86,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - No try/catch around deleteProperty in deleteItem (metaEditSuggester.ts:112-118): if it throws, close() never runs and the modal stays open with no error feedback.
   - The modal is visually open during the async delete.
+- **Evidence:** audit-suggester: X-button delete closes modal
 
 ### RUN-07 - Transform a property between YAML and Dataview via the transform button
 
@@ -97,6 +101,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - Delete-then-write is two sequential writes (metaEditSuggester.ts:137-143); if the second write fails or no-ops (key exists) after delete succeeds, the property/field is silently lost with no rollback.
   - this.close() runs unconditionally after the await even on failure (no try/catch), masking the error.
   - Complex YAML value passed to appendDataviewField may produce malformed Dataview syntax.
+- **Evidence:** audit-suggester: transform YAML->Dataview
 
 ### RUN-08 - Disambiguate duplicate body #tag occurrences in the suggester list
 
@@ -1133,6 +1138,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - Silent undefined for not-found is indistinguishable from a successful undefined-returning write (MetaEditApi.ts:54-55).
   - Duplicate non-virtual same-key properties: only the first is updated, the rest silently skipped.
   - Dataview inline update splits on '\n' and joins on '\n', converting CRLF to LF (metaController.ts:465).
+- **Evidence:** audit-api update no-op + metaedit-runtime update; CRLF preserved (audit-repro2)
 
 ### API-03 - getFilesWithProperty: list files that have a given frontmatter property
 
@@ -1147,6 +1153,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - The truthy check silently excludes false/0/''/null-valued properties, a false-negative for boolean/numeric fields (main.ts:126).
   - No way to find files declaring the property only as a Dataview inline field.
+- **Evidence:** audit-repro2 API-03
 
 ### API-04 - createYamlProperty and addOrUpdateProperty: create/upsert a property
 
@@ -1162,6 +1169,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - createYamlProperty returns void so callers cannot tell created from already-exists without a separate read; Notice text has the misplaced-period typo '<key>. Will not add.' (metaController.ts:79).
   - addOrUpdateProperty's synthetic {key, type: YAML} has no path, so a nested-path intent falls through to frontmatter[key]=value, setting the root key to a scalar (MetaEditApi.ts:114-117).
   - If a property exists both as a Dataview field and a same-named YAML property, only the first non-virtual match is updated.
+- **Evidence:** audit-api create/upsert + metaedit-runtime
 
 ### API-05 - appendDataviewField: append a new inline field instance via API
 
@@ -1177,6 +1185,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - Array input becomes one comma-joined line, not one line per element (metaController.ts:100).
   - Options only expose location; no way to specify a line number or anchor.
   - Trailing-newline split/splice interplay can insert a blank line before the new field (untested).
+- **Evidence:** audit-api appendDataviewField
 
 ### API-06 - getYamlPath / updateYamlPath / addOrUpdateYamlPath via API
 
@@ -1193,6 +1202,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - parseFrontmatterObject's raw-then-cache fallback can return stale cache data with no way for the caller to know the source.
   - updateYamlPath lacks expectedValue exposure; addOrUpdateYamlPath lacks createLeaf exposure; MetaEditYamlPathOptions exposes only createParents, making leaf-creation invisible/uncontrollable.
   - updateYamlPath errors propagate with no Notice or wrapping.
+- **Evidence:** audit-api yamlpath trio + metaedit-runtime nested
 
 ### API-07 - Read APIs: getPropertyValue and getPropertiesInFile
 
@@ -1208,6 +1218,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - getPropertyValue's return type is any (IMetaEditApi.ts:30) and its identical silent undefined for file-not-found/property-not-found/no-value makes error handling impossible without a separate existence check.
   - getPropertiesInFile declares Promise<Property[]> but returns undefined when the file is not found, violating the type; unguarded callers hit a runtime error (MetaEditApi.ts:170-171).
   - Property is an internal parser type exposed on the public API with no stability guarantee.
+- **Evidence:** audit-repro2 API-07 + audit-api
 
 ### API-08 - onMetadataChange: subscribe to metadata-change diffs
 
@@ -1225,6 +1236,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - getPropertiesFromEvent mixes cache-based frontmatter with raw-parsed inline fields, which can disagree when the cache is stale relative to data (MetaEditApi.ts:350-355).
   - Callback errors are swallowed with only console.error (MetaEditApi.ts:229).
   - propertiesSignature uses JSON.stringify, which is not order-stable; a key-order change without a value change still fires the callback.
+- **Evidence:** audit-api onMetadataChange + metaedit-runtime listener tests
 
 ## Settings + migration
 

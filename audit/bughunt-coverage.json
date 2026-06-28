@@ -1,0 +1,477 @@
+[
+  {
+    "storyId": "RUN-01",
+    "coveredBy": "tests/e2e/audit-repro.test.ts — 'RUN: running the command with no active markdown file is a clean no-op'; tests/e2e/metaedit-runtime.test.ts — 'loads, exposes its API, and registers the run command'",
+    "gap": "No test verifies that getPropertiesInFile returning null/undefined causes a silent no-op (the modal never opens). No test verifies the three footer instruction hints appear in the opened modal."
+  },
+  {
+    "storyId": "RUN-02",
+    "coveredBy": "tests/e2e/metaedit-runtime.test.ts — 'edits nested YAML leaf rows through the real MetaEdit suggester' (verifies parent-container rows like 'attributes' are excluded and leaf rows like 'attributes.one' appear); tests/e2e/menu-filter.test.ts — 'hides body #tags while keeping frontmatter, inline, and the tags: key'",
+    "gap": "No test verifies that a YAML flat scalar array is shown (not treated as a parent container). No test verifies that a virtual YAML row bypasses the parent-container filter. No test verifies the two option rows appear first with the CSS class metaedit-suggester-command."
+  },
+  {
+    "storyId": "RUN-03",
+    "coveredBy": "none",
+    "gap": "No test covers selecting 'New YAML property', entering a name and value, and verifying the property is added. No test covers the duplicate-key Notice path (including the misplaced period bug). The happy path (add a new YAML property via the suggester) has no test."
+  },
+  {
+    "storyId": "RUN-04",
+    "coveredBy": "src/metaController.test.ts — 'appends a new instance after the last one', 'inserts at line index 0', etc. (covers appendDataviewField internals but not the suggester flow)",
+    "gap": "No test covers selecting 'New Dataview field' from the suggester, entering name/value, and verifying the inline field is appended. The suggester-driven path through createNewProperty → appendDataviewField is untested end-to-end."
+  },
+  {
+    "storyId": "RUN-05",
+    "coveredBy": "none",
+    "gap": "No test verifies that suggestValues excludes property names already in the current file. No test covers the case where an ignored property is incorrectly re-offered as a 'new' name suggestion. No test exercises the getKnownPropertyNames integration from the suggester constructor."
+  },
+  {
+    "storyId": "RUN-06",
+    "coveredBy": "src/Modals/menuFilter.test.ts — 'never offers structure edits (delete/transform) on a body tag'; 'withholds structure edits on nested/virtual YAML rows' (covers canStructureEditProperty gating)",
+    "gap": "No test verifies that clicking the ❌ button actually deletes the property from the file. No test verifies that the modal closes after a successful delete. No test covers the error path where deleteProperty throws and close() is never called."
+  },
+  {
+    "storyId": "RUN-07",
+    "coveredBy": "none",
+    "gap": "No test exercises the 🔃 transform button end-to-end for either YAML→Dataview or Dataview→YAML. The delete-then-add sequence in toDataview/toYaml is entirely untested, including the data-loss risk when the second write fails after the delete succeeds."
+  },
+  {
+    "storyId": "RUN-08",
+    "coveredBy": "none",
+    "gap": "No test exercises the getItemText duplicate-tag disambiguation logic. The case of two identical #tags in the note body producing labeled entries '(line N, 1/2)' and '(line N, 2/2)' is untested. The edge case where two tags share the same position.start (both get ordinal 1) is also untested."
+  },
+  {
+    "storyId": "CTRL-01",
+    "coveredBy": "parser.test.ts — parseFrontmatter CRLF, dot-close, malformed-YAML, nested, tags-list, cache-only, live-only tests; parser.test.ts — parseInlineFields tests; metaedit-runtime.test.ts — 'surfaces inline and tag metadata when frontmatter YAML is malformed'; metaedit-runtime.test.ts — 'parses inline fields after an unmatched leading thematic break'",
+    "gap": "No test verifies the getPropertiesInFile return ORDER (tags first, then yaml, then inline). No test verifies behavior when both frontmatter and inline share the same key (no dedup). No test covers a note with no metadata cache at all (newly-created, cache not yet populated)."
+  },
+  {
+    "storyId": "CTRL-02",
+    "coveredBy": "parser.test.ts — all 'MetaEditParser inline field parsing' and 'MetaEditParser inline value replacement' tests; computeInlineInsertIndex.test.ts — all fenced-block and frontmatter skip tests; metaedit-runtime.test.ts — 'updates only the exact inline field key', 'preserves CRLF terminators when updating a full-line inline field'",
+    "gap": "No test verifies that a line with BOTH a bracketed field and a full-line pattern yields only the bracketed fields in the write path (replaceInlineFieldValue). No test covers double-nested list prefixes leaving an inner '-' in the key (FULL_LINE_PREFIX strips only one marker)."
+  },
+  {
+    "storyId": "CTRL-03",
+    "coveredBy": "tests/e2e/auto-properties.test.ts — 'addYamlProp tags array' and 'addYamlProp scalar in AllMulti mode' drive addYamlProp via the real runtime; metaedit-runtime.test.ts — 'creates, reads, and updates a YAML frontmatter property via the API'",
+    "gap": "No test exercises the 'already exists' code path (the Notice with the misplaced-period bug at line 79). No test verifies that callers cannot distinguish 'added' from 'already existed' (void return). No test covers the SomeMulti wrapping path on a key in the SomeMulti list."
+  },
+  {
+    "storyId": "CTRL-04",
+    "coveredBy": "src/metaController.test.ts — all six 'MetaController.appendDataviewField' tests (after-last, index-0, no-frontmatter, location-end, array-value, CRLF, concurrent); computeInlineInsertIndex.test.ts — all insertion-index tests",
+    "gap": "No test verifies 'afterLastMatch' placement when the only matching field is inside a fenced code block (should fall back to end). No test covers the CRLF case when the matching field is the first line of the file (no prior lines to detect newline from)."
+  },
+  {
+    "storyId": "CTRL-05",
+    "coveredBy": "tests/e2e/audit-repro.test.ts — 'CTRL: deleteProperty on a block-style YAML list must not orphan value lines' (the primary regression for block-list delete)",
+    "gap": "No test covers deleteProperty on a Dataview inline field. No test covers deleteProperty for a key that appears on multiple body lines (only first is deleted — undocumented behavior). No test verifies the nested/virtual YAML Notice path. No unit-test for the CRLF preservation fix in deleteProperty (relies on integration)."
+  },
+  {
+    "storyId": "CTRL-06",
+    "coveredBy": "metaedit-runtime.test.ts — 'progress properties update YAML without rewriting matching body text'; metaedit-runtime.test.ts — 'progress properties update nested YAML leaf paths'",
+    "gap": "No test covers a batch with both YAML and Dataview properties together (the mixed-partition code path — CRLF stripping risk if processFrontMatter runs before text read). No test verifies that a failing yamlPathProperties setYamlPath inside processFrontMatter leaves yamlProperties writes already applied (partial-write risk). No test for the tagProperties + YAML combined path."
+  },
+  {
+    "storyId": "CTRL-07",
+    "coveredBy": "src/metaController.test.ts — 'serializes concurrent appends so neither write is lost'; metaedit-runtime.test.ts — 'serializes concurrent YAML property creation for one file'",
+    "gap": "No test verifies that a deleteProperty call on the same file serializes correctly with a concurrent queued appendDataviewField (they both now use enqueueFileWrite, so should be safe — but untested). No test exercises queue behavior when the first task in the chain throws (the .catch(()=>undefined) swallows it — subsequent tasks proceed, which is the designed behavior but untested)."
+  },
+  {
+    "storyId": "CTRL-08",
+    "coveredBy": "none — createNewProperty is not directly unit-tested",
+    "gap": "No test verifies that cancelling the name prompt returns null. No test for the auto-property branch of createNewProperty. No test for the 'entered === null' cancel check vs GenericPrompt returning '' on empty-Enter. No test for the returned propValue being trimmed."
+  },
+  {
+    "storyId": "MULTI-01",
+    "coveredBy": "tests/e2e/multi-value.test.ts: 'keeps a YAML scalar on the single-line editor in All Single mode'",
+    "gap": "No test verifies that submitting an empty string from the prompt is (or should be) a no-op. The silent-discard behavior of `if (newValue)` for `\"\"` is unverified and the intentional-clear use-case has no coverage."
+  },
+  {
+    "storyId": "MULTI-02",
+    "coveredBy": "tests/e2e/multi-value.test.ts: 'keeps a YAML scalar scalar when edited through All Multi mode'; src/multiValue.test.ts: 'honours AllMulti and SomeMulti for non-array values'",
+    "gap": "No test verifies that `addYamlProp` wraps new scalar values as `[propValue]` when mode is AllMulti (the create-wrapping path at metaController.ts:59-63). Auto Property interaction with AllMulti wrapping is also untested."
+  },
+  {
+    "storyId": "MULTI-03",
+    "coveredBy": "src/multiValue.test.ts: 'honours AllMulti and SomeMulti for non-array values' (unit-level routing only)",
+    "gap": "No e2e test drives the full SomeMulti edit flow (settings opt-in → edit a property in the list editor). The SingleValueTableEditorContent Svelte component has no unit or e2e tests; the immediate-save-on-Add bug and the onchange-only (not oninput) save cadence are both unverified."
+  },
+  {
+    "storyId": "MULTI-04",
+    "coveredBy": "tests/e2e/multi-value.test.ts: 'preserves list elements that contain commas', 'edits a list element whose value contains cmd without collapsing the list', 'edits a literal add-command sentinel as a normal list element'; src/multiValue.test.ts: 'replaces only the targeted element', 'preserves elements that contain commas', 'preserves bracketed values and wikilinks', 'keeps the type of every untouched element'",
+    "gap": "No test covers the empty-string blank-replace no-op (user clears an element to ''); no test verifies the type-to-string coercion when a numeric/boolean YAML element is edited."
+  },
+  {
+    "storyId": "MULTI-05",
+    "coveredBy": "tests/e2e/multi-value.test.ts: 'adds a tag to a YAML tags list via Add to end (#51)'; src/multiValue.test.ts: 'prepends and appends without disturbing existing elements'",
+    "gap": "No e2e test covers 'Add to beginning' (prepend). No test verifies the blank-submission no-op on add-to-end/beginning prompts. The single-element list UI ordering difference ([value, Add to end, Add to beginning] vs [Add to end, ...values, Add to beginning]) is untested."
+  },
+  {
+    "storyId": "MULTI-06",
+    "coveredBy": "src/multiValue.test.ts: 'adds the first element to an empty list'",
+    "gap": "No e2e test exercises the 'Add new value' path (empty or blank property). No test verifies that a whitespace-only YAML scalar correctly triggers the empty-list branch via toValueArray."
+  },
+  {
+    "storyId": "MULTI-07",
+    "coveredBy": "tests/e2e/multi-value.test.ts: 'keeps a YAML scalar scalar when edited through All Multi mode'; src/autoProperties.test.ts: 'strips YAML inline-array brackets' (toValueArray unit test)",
+    "gap": "No test verifies the round-trip of a quoted-bracket scalar value ('[a, b]' stored as a YAML string) through the multi-value editor — specifically that brackets are silently stripped and not restored on write-back. The toValueArray test documents the stripping as expected behavior but does not assert the write-back result."
+  },
+  {
+    "storyId": "AUTO-01",
+    "coveredBy": "none",
+    "gap": "No test verifies that toggling AutoProperties.enabled to false causes getActiveAutoProperty to return undefined and skips the Auto Property UX path. The enable path is exercised implicitly in AUTO-05 e2e tests (they always set enabled=true), but the disable path is entirely untested."
+  },
+  {
+    "storyId": "AUTO-02",
+    "coveredBy": "none",
+    "gap": "No test covers the settings-modal interactions: adding an entry (addNewProperty with blank save), naming/describing it, adding/removing choices, or removing the entry. The pure helpers (normalizeChoices, isNewChoice, withChoiceAdded) are covered by autoProperties.test.ts, but the Svelte component save flow is unverified."
+  },
+  {
+    "storyId": "AUTO-03",
+    "coveredBy": "src/autoProperties.test.ts: isMultiAutoProperty suite; tests/e2e/auto-properties.test.ts: 'multi type writes a YAML list and overrides AllSingle EditMode', 'adds an explicit Single auto property as a scalar under AllMulti', 'treats an entry without a type as single (back-compat)'",
+    "gap": "SomeMulti + legacy-typed Auto Property (isMultiAutoProperty with SomeMulti) is covered in the unit suite but not in e2e. The new-property creation path under AllMulti with a Single-typed Auto Property (addYamlProp scalar guard) is tested e2e for the existing-property edit but not for creating a brand-new property via createNewProperty."
+  },
+  {
+    "storyId": "AUTO-04",
+    "coveredBy": "src/autoProperties.test.ts: splitPastedChoices and withChoicesPasted suites cover all token-split and merge paths exhaustively.",
+    "gap": "No e2e test exercises the actual paste event in the settings UI (pasteChoices handler in AutoPropertiesModalContent.svelte). The browser's ClipboardEvent + preventDefault flow is untested."
+  },
+  {
+    "storyId": "AUTO-05",
+    "coveredBy": "tests/e2e/auto-properties.test.ts: 'shows the description and writes the picked value (single, #59)', 'saves a typed value as a new choice when chosen explicitly (#43)', 'uses a typed value once without polluting the choice list (#43)'",
+    "gap": "No test covers: (1) the empty-choices state ('No choices defined - type a value and press Enter.'); (2) Enter key navigation (ArrowDown/ArrowUp/Enter keyboard flow); (3) case-insensitive exact-match suppressing Use/Save rows; (4) hover highlight change via onmouseenter."
+  },
+  {
+    "storyId": "AUTO-06",
+    "coveredBy": "tests/e2e/auto-properties.test.ts: 'multi type writes a YAML list and overrides AllSingle EditMode (#40)' verifies the happy path (pre-existing checked value, adding an unchecked one, Confirm writes a YAML list).",
+    "gap": "No test covers: (1) the 'Also add new values to this property's choice list' checkbox (saveNew flow via persistChoices); (2) unchecking all values then Confirm (writes empty array []); (3) inline-add via Enter in the text input (addMultiValue); (4) the newCheckedValues badge ('new' label for non-choice values)."
+  },
+  {
+    "storyId": "AUTO-07",
+    "coveredBy": "none",
+    "gap": "No test verifies that closing the Auto Property modal without submitting (Escape, backdrop click, or X button) resolves null and leaves the file unchanged. The onClose / didSubmit path in AutoPropertyValueModal.ts:63-67 is exercised by the e2e harness cleanup (document.querySelectorAll('.modal-close-button').forEach(b => b.click())) but not asserted."
+  },
+  {
+    "storyId": "AUTO-08",
+    "coveredBy": "none",
+    "gap": "No test covers the leaf-tag Auto Property hook (mode=leaf + getActiveAutoProperty(parentPath) in metaController.ts:176-179). Neither single-value success nor multi-value failure (the bug above) are tested."
+  },
+  {
+    "storyId": "AUTO-09",
+    "coveredBy": "none",
+    "gap": "No test exercises the public API getAutoProperties() or setAutoProperties(). validateAutoProperties logic, the settingsWriteQueue serialization, rollback on save failure, and the TypeError propagation path are all uncovered."
+  },
+  {
+    "storyId": "PROG-01",
+    "coveredBy": "none",
+    "gap": "No test verifies that toggling the settings switch calls `toggleAutomators()`, that `attach()` registers the `ProgressPropertyHelper`, or that `detach()` removes it. The e2e tests manually set `plugin.settings.ProgressProperties.enabled` and call `handleProgressProps` directly, bypassing the toggle/automator path entirely."
+  },
+  {
+    "storyId": "PROG-02",
+    "coveredBy": "none",
+    "gap": "No test covers the settings UI: adding a rule, naming it, changing its type, removing it, or the `onchange`-vs-`oninput` save timing. No test covers duplicate rule names, empty-name rules, or the case-sensitivity of key matching."
+  },
+  {
+    "storyId": "PROG-03",
+    "coveredBy": "tests/e2e/metaedit-runtime.test.ts: 'progress properties update YAML without rewriting matching body text' (total count, YAML key); 'progress properties update nested YAML leaf paths' (total count, dotted path key)",
+    "gap": "Completed Tasks and Incomplete Tasks types are never tested. Custom task states (-, >, ?, etc.) inflating the complete count are not tested. The full automator-triggered path (vault modify event → debounce → notifyAutomators) is not tested; tests call `handleProgressProps` directly. No test for a property absent from frontmatter (silently skipped). No test for `listItems` being null/undefined (early return). No test for a CRLF-endline file."
+  },
+  {
+    "storyId": "PROG-04",
+    "coveredBy": "none",
+    "gap": "No test verifies that a file with an 'excalidraw'-containing frontmatter key is skipped by the automator. The substring-match logic in `onFileModifyAutomatorManager.ts:64` is untested."
+  },
+  {
+    "storyId": "PROG-05",
+    "coveredBy": "src/Settings/settingsMigration.test.ts: 'backfills an entire section missing from stored data' (indirectly confirms ProgressProperties section is present in DEFAULT_SETTINGS and merged in)",
+    "gap": "No test verifies that `toggleAutomators()` correctly re-attaches `ProgressPropertyHelper` on plugin load when `ProgressProperties.enabled` is true. No integration test for a full reload cycle with persisted rules."
+  },
+  {
+    "storyId": "IGN-01",
+    "coveredBy": "tests/e2e/menu-filter.test.ts (the `disabled` capture confirms nothing is filtered when feature is off); src/Modals/menuFilter.test.ts ('returns everything untouched when the feature is disabled')",
+    "gap": "No test for the gear button being a no-op when disabled; no test that the `metaedit-setting-with-details` class is absent and the sub-panel is inaccessible when `enabled = false`."
+  },
+  {
+    "storyId": "IGN-02",
+    "coveredBy": "src/Modals/menuFilter.test.ts ('drops exact-match ignored keys when enabled', 'can still hide a specific tag by its key', 'applies ignored keys and hideFileTags together')",
+    "gap": "No e2e test for filtering specific keys by name via the settings table (only `hideFileTags` is exercised e2e). No test for the case-sensitive mismatch UX (e.g., entering 'Status' when the key is 'status'). No test for the empty-string entry saved immediately on 'Add' click. The `IgnoredPropertiesModal` class at src/Modals/IgnoredPropertiesSettingModal/IgnoredPropertiesModal.ts is dead code (never imported) — no test documents or exercises it."
+  },
+  {
+    "storyId": "IGN-03",
+    "coveredBy": "src/Modals/menuFilter.test.ts ('hides only file tags (MetaType.Tag) when hideFileTags is on', 'keeps file tags when hideFileTags is off', 'returns an empty list when every entry is a hidden file tag'); tests/e2e/menu-filter.test.ts ('hides body #tags while keeping frontmatter, inline, and the tags: key')",
+    "gap": "No test that the `hideFileTags` sub-toggle is absent from the DOM when the master toggle is off; no test that flipping the master toggle off and back on re-mounts the sub-panel correctly. No test for the `hideFileTags` toggle saving immediately (per-change, not per-blur)."
+  },
+  {
+    "storyId": "IGN-04",
+    "coveredBy": "src/Modals/menuFilter.test.ts ('never offers structure edits (delete/transform) on a body tag (BUG-5)', 'offers structure edits on plain YAML and Dataview properties', 'withholds structure edits on nested/virtual YAML rows')",
+    "gap": "No e2e test that the ❌ and 🔃 buttons are absent from Tag rows and nested/virtual rows in the live suggester. No test for `MetaType.Option` rows (action rows) taking the reference-equality branch in `renderSuggestion` and therefore never reaching `canStructureEditProperty`."
+  },
+  {
+    "storyId": "IGN-05",
+    "coveredBy": "tests/e2e/menu-filter.test.ts (verifies snapshot semantics at open via three successive `captureMenu` calls with different configs)",
+    "gap": "No test that hidden/ignored properties re-appear in `suggestValues` for the 'New YAML property' name autocomplete (the confirmed UX bug). No test that settings changes while the suggester is open do not affect the current open modal."
+  },
+  {
+    "storyId": "IGN-06",
+    "coveredBy": "src/Settings/settingsMigration.test.ts ('enables the feature for pre-version data with a non-empty ignored list', 'normalizes (saves once) pre-version data with an empty list without flipping enabled', 'does not flip pre-version data that is already enabled (but still normalizes)', 'never fires again once data has the hideFileTags field (post-version)', 'does nothing for a fresh install (null)'); src/Settings/settingsMigration.test.ts also covers `mergeSettings` backfilling `hideFileTags`.",
+    "gap": "No e2e test for the migration firing at plugin load time (i.e., no end-to-end test that installs a settings payload missing `hideFileTags`, reloads the plugin, and asserts `enabled` was flipped and `hideFileTags` was persisted). No test for the case where `saveSettings()` fails mid-migration, leaving in-memory migrated but disk un-migrated."
+  },
+  {
+    "storyId": "PROMPT-01",
+    "coveredBy": "tests/e2e/metaedit-runtime.test.ts (\"edits nested YAML leaf rows through the real MetaEdit suggester\" drives .metaEditPromptInput, types a value, dispatches Enter, awaits prompt close); tests/e2e/multi-value.test.ts (driveListEdit helper); tests/e2e/bulk-metadata.test.ts",
+    "gap": "Cancel path (Escape resolves null, never rejects) is not tested. The `activeDocument.querySelector('.metaEditPrompt')` global focus in `onOpen` (GenericPrompt.ts:49) is untested — there is no test for two simultaneous MetaEdit modals that would expose the wrong-pane focus bug. Auto-selection of the input text on open is not asserted."
+  },
+  {
+    "storyId": "PROMPT-02",
+    "coveredBy": "src/Modals/GenericPrompt/valueSuggest.test.ts — all getDateInputType branches (assigned/registry/inferred type, ISO/non-ISO values, null/empty current value, datetime ±seconds, YAML-only guard, absent metadataTypeManager) are unit-tested.",
+    "gap": "No e2e test opens the prompt for a date- or datetime-typed property and verifies that a `<input type='date'>` / `<input type='datetime-local'>` is rendered. The `datetimeStep` truncation bug (seconds discarded when initial value is minute-only) is not covered by any test. The `step` attribute itself is never asserted."
+  },
+  {
+    "storyId": "PROMPT-03",
+    "coveredBy": "src/Modals/GenericPrompt/valueSuggest.test.ts — getValueSuggestions (frontmatter frequency ranking, array flattening, number coercion, empty/Dataview returns) and tag full/leaf modes are all covered.",
+    "gap": "No integration or e2e test verifies that the live suggester dropdown actually shows vault values when a YAML or tag prompt opens. The 100-item cap, the Dataview-exclusion design choice, and the synchronous full-vault scan performance on large vaults are untested end-to-end."
+  },
+  {
+    "storyId": "PROMPT-04",
+    "coveredBy": "src/Modals/GenericPrompt/valueSuggest.test.ts — filterSuggestions: case-insensitive substring match, empty-query discovery, no-match empty return, single-exact-match collapse, 100-item cap are all unit-tested. GenericTextSuggester.acceptSuggestion is exercised indirectly in e2e multi-value and tag-editing tests.",
+    "gap": "The case-sensitive collapse edge case (user types 'reading', only 'Reading' exists) is not tested; the test at line 216–220 only checks exact-same-case collapse. refreshSuggestions (empty-seeded prompt immediately showing options) is not directly asserted. The seeded-prompt-stays-quiet path (no refreshSuggestions call when initialValue is non-empty) is not verified."
+  },
+  {
+    "storyId": "PROMPT-05",
+    "coveredBy": "none",
+    "gap": "No unit or e2e test verifies the full setPendingValueContext → consumePendingValueContext round-trip. Specifically: (a) that consumePendingValueContext nullifies the singleton so a second prompt gets null, (b) that the metaEditSuggester finally block clears a context even when editMetaElement throws, (c) that editTag's setPendingValueContext (lines 183 and 188 of metaController.ts, no inner try/finally) is correctly cleared by the outer try/finally in metaEditSuggester.onChooseItem."
+  },
+  {
+    "storyId": "PROMPT-06",
+    "coveredBy": "tests/e2e/metaedit-runtime.test.ts and tests/e2e/multi-value.test.ts exercise GenericSuggester indirectly (clicking .suggestion-item elements to drive multi-value and tag-edit flows).",
+    "gap": "No unit test for GenericSuggester exists. The cancel-resolves-'' (empty string, not null) contract is untested — no test verifies that Escape from the suggester produces '' and that callers' `if (!action)` guard correctly short-circuits. The queueMicrotask deferral (ordering of onClose vs onChooseItem) is untested. The displayItems/items length-mismatch 'undefined' text scenario is untested."
+  },
+  {
+    "storyId": "YAML-01",
+    "coveredBy": "yamlPath.test.ts: 'parses and formats dotted object paths with numeric array indexes'; 'reads existing object and array paths'; e2e metaedit-runtime.test.ts: 'reads and updates existing nested YAML leaves through public APIs' (lines 243-342); 'keeps exact dotted YAML keys and inline dotted fields ahead of virtual nested YAML' (lines 344-402)",
+    "gap": "No test that formatYamlPath([0,...]) produces a string parseYamlPath cannot re-parse (round-trip break for numeric-first segments). No test that a path with internal spaces like 'a . b' silently creates non-matching segments instead of throwing. No test that a vault read failure inside parseFrontmatterObject propagates through getYamlPath as a non-YamlPathError (inconsistent with the 'undefined on miss' contract)."
+  },
+  {
+    "storyId": "YAML-02",
+    "coveredBy": "yamlPath.test.ts: 'can require an existing leaf for update-style writes'; 'rejects stale update-style writes when the current value changed'; 'rejects scalar parents and out-of-range array writes'; e2e metaedit-runtime.test.ts: 'rejects scalar-parent and stale array nested writes without data loss' (line 444); 'rejects stale in-range array path writes instead of updating the wrong item' (line 502)",
+    "gap": "No test that a missing-path error from updateYamlPath propagates to the API caller as an unhandled rejection (no Notice/log). Tests verify data safety and error message content but do not verify user-feedback absence (no Notice shown, no log.logMessage call)."
+  },
+  {
+    "storyId": "YAML-03",
+    "coveredBy": "yamlPath.test.ts: 'creates missing object parents only when requested'; 'does not create arrays from missing parents'; e2e: 'keeps missing dotted legacy addOrUpdateProperty literal but explicit path writes can create parents' (line 404); 'rejects scalar-parent and stale array nested writes without data loss' (line 444, covers addOrUpdateYamlPath error path)",
+    "gap": "No test that addOrUpdateYamlPath with an array-parent path (e.g. 'a[0].name' where 'a' is missing) leaves the frontmatter unchanged after Obsidian rolls back the partial mutation. No test verifying that the MetaEditYamlPathOptions.createParents:false override actually blocks leaf creation when combined with a missing parent (only createParents:true path is e2e tested). createLeaf not exposed in MetaEditYamlPathOptions is untested."
+  },
+  {
+    "storyId": "YAML-04",
+    "coveredBy": "e2e metaedit-runtime.test.ts: 'edits nested YAML leaf rows through the real MetaEdit suggester' (line 557) — verifies that 'attributes' and 'contributors' (parent containers) are NOT shown as editable items in the suggester (menuResult.keys does not contain them), and that 'attributes.one' (virtual leaf) IS shown and can be edited.",
+    "gap": "No test that a virtual nested property whose content is itself a parent-container value (e.g. an array of objects) would correctly be blocked by isYamlParentContainer — but in practice the parser never emits such properties as virtual, so the guard is untested for this path. No test for the Notice message text content of the parent-container block."
+  },
+  {
+    "storyId": "YAML-05",
+    "coveredBy": "yamlPath.test.ts: 'rejects stale update-style writes when the current value changed'; e2e: 'rejects stale in-range array path writes instead of updating the wrong item' (line 502) — directly tests the validateExpectedValue guard via controller.updatePropertyInFile with a stale property.",
+    "gap": "No test that the optimistic check is bypassed for path.length === 1 (though this is not reachable from the parser). No test that yamlValuesEqual fails for object/array leaf values (always-false comparison). No test that a path-less property (plain frontmatter key) has no concurrency protection at all."
+  },
+  {
+    "storyId": "YAML-06",
+    "coveredBy": "e2e metaedit-runtime.test.ts: 'progress properties update nested YAML leaf paths' (line 1189) — tests a batch with only yamlPathProperties (no conflict with yamlProperties); verifies setYamlPath with createParents:false, createLeaf:false writes the nested value correctly.",
+    "gap": "No test for the conflict scenario where yamlProperties and yamlPathProperties share a root key in the same batch — which causes yamlProperties write to destroy the nested object before setYamlPath can walk it, and causes handleProgressProps to silently fail with only a log entry. No test that the batch has exactly one processFrontMatter call (not tested for atomicity). No test that validateExpectedValue is absent from batch writes (intended by design but not verified)."
+  },
+  {
+    "storyId": "TAG-01",
+    "coveredBy": "tagEditing.test.ts: 'computeTagRewrite rename mode', 'spliceTag rewrites only the tag span (BUG-2)', 'spliceTag rewrites a mid-line occurrence (BUG-3)', 'normalizes a bare value to a single-# token'; tests/e2e/tag-editing.test.ts: 'renames a line-start body tag in place', 'edits a mid-line body tag in place', 'api.update on a body tag normalizes a bare value'",
+    "gap": "No integration test drives the full editTag UI flow (GenericSuggester action picker → GenericPrompt → write). The rename-to-nested-path branch ('area/new' as rename input) has no e2e coverage. The no-change guard (newToken === tag) is not tested end-to-end."
+  },
+  {
+    "storyId": "TAG-02",
+    "coveredBy": "tagEditing.test.ts: 'leaf: replaces only the last segment of a nested tag', 'extracts leaf and parent'; tests/e2e/tag-editing.test.ts: 'replaces only the leaf of a nested tag (Decision D)'",
+    "gap": "The Auto Property hook (AUTO-08 path) is entirely untested — no test exercises a Multi-type or Single-type Auto Property named '#<parent>' providing the leaf value. Three-level nested tag leaf editing ('area/sub/leaf') has no e2e test."
+  },
+  {
+    "storyId": "TAG-03",
+    "coveredBy": "tagEditing.test.ts: 'tracker: writes #tag:value', 'replaces an existing Tracker :value suffix', 'bounds the Tracker suffix'; tests/e2e/tag-editing.test.ts: 're-edits a Tracker #tag:value without stacking the old value', 'Tracker re-edit keeps adjacent tags and markup intact'",
+    "gap": "No test drives the editTag UI path for Tracker mode (GenericSuggester picks 'Tracker value', GenericPrompt called, setPendingValueContext(null) called). No test verifies the action is hidden when hasTrackerPlugin is false. Tracker detection at controller construction (not re-checked on plugin install) is untested."
+  },
+  {
+    "storyId": "TAG-04",
+    "coveredBy": "tagEditing.test.ts: 'targets the exact occurrence when a tag repeats', 'refuses to write (returns null) when the span no longer holds the tag', 'refuses to write for missing or out-of-range positions'; tests/e2e/tag-editing.test.ts: 'edits only the selected occurrence when a tag repeats', 'refuses to write when the tag parsed span no longer matches the file'",
+    "gap": "No test for two occurrences sharing the same position.start (parser de-dup edge case). No test for a batched updateMultipleInFile where a stale-span tag is silently logged rather than surfaced as a Notice. The 'line N, M/total' disambiguator label in the suggester is not covered by any test."
+  },
+  {
+    "storyId": "TAG-05",
+    "coveredBy": "tagEditing.test.ts: 'accepts valid tag tokens and rejects ones Obsidian would split', 'rejects tokens Obsidian does not index as a single tag'; tests/e2e/tag-editing.test.ts: 'rejects an invalid tag name (spaces) without corrupting the note', 'rejects a purely numeric tag'",
+    "gap": "No test verifies the exact wording of the Notice shown to the user on rejection — the misleading 'spaces or commas' message for non-space/comma failures (dot, digit-only) is not checked. The API path (writeTagOccurrence throws instead of showing a Notice) is tested for the throw but not for message consistency with the UI path."
+  },
+  {
+    "storyId": "TAG-06",
+    "coveredBy": "tagEditing.test.ts: all 'frontmatter tag helpers' tests (isTagsKey, canonicalizeFrontmatterTag, splitFrontmatterTags); tests/e2e/tag-editing.test.ts: 'canonicalises frontmatter tags and removes the key when emptied'",
+    "gap": "No e2e test exercises the multiValueMode interactive path for the tags key: add a tag to end, prepend a tag, replace an existing tag, or remove all tags via the element-level picker. The numeric/boolean tag write-through (e.g. tags: [1, true] stored as ['1', 'true'] without isValidTagToken check) is tested as a unit fact but never verified as an end-to-end write."
+  },
+  {
+    "storyId": "KAN-01",
+    "coveredBy": "__tests__/kanbanHelper.test.ts: 'does nothing when the modified file is not a configured board'; tests/e2e/kanban-helper.test.ts: 'moves the card's leading link to the new lane...' (happy path)",
+    "gap": "No test exercises the automator manager's frontmatter gate (`metadata?.frontmatter != null` guard in `onFileModifyAutomatorManager.ts:62`) to verify that a board file without frontmatter is or is not silently skipped. Unit tests bypass the manager entirely (calling `KanbanHelper.onFileModify` directly), so the integration-level skip is untested."
+  },
+  {
+    "storyId": "KAN-02",
+    "coveredBy": "none",
+    "gap": "No test covers the Kanban settings UI (add board, type property name, remove board). The `onchange` vs `oninput` save behavior, the stale-board autocomplete (initialBoards frozen at mount), and the duplicate-key board removal scenario are all untested."
+  },
+  {
+    "storyId": "KAN-03",
+    "coveredBy": "none",
+    "gap": "No test exercises `getHeadingsInBoard`, including the null return from `getFileCache` (which crashes the panel), the empty-headings case, or the 'FILE NOT FOUND' fallback. All headings (including archive/divider sections) being shown is also untested."
+  },
+  {
+    "storyId": "KAN-04",
+    "coveredBy": "__tests__/kanbanHelper.test.ts: 'updates the target property based on the lane heading'; 'does not update when the property already matches the lane'; 'resolves the lane name from an ATX-closed heading'; 'resolves the lane name from a setext heading'; 'does not treat a wikilink inside a lane heading as a card' (lane name written verbatim)",
+    "gap": "No test covers the case where `targetProperty.content` is null, undefined, or a number (non-string value already in frontmatter that differs from the lane name by type only), which always triggers an update on every save."
+  },
+  {
+    "storyId": "KAN-05",
+    "coveredBy": "__tests__/kanbanHelper.test.ts: 'emits a notice naming the linked file when the tracked property is missing'; 'keeps updating later cards when an earlier card's property read throws'",
+    "gap": "No test verifies the Notice spam scenario (rapid successive board saves each emit a Notice for the same missing-property card). The distinction between logMessage vs logError for different error types is untested."
+  },
+  {
+    "storyId": "KAN-06",
+    "coveredBy": "__tests__/kanbanHelper.test.ts: 'only treats the leading link of a top-level task as a card link' (fixture builder fidelity); 'skips a link whose cached position no longer matches the board content'; 'never clobbers Kanban @[[date]] links'; 'does not treat a card whose text starts with prose then a link'; 'ignores indented sub-checklist items'",
+    "gap": "The '- [ ][[Note]]' no-space case (CARD_LINK_PREFIX requires \\s+ before the link) is acknowledged in AUDIT_NOTES but not explicitly tested. Multi-character checkbox content ('- [>>] [[Note]]') is also not directly tested."
+  },
+  {
+    "storyId": "KAN-07",
+    "coveredBy": "__tests__/kanbanHelper.test.ts: 'resolves markdown links with encoded spaces and .md via metadata cache'; 'falls back to vault path resolution'; 'falls back to basename match'; 'does not fallback to basename when link includes a folder'",
+    "gap": "The ambiguous-basename case (multiple notes with the same basename, first match wins arbitrarily) is not tested. The `decodeURIComponent` failure path (keeps partially-encoded string, silently returns null) is not tested."
+  },
+  {
+    "storyId": "BULK-01",
+    "coveredBy": "e2e: 'adds a property to every note in a folder and is idempotent on re-run' (recursive collection + sub/c.md); e2e: 'collects a multi-selection without duplicates and wires the files-menu item' (dedup + TFile+TFolder selection); e2e: 'offers the folder bulk item when markdown lives only in a subfolder' (nested-only, no-markdown guard)",
+    "gap": "No test for the zero-markdown-files early-return Notice path in run(). No test for a deeply nested folder (stack overflow risk). No unit test for collectFromFolder or collectFromSelection directly."
+  },
+  {
+    "storyId": "BULK-02",
+    "coveredBy": "e2e: 'shows conflict options from live frontmatter when the metadata cache is stale' (exercises the key and value prompt via UI event dispatch)",
+    "gap": "No test for cancel/empty-key abort path. No test for whitespace-only key (trim guard). No test for cancel on value prompt. No test verifying rawValue is passed without trimming (space-only value)."
+  },
+  {
+    "storyId": "BULK-03",
+    "coveredBy": "e2e: 'shows conflict options from live frontmatter when the metadata cache is stale' (stale cache; correct conflict count); e2e: 'does not abort conflict preflight on malformed frontmatter' (malformed YAML returns 0)",
+    "gap": "No test for '...' YAML close marker; no test verifying the conflict count when a BOM is present; no test for cancel/dismiss on the conflict policy modal (null resolution)."
+  },
+  {
+    "storyId": "BULK-04",
+    "coveredBy": "e2e: 'adds a property to every note in a folder and is idempotent on re-run' (first run adds; second run skips); unit: 'decideBulkWrite - skip policy / never touches a note that already has the key'",
+    "gap": "No test for skip policy on a note that has the key but with a null/empty value. No test verifying existing non-target properties are preserved (b.md status:draft survival is tested, but for a broader set of cases)."
+  },
+  {
+    "storyId": "BULK-05",
+    "coveredBy": "e2e: 'merge appends into a list without duplicating and converges on re-run'; unit: 'decideBulkWrite - merge policy' suite (appends, idempotent, scalar-normalize, type-dedup, map-skip, object-element preserve)",
+    "gap": "No test for merge + EditMode.AllSingle (new notes incorrectly seeded as lists). No test for plain-object currentValue distinguishing 'skipped' from policy-skip in the summary. No test for merge on a null-valued existing key."
+  },
+  {
+    "storyId": "BULK-06",
+    "coveredBy": "e2e: 'overwrite replaces existing values and is idempotent' (verifies overwrite logic and idempotency via apply() directly); e2e: 'shows conflict options from live frontmatter' (exercises the full two-modal confirmation UI flow)",
+    "gap": "No test for overwrite + wrapInArray=true (existing list replaced by [scalar]). No test for the destructive confirmation being dismissed (Escape → abort). The 'files.length overstates blast radius' wording is not tested."
+  },
+  {
+    "storyId": "BULK-07",
+    "coveredBy": "unit: 'decideBulkWrite - add / wraps the added value in a list when EditMode requests multi-value' (wrapInArray=true path); e2e: add/merge/overwrite tests exercise applyToFile indirectly",
+    "gap": "No test for wrapInArrayFor() under SomeMulti where the key is in the properties list. No test for SomeMulti where the key is NOT in the list (scalar write). No integration test for AllMulti wrapping in the bulk write path."
+  },
+  {
+    "storyId": "BULK-08",
+    "coveredBy": "unit: 'formatSummary' suite (non-zero buckets, failure hints, singular/plural, no-changes); unit: 'recordOutcome increments the matching bucket'",
+    "gap": "No test for actual per-note failure isolation (i.e., processFrontMatter throwing on one file while others succeed). No test that failures array captures the correct path and error message. No e2e test for the 10-second Notice wording on a batch with failures."
+  },
+  {
+    "storyId": "API-01",
+    "coveredBy": "none",
+    "gap": "No test verifies that autoprop() opens the Auto Property modal programmatically and returns the selected value, that it returns null when Auto Properties is disabled, or that it returns null when no matching property exists."
+  },
+  {
+    "storyId": "API-02",
+    "coveredBy": "tests/e2e/metaedit-runtime.test.ts — \"creates, reads, and updates a YAML frontmatter property via the API\"; \"updates one numeric YAML property without changing its sibling\"; \"updates only the exact inline field key\"; \"preserves CRLF terminators when updating a full-line inline field\" (covers YAML update; CRLF test covers the happy path only for YAML)",
+    "gap": "The CRLF e2e test covers a YAML property update only. No test verifies CRLF preservation when api.update() targets a Dataview inline field (the split(\"\\n\")/join(\"\\n\") bug at metaController.ts:483-489). The silent-undefined return for a not-found property is also unverified."
+  },
+  {
+    "storyId": "API-03",
+    "coveredBy": "none",
+    "gap": "No test verifies getFilesWithProperty returns files correctly. The truthy-value exclusion bug (files with false/0/\"\"/null values excluded) is entirely uncovered."
+  },
+  {
+    "storyId": "API-04",
+    "coveredBy": "tests/e2e/metaedit-runtime.test.ts — \"adds and updates properties through the public API\" (covers addOrUpdateProperty for add and update cases); \"serializes concurrent YAML property creation for one file\" (covers createYamlProperty concurrency)",
+    "gap": "No test verifies that createYamlProperty shows a Notice when the key already exists. The misplaced-period typo in the Notice text is unverified. addOrUpdateProperty's synthetic {key, type:YAML} fallback (which creates as a root key, not nested) is untested for dotted-key callers."
+  },
+  {
+    "storyId": "API-05",
+    "coveredBy": "src/metaController.test.ts — all appendDataviewField unit tests cover the controller method directly; tests/e2e/metaedit-runtime.test.ts exercises addOrUpdateProperty which internally calls the controller",
+    "gap": "No test calls api.appendDataviewField() through the public API wrapper. The location:'end' option via API is not e2e tested. CRLF preservation for appendDataviewField via the API (as opposed to the controller method directly) is uncovered at e2e level."
+  },
+  {
+    "storyId": "API-06",
+    "coveredBy": "tests/e2e/metaedit-runtime.test.ts — \"reads and updates existing nested YAML leaves through public APIs\"; \"keeps missing dotted legacy addOrUpdateProperty literal but explicit path writes can create parents\"; \"rejects scalar-parent and stale array nested writes without data loss\"",
+    "gap": "updateYamlPath error propagation to the caller (no Notice, raw rejection) is verified by the rejection tests but no test confirms the user sees no feedback notice. addOrUpdateYamlPath's createLeaf forwarding gap (createLeaf not passed) is unverified. MetaEditYamlPathOptions not exposing createLeaf is a design gap with no test."
+  },
+  {
+    "storyId": "API-07",
+    "coveredBy": "tests/e2e/metaedit-runtime.test.ts — \"reads and updates existing nested YAML leaves through public APIs\" (getPropertyValue and getPropertiesInFile for existing files); \"creates, reads, and updates a YAML frontmatter property via the API\" (getPropertyValue happy path)",
+    "gap": "No test verifies behavior when the file path argument cannot be resolved: getPropertiesInFile returns undefined (type violation) and getPropertyValue also returns undefined silently. The type mismatch for getPropertiesInFile(nonexistent-path) is entirely uncovered."
+  },
+  {
+    "storyId": "API-08",
+    "coveredBy": "tests/e2e/metaedit-runtime.test.ts — \"notifies metadata changes with parsed properties and cleans up subscriptions\"; \"keeps metadata change event data, cache, and properties in the same snapshot\"; \"metadata change events include a user frontmatter key named position\"",
+    "gap": "No test verifies rename event migrates previousProperties state. No test verifies the object-key-reordering spurious-callback issue (propertiesSignature instability). The deletion-event cleanup path is untested. Callback error isolation (callback throws, listener keeps running) is untested."
+  },
+  {
+    "storyId": "AUTO-09",
+    "coveredBy": "tests/e2e/metaedit-runtime.test.ts — \"sets Auto Properties through the public API without exposing mutable settings\" (covers setAutoProperties validation, rollback, cloning, and getAutoProperties cloning)",
+    "gap": "No test verifies that a TypeError from setAutoProperties propagates as an unhandled rejection to external callers who do not catch. Empty-name and empty-choices entries being accepted silently is unverified. Concurrent setAutoProperties calls (race through settingsWriteQueue) is untested."
+  },
+  {
+    "storyId": "SET-01",
+    "coveredBy": "src/Settings/settingsMigration.test.ts: 'returns the defaults for a fresh install (null)', 'does not return the frozen default objects by reference', 'never aliases the mutable default arrays'",
+    "gap": "No test verifies that UIElements.enabled defaults to true (the only non-false default) while all others default to false. No test verifies the exact values of every top-level section key simultaneously for a fresh install."
+  },
+  {
+    "storyId": "SET-02",
+    "coveredBy": "src/Settings/settingsMigration.test.ts: 'backfills a new nested field (hideFileTags)', 'backfills an entire section missing from stored data', 'lets stored scalars and arrays win wholesale', 'preserves unknown top-level keys', 'preserves an explicit hideFileTags value'; migrateIgnoredProperties suite: 4 migration scenarios",
+    "gap": "No test for the case where a stored section value is a non-plain-object (null, array, scalar) — the merge silently falls back to default. No test verifies loadSettings is strictly read-only (no saveSettings call) for post-migration data."
+  },
+  {
+    "storyId": "SET-03",
+    "coveredBy": "none",
+    "gap": "No tests for any feature toggle: Progress toggle calling toggleAutomators, Kanban toggle calling toggleAutomators, UIElements toggle calling linkMenu.registerEvent/unregisterEvent, Edit Meta toggle calling this.display(), same-value guard preventing redundant work. All toggle paths are untested."
+  },
+  {
+    "storyId": "SET-04",
+    "coveredBy": "none",
+    "gap": "No tests for toggleHiddenEl (undefined arg no-op), gear-button click expanding/collapsing a sub-panel, bDivToggle state tracking in the Edit Mode section, or the dead-gear-button scenario when IgnoredProperties is disabled."
+  },
+  {
+    "storyId": "SET-05",
+    "coveredBy": "none",
+    "gap": "No tests for destroySvelteElements being called on display(), the hide() override calling destroySvelteElements, saveSettings error propagation, or the lack of error handling around saveData failures."
+  },
+  {
+    "storyId": "MENU-01",
+    "coveredBy": "tests/e2e/bulk-metadata.test.ts — 'offers the folder bulk item when markdown lives only in a subfolder' (calls onMenuOpenCallback with a TFile and asserts menu items); tests/e2e/menu-filter.test.ts — 'hides body #tags while keeping frontmatter...' (calls plugin.runMetaEditForFile, the function invoked by the Edit Meta click)",
+    "gap": "No test verifies the exact file targeted when the right-click callback fires: the e2e test drives onMenuOpenCallback directly with a constructed menu sink and asserts the menu title, but never actually triggers the onClick handler and confirms which file's suggester opened. The stale-targetFile scenario (two rapid right-clicks) is untested."
+  },
+  {
+    "storyId": "MENU-02",
+    "coveredBy": "tests/e2e/bulk-metadata.test.ts — 'offers the folder bulk item when markdown lives only in a subfolder' (calls onMenuOpenCallback with a TFolder and asserts the bulk-folder menu item appears; also verifies a markdown-free subfolder produces no item)",
+    "gap": "No test actually clicks the folder bulk item and verifies it runs on the correct folder. The stale-targetFolder scenario (two rapid folder right-clicks) is untested. The zero-files early-return path (folder deleted between menu open and click) is untested."
+  },
+  {
+    "storyId": "MENU-03",
+    "coveredBy": "tests/e2e/bulk-metadata.test.ts — 'collects a multi-selection without duplicates and wires the files-menu item' (calls onFilesMenuOpenCallback with two .md files and verifies the menu item appears; calls collectFromSelection with a folder+file and checks dedup)",
+    "gap": "No test verifies the scopeLabel passed to bulkEditor.run(): the scope string shown in the property-name prompt is never asserted. The bug where selection.length (raw item count) diverges from files.length (resolved .md count) is untested."
+  },
+  {
+    "storyId": "MENU-04",
+    "coveredBy": "none",
+    "gap": "No test exercises the UIElements settings toggle: enabling when disabled, disabling when enabled, or the off->on->off->on sequence. No test verifies that right-click menus disappear after disabling UIElements, or that they appear after enabling from a disabled start state."
+  },
+  {
+    "storyId": "MENU-05",
+    "coveredBy": "tests/e2e/bulk-metadata.test.ts — 'offers the folder bulk item when markdown lives only in a subfolder' (verifies that a markdown-free folder 'side/' produces no bulk-folder menu item via onMenuOpenCallback)",
+    "gap": "No test covers non-markdown file types (canvas, pdf, png) individually. No test covers the performance/jank risk of folderHasMarkdown on a deeply-nested vault. No test verifies that the file-explorer item is absent for a .canvas file."
+  }
+]
