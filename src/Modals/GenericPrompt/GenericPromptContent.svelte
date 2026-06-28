@@ -55,7 +55,7 @@
             suggestions = hasExplicitSuggestions
                 ? initialSuggestValues
                 : context
-                    ? getValueSuggestions(context.app, context.key, context.type)
+                    ? getValueSuggestions(context.app, context.key, context.type, context.tagMode)
                     : [];
         }
 

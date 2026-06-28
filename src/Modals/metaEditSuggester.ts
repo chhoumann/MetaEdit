@@ -7,7 +7,7 @@ import {MetaType} from "../Types/metaType";
 import type {AutoProperty} from "../Types/autoProperty";
 import {getKnownPropertyNames} from "./GenericPrompt/valueSuggest";
 import {setPendingValueContext} from "./GenericPrompt/promptValueContext";
-import {filterMenuItems} from "./menuFilter";
+import {canStructureEditProperty, filterMenuItems} from "./menuFilter";
 import {isYamlParentContainerValue} from "../yamlPath";
 
 export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
@@ -37,7 +37,8 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
 
         this.setInstructions([
             {command: "❌", purpose: "Delete property"},
-            {command: "🔃", purpose: "Transform to YAML/Dataview"}
+            {command: "🔃", purpose: "Transform to YAML/Dataview"},
+            {command: "#tag", purpose: "Select to rename here · vault-wide rename: Obsidian Tag pane"},
         ])
     }
 
@@ -55,6 +56,19 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     }
 
     getItemText(item: Property): string {
+        // Disambiguate repeated body tags so the user can tell which occurrence
+        // they are about to edit (each row rewrites its own exact span). Show the
+        // line and an occurrence ordinal, so even two #dup on the same line differ.
+        if (item.type === MetaType.Tag && item.position) {
+            const sameKey = this.data
+                .filter(d => d.type === MetaType.Tag && d.key === item.key && d.position)
+                .sort((a, b) => a.position!.start - b.position!.start);
+            if (sameKey.length > 1) {
+                const ordinal = sameKey.findIndex(d => d.position!.start === item.position!.start) + 1;
+                const line = item.position.line !== undefined ? `line ${item.position.line + 1}, ` : "";
+                return `${item.key} (${line}${ordinal}/${sameKey.length})`;
+            }
+        }
         return item.key;
     }
 
@@ -137,7 +151,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     }
 
     private static canStructureEdit(property: Property): boolean {
-        return !property.isNested && !property.isVirtual;
+        return canStructureEditProperty(property);
     }
 
     private static isYamlParentContainer(property: Property): boolean {

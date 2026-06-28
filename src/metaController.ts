@@ -14,6 +14,8 @@ import type {AutoProperty} from "./Types/autoProperty";
 import {findAutoProperty, isMultiAutoProperty, toValueArray, withChoiceAdded} from "./autoProperties";
 import {applyMultiValueEdit, isMultiValueYamlProperty, shouldUseMultiValueEditor, type MultiValueEdit} from "./multiValue";
 import {getYamlPath, isYamlParentContainerValue, parseYamlPath, setYamlPath, YamlPathError, type SetYamlPathOptions, type YamlPathSegment} from "./yamlPath";
+import {computeTagRewrite, isNestedTag, isTagsKey, isValidTagToken, normalizeTagToken, splitFrontmatterTags, spliceTag, stripHash, tagLeaf, tagParent, canonicalizeFrontmatterTag, type TagEditMode} from "./tagEditing";
+import {setPendingValueContext} from "./Modals/GenericPrompt/promptValueContext";
 
 const fileWriteQueues: Map<string, Promise<unknown>> = new Map();
 const ADD_FIRST_SELECTION = "metaedit:multi-value:add-first";
@@ -26,7 +28,6 @@ export default class MetaController {
     private readonly app: App;
     private plugin: MetaEdit;
     private readonly hasTrackerPlugin: boolean = false;
-    private useTrackerPlugin: boolean = false;
 
     constructor(app: App, plugin: MetaEdit) {
         this.app = app;
@@ -46,6 +47,12 @@ export default class MetaController {
 
     public async addYamlProp(propName: string, propValue: unknown, file: TFile): Promise<void> {
         const settings = this.plugin.settings;
+
+        // A new `tags`/`tag` property is stored as a canonical, `#`-free list.
+        if (isTagsKey(propName)) {
+            propValue = splitFrontmatterTags(propValue);
+        }
+
         const activeAutoProperty = this.getActiveAutoProperty(propName);
         const autoPropertyKeepsScalar = !!activeAutoProperty &&
             !isMultiAutoProperty(activeAutoProperty, settings.EditMode, propName);
@@ -133,35 +140,67 @@ export default class MetaController {
             await this.standardMode(property, file);
     }
 
+    /**
+     * Edit a single body `#tag` occurrence.
+     *
+     * Decision D: the primary action RENAMES the whole tag (a flat tag is renamed,
+     * not turned into a child); "Edit last segment" is offered only for nested
+     * tags; Tracker's `#tag:value` data syntax is offered only when the Tracker
+     * plugin is present. The chosen action is derived here per edit and baked into
+     * the replacement token, so nothing about Tracker survives on the controller
+     * (BUG-1). The exact occurrence is rewritten by position (BUG-2/BUG-3).
+     */
     private async editTag(property: Property, file: TFile) {
-        const splitTag: string[] = property.key.split("/");
-        const allButLast: string = splitTag.slice(0, splitTag.length - 1).join("/");
-        const trackerPluginMethod = "Use Tracker", metaEditMethod = "Use MetaEdit", choices = [trackerPluginMethod, metaEditMethod];
-        let newValue: string | string[];
-        let method: string = metaEditMethod;
+        const tag = property.key;
+        const nested = isNestedTag(tag);
 
-        if (this.hasTrackerPlugin)
-            method = await GenericSuggester.Suggest(this.app, choices, choices);
+        const RENAME = "Rename tag", LEAF = "Edit last segment", TRACKER = "Tracker value (#tag:value)";
+        const actions: string[] = [RENAME];
+        if (nested) actions.push(LEAF);
+        if (this.hasTrackerPlugin) actions.push(TRACKER);
 
-        if (!method) return;
-
-        if (method === trackerPluginMethod) {
-            newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`)
-            this.useTrackerPlugin = true;
-        } else if (method === metaEditMethod) {
-            if (this.getActiveAutoProperty(allButLast)) {
-                const autoProp = await this.handleAutoProperties(allButLast);
-                if (autoProp === null) return; // user cancelled the auto property prompt
-                // A tag is a single token; collapse a multi result into one string.
-                newValue = Array.isArray(autoProp) ? autoProp.join(", ") : autoProp;
-            } else {
-                newValue = await GenericPrompt.Prompt(this.app, `Enter a new value for ${property.key}`);
-            }
+        let action = RENAME;
+        if (actions.length > 1) {
+            action = await GenericSuggester.Suggest(this.app, actions, actions);
+            if (!action) return; // cancelled
         }
 
-        if (newValue) {
-            await this.updatePropertyFromUi(property, newValue, file);
+        const mode: TagEditMode = action === TRACKER ? "tracker" : action === LEAF ? "leaf" : "rename";
+
+        let input: string | null;
+        // Preserve the Auto Property hook for the leaf of a nested tag (the only
+        // case it ever matched): an Auto Property named after the parent path -
+        // WITH the leading `#`, matching the historical key (`#area` for `#area/x`)
+        // - supplies the new leaf value.
+        const parentPath = tagParent(tag);
+        if (mode === "leaf" && this.getActiveAutoProperty(parentPath)) {
+            const autoProp = await this.handleAutoProperties(parentPath);
+            if (autoProp === null) return; // cancelled
+            input = Array.isArray(autoProp) ? autoProp.join(", ") : autoProp;
+        } else if (mode === "tracker") {
+            // A Tracker value is free-form data, not a tag name - clear the tag
+            // suggestion context the picker seeded so it does not autocomplete.
+            setPendingValueContext(null);
+            input = await GenericPrompt.Prompt(this.app, `Enter a Tracker value for ${tag}`);
+        } else {
+            // Source mode-appropriate suggestions through the prompt bridge: full
+            // tag names for a rename, leaf segments for a last-segment edit.
+            setPendingValueContext({app: this.app, key: tag, type: MetaType.Tag, tagMode: mode});
+            const header = mode === "leaf" ? `Change the last segment of ${tag} to` : `Rename ${tag} to`;
+            const seed = mode === "leaf" ? tagLeaf(tag) : stripHash(tag);
+            input = await GenericPrompt.Prompt(this.app, header, seed, seed);
         }
+
+        if (input === null) return; // cancelled
+        const newToken = computeTagRewrite(tag, input, mode);
+        if (!newToken || newToken === tag) return; // nothing to change
+
+        if (!isValidTagToken(normalizeTagToken(newToken))) {
+            new Notice(`'${input.trim()}' is not a valid tag name. Tags cannot contain spaces or commas.`);
+            return;
+        }
+
+        await this.updatePropertyFromUi(property, newToken, file);
     }
 
     public async handleProgressProps(meta: Property[], file: TFile): Promise<void> {
@@ -212,7 +251,9 @@ export default class MetaController {
 
         const fileContent = await this.app.vault.read(file);
         const splitContent = fileContent.split("\n");
-        const regexp = new RegExp(`^\s*${property.key}:`);
+        // Escape the key (so a key like `c++` is not read as regex) and use a real
+        // `\s` so an indented property line still matches its own line, not another.
+        const regexp = new RegExp(`^\\s*${this.escapeSpecialCharacters(property.key)}\\s*:`);
 
         const idx = splitContent.findIndex(s => s.match(regexp));
         const newFileContent = splitContent.filter((v, i) => {
@@ -260,10 +301,16 @@ export default class MetaController {
         // and spelling (commas and `[[wikilinks]]` included). An inline field (or
         // a YAML value stored as a comma string) has no real array, so it is
         // split on commas and re-joined.
-        const editsArray = isMultiValueYamlProperty(property);
-        const writeBase: unknown[] = editsArray
-            ? (property.content as unknown[])
-            : this.splitMultiValue(property);
+        // Frontmatter `tags` is always edited as a canonical list: any stored
+        // shape (list, scalar, comma/space string) is read with the `#` stripped,
+        // and it is written back as a YAML list (Obsidian's canonical form).
+        const tagsKey = property.type === MetaType.YAML && isTagsKey(property.key);
+        const editsArray = tagsKey || isMultiValueYamlProperty(property);
+        const writeBase: unknown[] = tagsKey
+            ? splitFrontmatterTags(property.content)
+            : editsArray
+                ? (property.content as unknown[])
+                : this.splitMultiValue(property);
         // The selectable view is always strings, kept 1:1 with `writeBase` so a
         // selection maps back to the correct element.
         const displayValues: string[] = editsArray
@@ -308,6 +355,10 @@ export default class MetaController {
         }
 
         if (!tempValue) return false;
+
+        // A tag entered with a leading `#` (`#area/x`) is stored without it.
+        if (tagsKey) tempValue = canonicalizeFrontmatterTag(tempValue);
+        if (tagsKey && tempValue === "") return false;
 
         const edit: MultiValueEdit =
             selectedOption === ADD_FIRST_SELECTION ? {kind: "addFirst", value: tempValue} :
@@ -390,10 +441,22 @@ export default class MetaController {
                             expectedValue: property.content,
                             validateExpectedValue: true,
                         });
+                    } else if (isTagsKey(property.key)) {
+                        // Canonicalise `tags`: strip `#`, drop blanks, store a list.
+                        // When the last tag is gone, remove the key (Decision E)
+                        // rather than leave a dangling `tags:` / `tags: []`.
+                        const tags = splitFrontmatterTags(newValue);
+                        if (tags.length === 0) delete frontmatter[property.key!];
+                        else frontmatter[property.key!] = tags;
                     } else {
-                        frontmatter[property.key] = newValue;
+                        frontmatter[property.key!] = newValue;
                     }
                 });
+                return;
+            }
+
+            if (property.type === MetaType.Tag) {
+                await this.writeTagOccurrence(property, newValue, file);
                 return;
             }
 
@@ -411,6 +474,34 @@ export default class MetaController {
         });
     }
 
+    /**
+     * Rewrite one body-tag occurrence in place, by its parsed span. The span is
+     * re-validated against current file content first, so an edit that raced a
+     * change to the note refuses to write (with a Notice) rather than corrupt
+     * unrelated text. `newValue` is the full replacement token computed by the UI.
+     */
+    private async writeTagOccurrence(property: Partial<Property>, newValue: unknown, file: TFile): Promise<void> {
+        // The UI passes a full token (`#new`, `#a/leaf`, `#tag:value`); a bare
+        // value from the API (`"done"`) is normalised to `#done`. Reject anything
+        // that is not a single valid tag rather than splice invalid text into the
+        // note (e.g. `#meeting notes`, which Obsidian would parse as `#meeting`).
+        const newToken = normalizeTagToken(String(newValue));
+        if (!isValidTagToken(newToken)) {
+            throw new Error(`'${String(newValue)}' is not a valid tag name.`);
+        }
+
+        const content = await this.app.vault.read(file);
+        const updated = spliceTag(content, property.position, property.key ?? "", newToken);
+
+        if (updated === null) {
+            throw new Error(
+                `could not locate the tag '${property.key}' to edit - the note may have changed since it was opened. Reopen and try again.`,
+            );
+        }
+
+        await this.app.vault.modify(file, updated);
+    }
+
     private escapeSpecialCharacters(text: string): string{
         return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
     }
@@ -418,7 +509,7 @@ export default class MetaController {
     private lineMatch(property: Partial<Property>, line: string): boolean {
         if (!property.key) return false;
 
-        const tagRegex = new RegExp(`^\s*${this.escapeSpecialCharacters(property.key)}`);
+        const tagRegex = new RegExp(`^\\s*${this.escapeSpecialCharacters(property.key)}`);
 
         if (property.key.contains('#')) {
             return tagRegex.test(line);
@@ -443,22 +534,10 @@ export default class MetaController {
             case MetaType.YAML:
                 newLine = `${property.key}: ${newValue}`;
                 break;
-            case MetaType.Tag:
-                if (this.useTrackerPlugin) {
-                    newLine = `${property.key}:${newValue}`;
-                } else {
-                    const splitTag: string[] = property.key.split("/");
-                    if (splitTag.length === 1)
-                        newLine = `${splitTag[0]}/${newValue}`;
-                    else if (splitTag.length > 1) {
-                        const allButLast: string = splitTag.slice(0, splitTag.length - 1).join("/");
-                        newLine = `${allButLast}/${newValue}`;
-                    } else
-                        newLine = property.key;
-                }
-                break;
+            // Body tags are rewritten by span in writeTagOccurrence, never here.
             default:
-                newLine = property.key;
+                // Never collapse a matched line to just the key - leave it untouched.
+                newLine = line;
                 break;
         }
 
@@ -469,7 +548,32 @@ export default class MetaController {
         await this.enqueueFileWrite(file, async () => {
             const yamlProperties = properties.filter(prop => prop.type === MetaType.YAML && !prop.path);
             const yamlPathProperties = properties.filter(prop => prop.type === MetaType.YAML && prop.path);
-            const textProperties = properties.filter(prop => prop.type !== MetaType.YAML);
+            const tagProperties = properties.filter(prop => prop.type === MetaType.Tag);
+            const textProperties = properties.filter(prop => prop.type !== MetaType.YAML && prop.type !== MetaType.Tag);
+
+            // Splice body tags FIRST, while their parsed offsets still match the
+            // file. A later processFrontMatter write only touches the frontmatter,
+            // so it preserves these body edits; doing it the other way round would
+            // shift every body offset and stale the tag spans. Highest-offset-first
+            // keeps earlier spans valid as later ones change length; a stale span
+            // is skipped, never forced, so a batch never corrupts prose.
+            if (tagProperties.length > 0) {
+                let content = await this.app.vault.read(file);
+                for (const prop of [...tagProperties].sort((a, b) => (b.position?.start ?? 0) - (a.position?.start ?? 0))) {
+                    const token = normalizeTagToken(String(prop.content));
+                    if (!isValidTagToken(token)) {
+                        log.logMessage(`MetaEdit skipped tag '${prop.key}': '${String(prop.content)}' is not a valid tag.`);
+                        continue;
+                    }
+                    const updated = spliceTag(content, prop.position, prop.key, token);
+                    if (updated === null) {
+                        log.logMessage(`MetaEdit skipped tag '${prop.key}': its position no longer matches the note.`);
+                        continue;
+                    }
+                    content = updated;
+                }
+                await this.app.vault.modify(file, content);
+            }
 
             if (yamlProperties.length > 0 || yamlPathProperties.length > 0) {
                 await this.processFrontMatter(file, (frontmatter) => {
@@ -482,23 +586,13 @@ export default class MetaController {
                 });
             }
 
-            if (textProperties.length === 0) return;
-
-            let fileContent = (await this.app.vault.read(file)).split("\n");
-
-            for (const prop of textProperties) {
-                fileContent = fileContent.map(line => {
-
-                    if (this.lineMatch(prop, line)) {
-                        return this.updatePropertyLine(prop, prop.content, line)
-                    }
-
-                    return line;
-                });
+            if (textProperties.length > 0) {
+                let lines = (await this.app.vault.read(file)).split("\n");
+                for (const prop of textProperties) {
+                    lines = lines.map(line => this.lineMatch(prop, line) ? this.updatePropertyLine(prop, prop.content, line) : line);
+                }
+                await this.app.vault.modify(file, lines.join("\n"));
             }
-            const newFileContent = fileContent.join("\n");
-
-            await this.app.vault.modify(file, newFileContent);
         });
     }
 

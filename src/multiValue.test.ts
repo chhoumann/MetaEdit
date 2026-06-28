@@ -34,6 +34,14 @@ describe("shouldUseMultiValueEditor", () => {
         expect(shouldUseMultiValueEditor({key: "status", type: MetaType.YAML, content: "open"}, allSingle)).toBe(false);
     });
 
+    it("always routes frontmatter tags/tag to the list editor, even as a scalar/CSV", () => {
+        expect(shouldUseMultiValueEditor({key: "tags", type: MetaType.YAML, content: "alpha"}, allSingle)).toBe(true);
+        expect(shouldUseMultiValueEditor({key: "tag", type: MetaType.YAML, content: "a, b"}, allSingle)).toBe(true);
+        expect(shouldUseMultiValueEditor({key: "Tags", type: MetaType.YAML, content: "alpha"}, allSingle)).toBe(true);
+        // A body tag is not a YAML property, so this rule does not touch it.
+        expect(shouldUseMultiValueEditor({key: "#tags", type: MetaType.Tag, content: "#tags"}, allSingle)).toBe(false);
+    });
+
     it("honours AllMulti and SomeMulti for non-array values", () => {
         expect(shouldUseMultiValueEditor({key: "status", type: MetaType.Dataview, content: "a"}, allMulti)).toBe(true);
 

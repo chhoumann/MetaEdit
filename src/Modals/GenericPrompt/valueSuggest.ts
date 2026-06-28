@@ -1,5 +1,6 @@
 import type {App} from "obsidian";
 import {MetaType} from "../../Types/metaType";
+import type {TagEditMode} from "../../tagEditing";
 
 export type DateInputType = "date" | "datetime";
 
@@ -22,24 +23,25 @@ const MAX_RENDERED_SUGGESTIONS = 100;
  * Distinct values already used for a property across the vault, ranked so the
  * most frequently used values surface first.
  *
- * Tags resolve to their leaf segment (the part after the last `/`) because
- * MetaEdit rewrites a tag by replacing only that last segment - suggesting a
- * full `topic/science` path while editing `#topic/science` would write
- * `#topic/topic/science`. Leaf segments are the only values that round-trip
- * safely through the tag writer.
+ * Tags depend on the edit mode (see TagEditMode): a `rename` replaces the whole
+ * tag, so full tag names (without `#`) are suggested; a `leaf` edit replaces only
+ * the last `/`-segment, so leaf segments are suggested. Both round-trip safely
+ * through the span-based tag writer.
  *
  * Inline Dataview (`key:: value`) fields are not in the metadata cache, so
  * sourcing their values would mean a full-text scan that duplicates the parser;
  * that is a deliberate follow-up, so Dataview keys return nothing for now.
  */
-export function getValueSuggestions(app: App, key: string, type: MetaType): string[] {
+export function getValueSuggestions(app: App, key: string, type: MetaType, tagMode?: TagEditMode): string[] {
     if (!key) return [];
 
     // These read untyped runtime APIs (getTags, metadataCache); never let a
     // sourcing failure break the prompt - degrade to no suggestions.
     try {
         if (type === MetaType.Tag) {
-            return rankByCount(collectTagLeafCounts(app));
+            return tagMode === "leaf"
+                ? rankByCount(collectTagLeafCounts(app))
+                : rankByCount(collectTagFullCounts(app));
         }
 
         if (type === MetaType.YAML) {
@@ -128,17 +130,32 @@ export function filterSuggestions(items: string[], inputStr: string): string[] {
 
 function collectTagLeafCounts(app: App): Map<string, number> {
     const counts = new Map<string, number>();
-    // getTags() is present at runtime but missing from the pinned obsidian typings.
-    const metadataCache = app.metadataCache as unknown as {getTags?: () => Record<string, number>};
-    const tags: Record<string, number> = metadataCache.getTags?.() ?? {};
 
-    for (const [tag, count] of Object.entries(tags)) {
+    for (const [tag, count] of Object.entries(readVaultTags(app))) {
         const leaf = tag.replace(/^#/, "").split("/").pop()?.trim();
         if (!leaf) continue;
         counts.set(leaf, (counts.get(leaf) ?? 0) + (count ?? 1));
     }
 
     return counts;
+}
+
+function collectTagFullCounts(app: App): Map<string, number> {
+    const counts = new Map<string, number>();
+
+    for (const [tag, count] of Object.entries(readVaultTags(app))) {
+        const full = tag.replace(/^#/, "").trim();
+        if (!full) continue;
+        counts.set(full, (counts.get(full) ?? 0) + (count ?? 1));
+    }
+
+    return counts;
+}
+
+function readVaultTags(app: App): Record<string, number> {
+    // getTags() is present at runtime but missing from the pinned obsidian typings.
+    const metadataCache = app.metadataCache as unknown as {getTags?: () => Record<string, number>};
+    return metadataCache.getTags?.() ?? {};
 }
 
 function collectFrontmatterValueCounts(app: App, key: string): Map<string, number> {
