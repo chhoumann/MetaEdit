@@ -1,14 +1,22 @@
 <script lang="ts">
-    import {onMount} from "svelte";
+    import {untrack} from "svelte";
     import {setIcon} from "obsidian";
     import type {AutoProperty} from "../../Types/autoProperty";
     import {multiSelectOptions, normalizeChoices, toValueArray} from "../../autoProperties";
 
-    export let autoProperty: AutoProperty;
-    export let isMulti: boolean = false;
-    export let currentValue: unknown = null;
-    export let onSubmit: (value: string | string[]) => void;
-    export let onSaveChoices: (values: string[]) => void | Promise<void>;
+    let {
+        autoProperty,
+        isMulti = false,
+        currentValue = null,
+        onSubmit,
+        onSaveChoices,
+    }: {
+        autoProperty: AutoProperty;
+        isMulti?: boolean;
+        currentValue?: unknown;
+        onSubmit: (value: string | string[]) => void;
+        onSaveChoices: (values: string[]) => void | Promise<void>;
+    } = $props();
 
     interface SingleItem {
         kind: "choice" | "use" | "save";
@@ -16,11 +24,14 @@
         label: string;
     }
 
-    const choices = normalizeChoices(autoProperty.choices);
+    const initialAutoProperty = untrack(() => autoProperty);
+    const initialIsMulti = untrack(() => isMulti);
+    const initialCurrentValue = untrack(() => currentValue);
+    const choices = normalizeChoices(initialAutoProperty.choices);
 
-    let inputEl: HTMLInputElement;
-    let query = "";
-    let highlight = 0;
+    let inputEl = $state<HTMLInputElement>();
+    let query = $state("");
+    let highlight = $state(0);
 
     // Svelte action for a lucide icon via Obsidian's setIcon.
     function icon(node: HTMLElement, name: string) {
@@ -30,11 +41,14 @@
     }
 
     // --- Single mode ---------------------------------------------------------
-    $: trimmedQuery = query.trim();
-    $: filtered = choices.filter((c) => c.toLowerCase().includes(trimmedQuery.toLowerCase()));
-    $: exactMatch = choices.some((c) => c.toLowerCase() === trimmedQuery.toLowerCase());
-    $: singleItems = buildSingleItems(filtered, trimmedQuery, exactMatch);
-    $: if (highlight > singleItems.length - 1) highlight = Math.max(0, singleItems.length - 1);
+    let trimmedQuery = $derived(query.trim());
+    let filtered = $derived(choices.filter((c) => c.toLowerCase().includes(trimmedQuery.toLowerCase())));
+    let exactMatch = $derived(choices.some((c) => c.toLowerCase() === trimmedQuery.toLowerCase()));
+    let singleItems = $derived(buildSingleItems(filtered, trimmedQuery, exactMatch));
+    $effect(() => {
+        const maxHighlight = Math.max(0, singleItems.length - 1);
+        if (highlight > maxHighlight) highlight = maxHighlight;
+    });
 
     function buildSingleItems(matches: string[], q: string, exact: boolean): SingleItem[] {
         const items: SingleItem[] = matches.map((c) => ({kind: "choice", value: c, label: c}));
@@ -77,11 +91,11 @@
     }
 
     // --- Multi mode ----------------------------------------------------------
-    let options: string[] = isMulti ? multiSelectOptions(autoProperty, currentValue) : [];
-    let checkedValues: string[] = toValueArray(currentValue);
-    let saveNew = false;
+    let options = $state<string[]>(untrack(() => initialIsMulti ? multiSelectOptions(initialAutoProperty, initialCurrentValue) : []));
+    let checkedValues = $state<string[]>(untrack(() => toValueArray(initialCurrentValue)));
+    let saveNew = $state(false);
 
-    $: newCheckedValues = options.filter((o) => checkedValues.includes(o) && !choices.includes(o));
+    let newCheckedValues = $derived(options.filter((o) => checkedValues.includes(o) && !choices.includes(o)));
 
     function toggleCheck(value: string) {
         checkedValues = checkedValues.includes(value)
@@ -112,30 +126,36 @@
         onSubmit(result);
     }
 
-    onMount(() => inputEl?.focus());
+    let didFocus = false;
+    $effect(() => {
+        const el = inputEl;
+        if (!el || didFocus) return;
+        didFocus = true;
+        el.focus();
+    });
 </script>
 
 <div class="metaedit-ap-prompt">
     <div class="metaedit-ap-prompt-head">
-        <div class="metaedit-ap-prompt-title">{autoProperty.name}</div>
-        {#if autoProperty.description}
-            <div class="metaedit-ap-prompt-desc">{autoProperty.description}</div>
+        <div class="metaedit-ap-prompt-title">{initialAutoProperty.name}</div>
+        {#if initialAutoProperty.description}
+            <div class="metaedit-ap-prompt-desc">{initialAutoProperty.description}</div>
         {/if}
     </div>
 
-    {#if isMulti}
+    {#if initialIsMulti}
         <input
             bind:this={inputEl}
             class="metaedit-ap-prompt-input"
             type="text"
             placeholder="Type a value and press Enter to add it"
             bind:value={query}
-            on:keydown={onMultiAddKeydown}
+            onkeydown={onMultiAddKeydown}
         />
         <div class="metaedit-ap-prompt-list" role="listbox" aria-multiselectable="true">
             {#each options as option (option)}
                 <label class="metaedit-ap-prompt-row metaedit-ap-prompt-check">
-                    <input type="checkbox" checked={checkedValues.includes(option)} on:change={() => toggleCheck(option)} />
+                    <input type="checkbox" checked={checkedValues.includes(option)} onchange={() => toggleCheck(option)} />
                     <span class="metaedit-ap-prompt-row-label">{option}</span>
                     {#if !choices.includes(option)}
                         <span class="metaedit-ap-prompt-tag">new</span>
@@ -152,7 +172,7 @@
             </label>
         {/if}
         <div class="metaedit-ap-prompt-actions">
-            <button class="mod-cta" on:click={confirmMulti}>Confirm</button>
+            <button class="mod-cta" onclick={confirmMulti}>Confirm</button>
         </div>
     {:else}
         <input
@@ -161,7 +181,7 @@
             type="text"
             placeholder="Pick a value, or type a new one"
             bind:value={query}
-            on:keydown={onSingleKeydown}
+            onkeydown={onSingleKeydown}
         />
         <div class="metaedit-ap-prompt-list" role="listbox">
             {#each singleItems as item, i (item.kind + item.value)}
@@ -169,8 +189,8 @@
                     class="metaedit-ap-prompt-row"
                     class:is-selected={i === highlight}
                     class:metaedit-ap-prompt-action={item.kind !== "choice"}
-                    on:click={() => chooseSingle(item)}
-                    on:mouseenter={() => (highlight = i)}
+                    onclick={() => chooseSingle(item)}
+                    onmouseenter={() => (highlight = i)}
                 >
                     {#if item.kind === "save"}
                         <span class="metaedit-ap-prompt-row-icon" use:icon={"plus"}></span>
