@@ -29,14 +29,14 @@
             </tr>
         </thead>
         <tbody>
-            {#each properties as property}
+            {#each properties as property (property)}
                 <tr>
                     <td>
                         <input type="text" placeholder="Property name" bind:value={property.name} on:change={() => save(properties)}>
                     </td>
                     <td>
                         <select bind:value={property.type} on:change={() => save(properties)}>
-                            {#each options as text}
+                            {#each options as text (text)}
                             <option value={text} label={text}></option>
                             {/each}
                         </select>

@@ -18,5 +18,5 @@ export class GuiLogger extends MetaEditLogger {
         new Notice(this.formatOutputString(warning));
     }
 
-    logMessage(msg: string): void {}
+    logMessage(_msg: string): void {}
 }

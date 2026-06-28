@@ -64,7 +64,7 @@
         </tr>
         </thead>
         <tbody>
-            {#each kanbanProperties as kanbanProperty, i}
+            {#each kanbanProperties as kanbanProperty, i (kanbanProperty.boardName)}
                 <tr>
                     <td>
                         <input type="button" value="❌" class="not-a-button" on:click={() => removeProperty(i)}/>

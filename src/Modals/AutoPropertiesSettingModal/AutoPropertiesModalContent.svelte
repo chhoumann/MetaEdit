@@ -71,7 +71,7 @@
                     on:change={(e) => setType(property, e.currentTarget.value)}
                     aria-label="How many values this property holds"
                 >
-                    {#each types as t}
+                    {#each types as t (t)}
                         <option value={t} selected={(property.type ?? "Single") === t}>{t}</option>
                     {/each}
                 </select>
@@ -94,7 +94,7 @@
 
             <div class="metaedit-ap-values">
                 <span class="metaedit-ap-label">Values</span>
-                {#each property.choices as choice, i}
+                {#each property.choices as choice, i (i)}
                     <div class="metaedit-ap-choice">
                         <input
                             type="text"

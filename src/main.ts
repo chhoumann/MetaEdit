@@ -38,7 +38,7 @@ export default class MetaEdit extends Plugin {
         /*START.DEVCMD*/
         this.addCommand({
             id: 'reloadMetaEdit',
-            name: 'Reload MetaEdit (dev)',
+            name: 'Reload (dev)',
             callback: () => { // @ts-expect-error - for this.app.plugins
                 const id: string = this.manifest.id, plugins = this.app.plugins;
                 plugins.disablePlugin(id).then(() => plugins.enablePlugin(id));
@@ -48,7 +48,7 @@ export default class MetaEdit extends Plugin {
 
         this.addCommand({
             id: 'metaEditRun',
-            name: 'Run MetaEdit',
+            name: 'Run',
             callback: async () => {
                 const file: TFile = getActiveMarkdownFile(this.app);
                 if (!file) return;
@@ -143,4 +143,3 @@ export default class MetaEdit extends Plugin {
         await this.bulkEditor.run(files, scope);
     }
 }
-

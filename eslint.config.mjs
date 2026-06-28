@@ -1,10 +1,32 @@
 import globals from "globals";
+import obsidianmd from "eslint-plugin-obsidianmd";
+import svelte from "eslint-plugin-svelte";
 import tseslint from "typescript-eslint";
+
+const sharedGlobals = {
+	...globals.node,
+	...globals.browser,
+	activeDocument: "readonly",
+	activeWindow: "readonly",
+};
+
+// Obsidian developer-policy / guideline rules. Keep this scoped to production
+// plugin source: tests and harness code legitimately stub Obsidian globals and
+// should not inherit plugin-review restrictions.
+const obsidianGuidelineRules = {
+	"obsidianmd/no-static-styles-assignment": "error",
+	"obsidianmd/prefer-window-timers": "error",
+	"obsidianmd/prefer-active-doc": "error",
+	"obsidianmd/detach-leaves": "error",
+	"obsidianmd/no-global-this": "error",
+	"obsidianmd/settings-tab/no-manual-html-headings": "error",
+	"obsidianmd/commands/no-plugin-name-in-command-name": "error",
+};
 
 export default tseslint.config(
 	{
 		// Generated artifacts, vendored code, the legacy JS build tooling, and
-		// Svelte components are not linted.
+		// release scripts are not linted.
 		ignores: [
 			"node_modules/**",
 			"main.js",
@@ -12,20 +34,17 @@ export default tseslint.config(
 			"coverage/**",
 			".obsidian-e2e-vaults/**",
 			".obsidian-e2e-artifacts/**",
-			"**/*.svelte",
 			"esbuild.config.mjs",
 			"version-bump.mjs",
 			"scripts/*.mjs",
 		],
 	},
 	...tseslint.configs.recommended,
+	...svelte.configs["flat/recommended"],
 	{
 		files: ["**/*.{ts,mts,cts}"],
 		languageOptions: {
-			globals: {
-				...globals.node,
-				...globals.browser,
-			},
+			globals: sharedGlobals,
 		},
 		rules: {
 			// Pragmatic ruleset that matches the QuickAdd baseline: surface real
@@ -46,5 +65,20 @@ export default tseslint.config(
 			// churning it here.
 			"prefer-const": "warn",
 		},
+	},
+	{
+		files: ["**/*.svelte"],
+		languageOptions: {
+			globals: sharedGlobals,
+			parserOptions: {
+				parser: tseslint.parser,
+			},
+		},
+	},
+	{
+		files: ["src/**/*.{ts,mts,cts}"],
+		ignores: ["src/**/*.{test,spec}.{ts,mts,cts}", "src/tests/**"],
+		plugins: { obsidianmd },
+		rules: obsidianGuidelineRules,
 	},
 );

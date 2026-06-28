@@ -78,23 +78,22 @@
 
     // --- Multi mode ----------------------------------------------------------
     let options: string[] = isMulti ? multiSelectOptions(autoProperty, currentValue) : [];
-    let checked: Set<string> = new Set(toValueArray(currentValue));
+    let checkedValues: string[] = toValueArray(currentValue);
     let saveNew = false;
 
-    $: newCheckedValues = options.filter((o) => checked.has(o) && !choices.includes(o));
+    $: newCheckedValues = options.filter((o) => checkedValues.includes(o) && !choices.includes(o));
 
     function toggleCheck(value: string) {
-        if (checked.has(value)) checked.delete(value);
-        else checked.add(value);
-        checked = checked; // notify Svelte
+        checkedValues = checkedValues.includes(value)
+            ? checkedValues.filter((checkedValue) => checkedValue !== value)
+            : [...checkedValues, value];
     }
 
     function addMultiValue() {
         const value = query.trim();
         if (value === "") return;
         if (!options.includes(value)) options = [...options, value];
-        checked.add(value);
-        checked = checked;
+        if (!checkedValues.includes(value)) checkedValues = [...checkedValues, value];
         query = "";
     }
 
@@ -106,7 +105,7 @@
     }
 
     async function confirmMulti() {
-        const result = options.filter((o) => checked.has(o));
+        const result = options.filter((o) => checkedValues.includes(o));
         if (saveNew && newCheckedValues.length > 0) {
             await persistChoices(newCheckedValues);
         }
@@ -136,7 +135,7 @@
         <div class="metaedit-ap-prompt-list" role="listbox" aria-multiselectable="true">
             {#each options as option (option)}
                 <label class="metaedit-ap-prompt-row metaedit-ap-prompt-check">
-                    <input type="checkbox" checked={checked.has(option)} on:change={() => toggleCheck(option)} />
+                    <input type="checkbox" checked={checkedValues.includes(option)} on:change={() => toggleCheck(option)} />
                     <span class="metaedit-ap-prompt-row-label">{option}</span>
                     {#if !choices.includes(option)}
                         <span class="metaedit-ap-prompt-tag">new</span>

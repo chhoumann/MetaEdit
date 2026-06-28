@@ -11,15 +11,11 @@ import type {AutoProperty} from "../Types/autoProperty";
 import type {KanbanProperty} from "../Types/kanbanProperty";
 import {type MountedSvelteComponent, mountSvelteComponent, unmountSvelteComponent} from "../svelteMount";
 
-function toggleHiddenEl(el: HTMLElement, bShow: boolean) {
-    if (el && !bShow) {
-        el.style.display = "none";
-        return true;
-    } else if (el && bShow) {
-        el.style.display = "block";
-        return false;
-    }
-    return bShow;
+function toggleHiddenEl(el: HTMLElement | undefined, hidden: boolean) {
+    if (!el) return hidden;
+
+    el.classList.toggle("metaedit-hidden", !hidden);
+    return !hidden;
 }
 
 export class MetaEditSettingsTab extends PluginSettingTab {
@@ -37,7 +33,9 @@ export class MetaEditSettingsTab extends PluginSettingTab {
         this.destroySvelteElements();
         containerEl.empty();
 
-        containerEl.createEl('h2', {text: 'MetaEdit Settings'});
+        new Setting(containerEl)
+            .setName("MetaEdit Settings")
+            .setHeading();
 
         this.addProgressPropertiesSetting(containerEl);
         this.addAutoPropertiesSetting(containerEl);
@@ -48,7 +46,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
     }
 
     private addProgressPropertiesSetting(containerEl: HTMLElement) {
-        let modal: MountedSvelteComponent, div: HTMLDivElement, hidden: boolean = true;
+        let hidden: boolean = true;
         const setting = new Setting(containerEl)
             .setName("Progress Properties")
             .setDesc("Update properties automatically.")
@@ -64,14 +62,13 @@ export class MetaEditSettingsTab extends PluginSettingTab {
 
                         await this.plugin.saveSettings();
                     });
-            })
-            .addExtraButton(button => button.onClick(() => hidden = toggleHiddenEl(div, hidden)))
+            });
 
-        div = setting.settingEl.createDiv();
-        setting.settingEl.style.display = "block";
-        div.style.display = "none";
+        const div = setting.settingEl.createDiv({cls: "metaedit-hidden"});
+        setting.settingEl.classList.add("metaedit-setting-with-details");
+        setting.addExtraButton(button => button.onClick(() => hidden = toggleHiddenEl(div, hidden)));
 
-        modal = mountSvelteComponent(
+        const modal = mountSvelteComponent(
             ProgressPropertiesModalContent,
             div,
             {
@@ -87,7 +84,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
     }
 
     private addAutoPropertiesSetting(containerEl: HTMLElement) {
-        let modal: MountedSvelteComponent, div: HTMLDivElement, hidden: boolean = true;
+        let hidden: boolean = true;
         const setting = new Setting(containerEl)
             .setName("Auto Properties")
             .setDesc("Quick switch for values you know the value of.")
@@ -102,14 +99,13 @@ export class MetaEditSettingsTab extends PluginSettingTab {
 
                         await this.plugin.saveSettings();
                     });
-            })
-            .addExtraButton(b => b.onClick(() => hidden = toggleHiddenEl(div, hidden)));
+            });
 
-        div = setting.settingEl.createDiv();
-        setting.settingEl.style.display = "block";
-        div.style.display = "none";
+        const div = setting.settingEl.createDiv({cls: "metaedit-hidden"});
+        setting.settingEl.classList.add("metaedit-setting-with-details");
+        setting.addExtraButton(b => b.onClick(() => hidden = toggleHiddenEl(div, hidden)));
 
-        modal = mountSvelteComponent(
+        const modal = mountSvelteComponent(
             AutoPropertiesModalContent,
             div,
             {
@@ -125,7 +121,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
     }
 
     private addEditMetaMenuSetting(containerEl: HTMLElement) {
-        let modal: MountedSvelteComponent, div: HTMLDivElement, hidden = true;
+        let hidden = true;
         const setting = new Setting(containerEl)
             .setName("Edit Meta menu")
             .setDesc("Control what the 'Edit Meta' menu lists. Enable it, then use the gear to hide specific properties by name or all of a note's file tags.")
@@ -141,13 +137,15 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                         this.display();
                     });
-            }).addExtraButton(b => b.onClick(() => hidden = toggleHiddenEl(div, hidden)))
+            });
 
-        if (this.plugin.settings.IgnoredProperties.enabled) {
-            div = setting.settingEl.createDiv();
-            setting.settingEl.style.display = "block";
-            div.style.display = "none";
+        const div = this.plugin.settings.IgnoredProperties.enabled
+            ? setting.settingEl.createDiv({cls: "metaedit-hidden"})
+            : undefined;
+        if (div) setting.settingEl.classList.add("metaedit-setting-with-details");
+        setting.addExtraButton(b => b.onClick(() => hidden = toggleHiddenEl(div, hidden)));
 
+        if (div) {
             new Setting(div)
                 .setName("Hide file tags")
                 .setDesc("Hide the note's #tags from the menu, leaving only frontmatter and inline fields. A frontmatter 'tags' property stays editable.")
@@ -160,13 +158,12 @@ export class MetaEditSettingsTab extends PluginSettingTab {
 
                             this.plugin.settings.IgnoredProperties.hideFileTags = value;
                             await this.plugin.saveSettings();
-                        });
+                    });
                 });
 
-            const tableLabel = div.createEl("p", {text: "Hide specific properties by name:"});
-            tableLabel.style.marginBottom = "0";
+            div.createEl("p", {text: "Hide specific properties by name:", cls: "metaedit-table-label"});
 
-            modal = mountSvelteComponent(
+            const modal = mountSvelteComponent(
                 SingleValueTableEditorContent,
                 div,
                 {
@@ -183,7 +180,8 @@ export class MetaEditSettingsTab extends PluginSettingTab {
     }
 
     private addEditModeSetting(containerEl: HTMLElement) {
-        let modal: MountedSvelteComponent, div: HTMLDivElement, bDivToggle: boolean = true, extraButtonEl, bExtraButtonToggle: boolean = true;
+        let bDivToggle: boolean = true;
+        let extraButtonEl: HTMLElement | undefined;
 
         // For linebreaks
         const df = new DocumentFragment();
@@ -193,7 +191,11 @@ export class MetaEditSettingsTab extends PluginSettingTab {
 
         const setting = new Setting(containerEl)
             .setName("Edit Mode")
-            .setDesc(df)
+            .setDesc(df);
+        const div = setting.settingEl.createDiv({cls: "metaedit-hidden"});
+        setting.settingEl.classList.add("metaedit-setting-with-details");
+
+        setting
             .addDropdown(dropdown => {
                 dropdown
                     .addOption(EditMode.AllSingle, EditMode.AllSingle)
@@ -204,17 +206,17 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                         switch (value) {
                             case EditMode.AllMulti:
                                 this.plugin.settings.EditMode.mode = EditMode.AllMulti;
-                                bExtraButtonToggle = toggleHiddenEl(extraButtonEl, false);
+                                toggleHiddenEl(extraButtonEl, false);
                                 bDivToggle = toggleHiddenEl(div, false);
                                 break;
                             case EditMode.AllSingle:
                                 this.plugin.settings.EditMode.mode = EditMode.AllSingle;
-                                bExtraButtonToggle = toggleHiddenEl(extraButtonEl, false);
+                                toggleHiddenEl(extraButtonEl, false);
                                 bDivToggle = toggleHiddenEl(div, false);
                                 break;
                             case EditMode.SomeMulti:
                                 this.plugin.settings.EditMode.mode = EditMode.SomeMulti;
-                                bExtraButtonToggle = toggleHiddenEl(extraButtonEl, true);
+                                toggleHiddenEl(extraButtonEl, true);
                                 break;
                         }
 
@@ -228,14 +230,10 @@ export class MetaEditSettingsTab extends PluginSettingTab {
             });
 
         if (this.plugin.settings.EditMode.mode != EditMode.SomeMulti) {
-            bExtraButtonToggle = toggleHiddenEl(extraButtonEl, false);
+            toggleHiddenEl(extraButtonEl, false);
         }
 
-        div = setting.settingEl.createDiv();
-        setting.settingEl.style.display = "block";
-        div.style.display = "none";
-
-        modal = mountSvelteComponent(
+        const modal = mountSvelteComponent(
             SingleValueTableEditorContent,
             div,
             {
@@ -261,7 +259,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
     }
 
     private addKanbanHelperSetting(containerEl: HTMLElement) {
-        let modal: MountedSvelteComponent, div: HTMLDivElement, hidden: boolean = true;
+        let hidden: boolean = true;
         const setting = new Setting(containerEl)
             .setName("Kanban Board Helper")
             .setDesc("Update properties in links in kanban boards automatically when a card is moved to a new lane.")
@@ -277,14 +275,13 @@ export class MetaEditSettingsTab extends PluginSettingTab {
 
                         await this.plugin.saveSettings();
                     });
-            })
-            .addExtraButton(button => button.onClick(() => hidden = toggleHiddenEl(div, hidden)))
+            });
 
-        div = setting.settingEl.createDiv();
-        setting.settingEl.style.display = "block";
-        div.style.display = "none";
+        const div = setting.settingEl.createDiv({cls: "metaedit-hidden"});
+        setting.settingEl.classList.add("metaedit-setting-with-details");
+        setting.addExtraButton(button => button.onClick(() => hidden = toggleHiddenEl(div, hidden)));
 
-        modal = mountSvelteComponent(
+        const modal = mountSvelteComponent(
             KanbanHelperSettingContent,
             div,
             {

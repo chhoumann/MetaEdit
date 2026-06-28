@@ -45,7 +45,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
         super.renderSuggestion(item, el);
 
         if (Object.values(this.options).find(v => v === item.item)) {
-            el.style.fontWeight = "bold";
+            el.classList.add("metaedit-suggester-command");
         } else {
             if (MetaEditSuggester.canStructureEdit(item.item)) {
                 this.createButton(el,"❌", this.deleteItem(item));
@@ -132,9 +132,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     private createButton(el: HTMLElement, content: string, callback: (evt: MouseEvent) => void) {
         const itemButton = el.createEl("button");
         itemButton.textContent = content;
-        itemButton.classList.add("not-a-button");
-        itemButton.style.float = "right";
-        itemButton.style.marginRight = "4px";
+        itemButton.classList.add("not-a-button", "metaedit-suggester-action-button");
         itemButton.addEventListener("click", callback);
     }
 
