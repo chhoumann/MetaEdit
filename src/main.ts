@@ -123,7 +123,10 @@ export default class MetaEdit extends Plugin {
             if (fileCache) {
                 const fileFrontmatter = fileCache.frontmatter;
 
-                if (fileFrontmatter && fileFrontmatter[property]) {
+                // Match on key PRESENCE, not truthiness, so a note that defines
+                // the property with a falsy value (false, 0, "", null) is still
+                // returned. A truthy check silently dropped `published: false`.
+                if (fileFrontmatter && Object.prototype.hasOwnProperty.call(fileFrontmatter, property)) {
                     files.push(file);
                 }
             }
