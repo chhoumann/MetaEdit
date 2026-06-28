@@ -24,7 +24,7 @@
         </tr>
         </thead>
         <tbody>
-            {#each ignoredProperties as property, i}
+            {#each ignoredProperties as property, i (i)}
                 <tr>
                     <td>
                         <input type="button" value="❌" class="not-a-button" on:click={() => removeProperty(i)}/>
