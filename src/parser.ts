@@ -230,9 +230,13 @@ export default class MetaEditParser {
 
     private getFrontmatterInfo(content: string): FrontMatterInfo | null {
         const info = getFrontMatterInfo(content);
+        const legacyDotInfo = this.getLegacyDotCloseFrontmatterInfo(content);
+        if (legacyDotInfo && (!info.exists || legacyDotInfo.contentStart < info.contentStart))
+            return legacyDotInfo;
+
         if (info.exists) return info;
 
-        return this.getLegacyDotCloseFrontmatterInfo(content);
+        return null;
     }
 
     private getLegacyDotCloseFrontmatterInfo(content: string): FrontMatterInfo | null {

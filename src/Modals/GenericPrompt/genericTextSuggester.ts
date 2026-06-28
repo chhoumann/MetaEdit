@@ -9,13 +9,14 @@ export class GenericTextSuggester extends AbstractInputSuggest<string> {
         private items: string[],
     ) {
         super(app, inputEl);
+        this.onSelect((item) => this.acceptSuggestion(item));
     }
 
     protected getSuggestions(inputStr: string): string[] {
         return filterSuggestions(this.items, inputStr);
     }
 
-    selectSuggestion(item: string, _evt: MouseEvent | KeyboardEvent): void {
+    private acceptSuggestion(item: string): void {
         this.setValue(item);
         this.inputEl.trigger("input");
         this.close();

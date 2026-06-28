@@ -95,6 +95,19 @@ describe("MetaEditParser frontmatter parsing", () => {
         ]);
     });
 
+    it("prefers a legacy dot frontmatter closer before a later thematic break", async () => {
+        const file = new TFile("dot-frontmatter-later-break.md");
+        const parser = createParser(null, "---\nstatus: draft\n...\nfoo:: bar\n---\nbar:: baz\n");
+
+        await expect(parser.parseFrontmatter(file)).resolves.toEqual([
+            {key: "status", content: "draft", type: MetaType.YAML},
+        ]);
+        await expect(parser.parseInlineFields(file)).resolves.toEqual([
+            {key: "foo", content: "bar", type: MetaType.Dataview},
+            {key: "bar", content: "baz", type: MetaType.Dataview},
+        ]);
+    });
+
     it("falls back to cached frontmatter entries when no position metadata exists", async () => {
         const file = new TFile("cache-only.md");
         const parser = createParser(
