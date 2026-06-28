@@ -91,3 +91,46 @@ export function parseYaml(yaml: string): Record<string, unknown> {
 
   return result;
 }
+
+export function getFrontMatterInfo(content: string): {
+  exists: boolean;
+  frontmatter: string;
+  from: number;
+  to: number;
+  contentStart: number;
+} {
+  const firstLineEnd = content.indexOf("\n");
+  if (firstLineEnd === -1) {
+    return { exists: false, frontmatter: "", from: 0, to: 0, contentStart: 0 };
+  }
+
+  const firstLine = content.slice(0, firstLineEnd).replace(/\r$/, "");
+  if (firstLine !== "---") {
+    return { exists: false, frontmatter: "", from: 0, to: 0, contentStart: 0 };
+  }
+
+  let lineStart = firstLineEnd + 1;
+  while (lineStart <= content.length) {
+    const newline = content.indexOf("\n", lineStart);
+    const lineEnd = newline === -1 ? content.length : newline;
+    const line = content.slice(lineStart, lineEnd).replace(/\r$/, "");
+
+    if (line === "---") {
+      const from = firstLineEnd + 1;
+      const to = lineStart;
+      const contentStart = newline === -1 ? lineEnd : newline + 1;
+      return {
+        exists: true,
+        frontmatter: content.slice(from, to),
+        from,
+        to,
+        contentStart,
+      };
+    }
+
+    if (newline === -1) break;
+    lineStart = newline + 1;
+  }
+
+  return { exists: false, frontmatter: "", from: 0, to: 0, contentStart: 0 };
+}

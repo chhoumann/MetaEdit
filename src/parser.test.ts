@@ -28,7 +28,7 @@ const replaceInline = (line: string, key: string, value: string): string =>
     new MetaEditParser({} as any).replaceInlineFieldValue(line, key, value);
 
 describe("MetaEditParser frontmatter parsing", () => {
-    it("uses legacy frontmatter.position when frontmatterPosition is missing", async () => {
+    it("reads frontmatter from live file content when cache positions are stale", async () => {
         const file = new TFile("legacy.md");
         const parser = createParser(
             {
@@ -48,9 +48,10 @@ describe("MetaEditParser frontmatter parsing", () => {
     });
 
     // #94/#31: a YAML list must read back as a real array (not a joined string),
-    // so the edit/write path can keep it a native list. Exercises the position +
-    // parseYaml read path (the cache-fallback path is covered below).
-    it("reads a YAML array via the parseYaml position path as a real array", async () => {
+    // so the edit/write path can keep it a native list. Exercises the live
+    // getFrontMatterInfo + parseYaml read path (the cache-fallback path is
+    // covered below).
+    it("reads a YAML array via the live frontmatter path as a real array", async () => {
         const file = new TFile("tags-list.md");
         const parser = createParser(
             {
@@ -68,6 +69,43 @@ describe("MetaEditParser frontmatter parsing", () => {
             {key: "tags", content: ["state/inprogress", "course/x"], type: MetaType.YAML},
         ]);
         expect(Array.isArray(props[0].content)).toBe(true);
+    });
+
+    it("reads frontmatter with CRLF line endings", async () => {
+        const file = new TFile("crlf-frontmatter.md");
+        const parser = createParser(null, "---\r\nstatus: draft\r\n---\r\nfoo:: bar\r\n");
+
+        await expect(parser.parseFrontmatter(file)).resolves.toEqual([
+            {key: "status", content: "draft", type: MetaType.YAML},
+        ]);
+        await expect(parser.parseInlineFields(file)).resolves.toEqual([
+            {key: "foo", content: "bar", type: MetaType.Dataview},
+        ]);
+    });
+
+    it("keeps the legacy dot frontmatter closer compatible", async () => {
+        const file = new TFile("dot-frontmatter.md");
+        const parser = createParser(null, "---\nstatus: draft\n...\nfoo:: bar\n");
+
+        await expect(parser.parseFrontmatter(file)).resolves.toEqual([
+            {key: "status", content: "draft", type: MetaType.YAML},
+        ]);
+        await expect(parser.parseInlineFields(file)).resolves.toEqual([
+            {key: "foo", content: "bar", type: MetaType.Dataview},
+        ]);
+    });
+
+    it("prefers a legacy dot frontmatter closer before a later thematic break", async () => {
+        const file = new TFile("dot-frontmatter-later-break.md");
+        const parser = createParser(null, "---\nstatus: draft\n...\nfoo:: bar\n---\nbar:: baz\n");
+
+        await expect(parser.parseFrontmatter(file)).resolves.toEqual([
+            {key: "status", content: "draft", type: MetaType.YAML},
+        ]);
+        await expect(parser.parseInlineFields(file)).resolves.toEqual([
+            {key: "foo", content: "bar", type: MetaType.Dataview},
+            {key: "bar", content: "baz", type: MetaType.Dataview},
+        ]);
     });
 
     it("falls back to cached frontmatter entries when no position metadata exists", async () => {

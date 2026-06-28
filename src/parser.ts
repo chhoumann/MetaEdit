@@ -1,5 +1,5 @@
-import type {App, CachedMetadata, Loc, TFile} from "obsidian";
-import {parseYaml} from "obsidian";
+import type {App, CachedMetadata, FrontMatterInfo, TFile} from "obsidian";
+import {getFrontMatterInfo, parseYaml} from "obsidian";
 import {MetaType} from "./Types/metaType";
 import {formatYamlPath, isPlainYamlObject, isYamlScalarLeaf, type YamlPath} from "./yamlPath";
 
@@ -12,12 +12,16 @@ export type Property = {
 	isNested?: boolean,
 	isVirtual?: boolean,
 };
-export type FrontmatterPosition = {start: Loc, end: Loc};
 // `start`/`end` are the field's span in the line; `sepEnd` is the offset just
 // after `::`; `valueEnd` is where the value content ends (the closing bracket
 // for a bracketed field, or end-of-line for a full-line field). The latter two
 // let the value be rewritten in place without disturbing the key or wrapper.
 type InlineField = {key: string, value: string, start: number, end: number, sepEnd: number, valueEnd: number};
+type ContentLine = {text: string, start: number, end: number, nextStart: number};
+type LegacyFrontmatterPosition = {
+    start: {line: number, col: number, offset: number},
+    end: {line: number, col: number, offset: number},
+};
 
 // Dataview wraps inline fields in either square brackets or parentheses.
 const INLINE_FIELD_WRAPPERS: Readonly<Record<string, string>> = Object.freeze({"[": "]", "(": ")"});
@@ -69,43 +73,14 @@ export default class MetaEditParser {
 
     public async parseFrontmatterObject(file: TFile): Promise<Record<string, unknown> | null> {
         const fileCache = this.app.metadataCache.getFileCache(file);
-        const frontmatterPosition = this.getFrontmatterPosition(fileCache);
         const filecontent = await this.app.vault.cachedRead(file);
-        const parsedYaml = this.parseFrontmatterContent(filecontent, frontmatterPosition);
+        const parsedYaml = this.parseFrontmatterContent(filecontent);
         if (this.isFrontmatterObject(parsedYaml)) return parsedYaml;
 
         const frontmatter = fileCache?.frontmatter;
         if (this.isFrontmatterObject(frontmatter)) return this.omitInternalFrontmatterPosition(frontmatter);
 
         return null;
-    }
-
-    public getFrontmatterPosition(fileCache: CachedMetadata | null | undefined): FrontmatterPosition | null {
-        if (!fileCache) return null;
-
-        const frontmatterPosition = fileCache.frontmatterPosition;
-        if (this.isFrontmatterPosition(frontmatterPosition)) return frontmatterPosition;
-
-        const legacyPosition = fileCache.frontmatter?.position;
-        if (this.isFrontmatterPosition(legacyPosition)) return legacyPosition;
-
-        return null;
-    }
-
-    private isFrontmatterPosition(position: unknown): position is FrontmatterPosition {
-        if (!position || typeof position !== "object") return false;
-
-        const candidate = position as Partial<FrontmatterPosition>;
-        return this.isPosition(candidate.start) && this.isPosition(candidate.end);
-    }
-
-    private isPosition(position: unknown): position is Loc {
-        if (!position || typeof position !== "object") return false;
-
-        const candidate = position as Partial<Loc>;
-        return typeof candidate.line === "number" &&
-            typeof candidate.col === "number" &&
-            typeof candidate.offset === "number";
     }
 
     private isFrontmatterObject(value: unknown): value is Record<string, unknown> {
@@ -118,6 +93,22 @@ export default class MetaEditParser {
         const cleaned = {...frontmatter};
         delete cleaned.position;
         return cleaned;
+    }
+
+    private isFrontmatterPosition(position: unknown): position is LegacyFrontmatterPosition {
+        if (!position || typeof position !== "object") return false;
+
+        const candidate = position as Partial<LegacyFrontmatterPosition>;
+        return this.isPosition(candidate.start) && this.isPosition(candidate.end);
+    }
+
+    private isPosition(position: unknown): position is LegacyFrontmatterPosition["start"] {
+        if (!position || typeof position !== "object") return false;
+
+        const candidate = position as Partial<LegacyFrontmatterPosition["start"]>;
+        return typeof candidate.line === "number" &&
+            typeof candidate.col === "number" &&
+            typeof candidate.offset === "number";
     }
 
     private objectToYamlProperties(parsedYaml: unknown, omitInternalPosition: boolean = false): Property[] {
@@ -171,8 +162,7 @@ export default class MetaEditParser {
 
     public async parseInlineFields(file: TFile): Promise<Property[]> {
         const content = await this.app.vault.cachedRead(file);
-        const frontmatterPosition = this.getFrontmatterPosition(this.app.metadataCache.getFileCache(file));
-        return this.parseInlineContent(content, frontmatterPosition);
+        return this.parseInlineContent(content);
     }
 
     /**
@@ -185,17 +175,16 @@ export default class MetaEditParser {
      * full-line key is otherwise kept verbatim so odd-but-real keys like
      * `progress (%)` survive a read/write cycle.
      */
-    public parseInlineContent(content: string, frontmatterPosition: FrontmatterPosition | null = null): Property[] {
+    public parseInlineContent(content: string): Property[] {
         const properties: Property[] = [];
-        const lines = content.split(/\r?\n/);
-        const frontmatterRange = this.getInlineFrontmatterRange(lines, frontmatterPosition);
+        const lines = this.splitContentLines(content);
+        const frontmatterInfo = this.getFrontmatterInfo(content);
         let openFence: string | null = null;
 
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
+        for (const {text: line, start} of lines) {
 
             // Skip a leading YAML frontmatter block - it is handled by parseFrontmatter.
-            if (frontmatterRange && i >= frontmatterRange.startLine && i <= frontmatterRange.endLine) {
+            if (frontmatterInfo?.exists && start < frontmatterInfo.contentStart) {
                 continue;
             }
 
@@ -224,43 +213,73 @@ export default class MetaEditParser {
         return properties;
     }
 
-    private getInlineFrontmatterRange(
-        lines: string[],
-        frontmatterPosition: FrontmatterPosition | null,
-    ): {startLine: number, endLine: number} | null {
-        if (frontmatterPosition) {
-            return {
-                startLine: frontmatterPosition.start.line,
-                endLine: frontmatterPosition.end.line,
-            };
-        }
+    private parseFrontmatterContent(content: string): unknown | null {
+        const frontmatterInfo = this.getFrontmatterInfo(content);
+        if (!frontmatterInfo?.exists) return null;
 
-        if (!/^---\s*$/.test(lines[0] ?? "")) return null;
-
-        for (let i = 1; i < lines.length; i++) {
-            if (/^(?:---|\.\.\.)\s*$/.test(lines[i])) {
-                return {startLine: 0, endLine: i};
-            }
-        }
-
-        return null;
-    }
-
-    private parseFrontmatterContent(content: string, frontmatterPosition: FrontmatterPosition | null): unknown | null {
-        const lines = content.split(/\r?\n/);
-        const frontmatterRange = this.getInlineFrontmatterRange(lines, frontmatterPosition);
-        if (!frontmatterRange || frontmatterRange.startLine !== 0) return null;
-
-        const yamlContent = lines.slice(frontmatterRange.startLine + 1, frontmatterRange.endLine).join("\n");
         // Malformed YAML must not abort the whole note's metadata parse: treat it
         // as non-parseable so parseFrontmatter falls back (to the cache, then to
         // an empty result) and inline/tag parsing still runs. Mirrors the bulk
         // preflight's BulkMetadataEditor.readLiveFrontmatter.
         try {
-            return parseYaml(yamlContent);
+            return parseYaml(frontmatterInfo.frontmatter);
         } catch {
             return null;
         }
+    }
+
+    private getFrontmatterInfo(content: string): FrontMatterInfo | null {
+        const info = getFrontMatterInfo(content);
+        const legacyDotInfo = this.getLegacyDotCloseFrontmatterInfo(content);
+        if (legacyDotInfo && (!info.exists || legacyDotInfo.contentStart < info.contentStart))
+            return legacyDotInfo;
+
+        if (info.exists) return info;
+
+        return null;
+    }
+
+    private getLegacyDotCloseFrontmatterInfo(content: string): FrontMatterInfo | null {
+        const lines = this.splitContentLines(content);
+        if (!/^---\s*$/.test(lines[0]?.text ?? "")) return null;
+
+        for (let i = 1; i < lines.length; i++) {
+            if (!/^\.\.\.\s*$/.test(lines[i].text)) continue;
+
+            const from = lines[0].nextStart;
+            const to = lines[i].start;
+            return {
+                exists: true,
+                frontmatter: content.slice(from, to),
+                from,
+                to,
+                contentStart: lines[i].nextStart,
+            };
+        }
+
+        return null;
+    }
+
+    private splitContentLines(content: string): ContentLine[] {
+        const textLines = content.split(/\r?\n/);
+        const lines: ContentLine[] = [];
+        let offset = 0;
+
+        for (let i = 0; i < textLines.length; i++) {
+            const text = textLines[i];
+            const start = offset;
+            const end = start + text.length;
+            let nextStart = end;
+
+            if (i < textLines.length - 1) {
+                nextStart += content.startsWith("\r\n", end) ? 2 : 1;
+            }
+
+            lines.push({text, start, end, nextStart});
+            offset = nextStart;
+        }
+
+        return lines;
     }
 
     private parseLineFields(line: string): InlineField[] {

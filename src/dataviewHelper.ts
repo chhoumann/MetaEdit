@@ -7,7 +7,7 @@ export class DataviewHelper {
     private activeLeaves: {[p: string]: {
         leaf: WorkspaceLeaf,
         addedCheckboxes: boolean,
-        file: TFile
+        file: TFile | null
     }} = {};
 
     constructor(private plugin: MetaEdit) { }
@@ -32,12 +32,13 @@ export class DataviewHelper {
 
         currentLeaves.forEach(leaf => {
             const {state} = leaf.getViewState();
-            if (state.file && !this.activeLeaves[state.file])
-                this.activeLeaves[state.file] = {leaf, addedCheckboxes: false, file: null}
+            const filePath = typeof state?.file === "string" ? state.file : null;
+            if (filePath && !this.activeLeaves[filePath])
+                this.activeLeaves[filePath] = {leaf, addedCheckboxes: false, file: null}
         });
     }
 
-    private addCheckboxes(item: { leaf: WorkspaceLeaf; addedCheckboxes: boolean; file: TFile }): void {
+    private addCheckboxes(item: { leaf: WorkspaceLeaf; addedCheckboxes: boolean; file: TFile | null }): void {
         if (item.addedCheckboxes) return;
         item.addedCheckboxes = true;
 

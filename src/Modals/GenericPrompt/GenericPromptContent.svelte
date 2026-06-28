@@ -31,29 +31,30 @@
     const datetimeStep = dateInputType === "datetime" && /T\d{2}:\d{2}:\d{2}/.test(value) ? "1" : undefined;
 
     onMount(() => {
+        let suggestions: string[] = [];
         if (!dateInputType) {
-            const suggestions = hasExplicitSuggestions
+            suggestions = hasExplicitSuggestions
                 ? suggestValues
                 : context
                     ? getValueSuggestions(context.app, context.key, context.type)
                     : [];
-
-            if (suggestions.length > 0) {
-                // Open on focus only when the input is empty (discovery of choices /
-                // known values). When it is seeded with the current value, opening on
-                // focus would pre-highlight a suggestion and make a bare Enter
-                // overwrite that value.
-                suggester = new GenericTextSuggester(app, inputEl, suggestions, {openOnFocus: !value});
-            }
         }
 
         inputEl.focus();
         if (!dateInputType) inputEl.select();
 
+        if (!dateInputType && suggestions.length > 0) {
+            // The native suggester binds to focus/input in its constructor. Create
+            // it after the programmatic focus so a seeded prompt stays quiet and
+            // bare Enter submits the current value instead of picking the first
+            // suggestion. Empty prompts still open below for discovery.
+            suggester = new GenericTextSuggester(app, inputEl, suggestions);
+        }
+
         // Empty-seeded prompts (Auto Property choices, name discovery) should show
         // their options immediately; the programmatic focus above does not reliably
         // fire a focus event, so open the dropdown explicitly.
-        if (suggester && !value) suggester.onInputChanged();
+        if (suggester && !value) suggester.refreshSuggestions();
     })
 
     // The suggester's dropdown lives in appContainerEl (outside the modal), so it
