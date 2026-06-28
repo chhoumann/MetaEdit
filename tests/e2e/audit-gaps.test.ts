@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { createMetaEditE2EHarness, evalJsonAsync, PLUGIN_ID } from "./harness";
+import { createMetaEditE2EHarness, evalJsonAsync, PLUGIN_ID, WAIT_OPTS } from "./harness";
 
 const getContext = createMetaEditE2EHarness("audit-gaps");
 
@@ -98,9 +98,11 @@ describe("MetaEdit audit gap coverage", () => {
 				plugin.toggleAutomators();
 			})()
 		`);
-		const content = await evalJsonAsync<string>(
-			obsidian,
-			`(async () => app.vault.read(app.vault.getAbstractFileByPath(${JSON.stringify(notePath)})))()`,
+		// Read the result through the sandbox API (no eval-string construction).
+		const content = await sandbox.waitForContent(
+			"drawing.excalidraw.md",
+			(v) => v.includes("taskCount"),
+			WAIT_OPTS,
 		);
 		// taskCount stays 0: the Excalidraw frontmatter key makes the automator skip it.
 		expect(content).toContain("taskCount: 0");
