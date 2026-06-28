@@ -167,7 +167,10 @@ export class MetaEditApi {
     private getGetPropertiesInFile() {
         return async (file: TFile | string): Promise<Property[]>  => {
             const targetFile = this.getFileFromTFileOrPath(file);
-            if (!targetFile) return;
+            // Honor the declared Promise<Property[]> contract: an unresolved path
+            // returns an empty array, never undefined, so callers can iterate the
+            // result without a TypeError.
+            if (!targetFile) return [];
 
             return await this.plugin.controller.getPropertiesInFile(targetFile);
         }
