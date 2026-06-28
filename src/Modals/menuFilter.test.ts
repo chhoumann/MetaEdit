@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {filterMenuItems} from "./menuFilter";
+import {canStructureEditProperty, filterMenuItems} from "./menuFilter";
 import {MetaType} from "../Types/metaType";
 import type {Property} from "../parser";
 
@@ -101,5 +101,22 @@ describe("filterMenuItems", () => {
         // The suggester always prepends its action options, so a fully-filtered
         // data list still yields a non-empty menu.
         expect(result).toEqual([]);
+    });
+});
+
+describe("canStructureEditProperty", () => {
+    it("never offers structure edits (delete/transform) on a body tag (BUG-5)", () => {
+        expect(canStructureEditProperty(tag("#project"))).toBe(false);
+        expect(canStructureEditProperty(tag("#area/work"))).toBe(false);
+    });
+
+    it("offers structure edits on plain YAML and Dataview properties", () => {
+        expect(canStructureEditProperty(yaml("status"))).toBe(true);
+        expect(canStructureEditProperty(dataview("rating"))).toBe(true);
+    });
+
+    it("withholds structure edits on nested/virtual YAML rows", () => {
+        expect(canStructureEditProperty({key: "a.b", content: "v", type: MetaType.YAML, isNested: true})).toBe(false);
+        expect(canStructureEditProperty({key: "a.b", content: "v", type: MetaType.YAML, isVirtual: true})).toBe(false);
     });
 });

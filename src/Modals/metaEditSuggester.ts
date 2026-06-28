@@ -7,7 +7,7 @@ import {MetaType} from "../Types/metaType";
 import type {AutoProperty} from "../Types/autoProperty";
 import {getKnownPropertyNames} from "./GenericPrompt/valueSuggest";
 import {setPendingValueContext} from "./GenericPrompt/promptValueContext";
-import {filterMenuItems} from "./menuFilter";
+import {canStructureEditProperty, filterMenuItems} from "./menuFilter";
 import {isYamlParentContainerValue} from "../yamlPath";
 
 export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
@@ -137,12 +137,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     }
 
     private static canStructureEdit(property: Property): boolean {
-        // Body tags have no `key:` line, so the property delete/transform actions
-        // (which match `key:`) silently no-op or mangle them. Until there is a
-        // real position-based tag delete, do not offer structure edits on tags -
-        // rename/remove a tag in the editor or via Obsidian's native tag tools.
-        if (property.type === MetaType.Tag) return false;
-        return !property.isNested && !property.isVirtual;
+        return canStructureEditProperty(property);
     }
 
     private static isYamlParentContainer(property: Property): boolean {

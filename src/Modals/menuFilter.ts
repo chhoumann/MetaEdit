@@ -37,3 +37,16 @@ export function filterMenuItems(data: Property[], opts: MenuFilterOptions): Prop
         return true;
     });
 }
+
+/**
+ * Whether the picker should offer the structure actions (delete / transform) on
+ * a property.
+ *
+ * Body tags are excluded: they have no `key:` line, so the key-based delete and
+ * transform actions silently no-op or mangle a tag. Nested/virtual YAML rows are
+ * excluded because they cannot be safely deleted as a unit yet.
+ */
+export function canStructureEditProperty(property: Pick<Property, "type" | "isNested" | "isVirtual">): boolean {
+    if (property.type === MetaType.Tag) return false;
+    return !property.isNested && !property.isVirtual;
+}
