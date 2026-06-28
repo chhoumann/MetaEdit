@@ -65,6 +65,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
             });
 
         const div = setting.settingEl.createDiv({cls: "metaedit-hidden"});
+        setting.settingEl.classList.add("metaedit-setting-with-details");
         setting.addExtraButton(button => button.onClick(() => hidden = toggleHiddenEl(div, hidden)));
 
         const modal = mountSvelteComponent(
@@ -101,6 +102,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
             });
 
         const div = setting.settingEl.createDiv({cls: "metaedit-hidden"});
+        setting.settingEl.classList.add("metaedit-setting-with-details");
         setting.addExtraButton(b => b.onClick(() => hidden = toggleHiddenEl(div, hidden)));
 
         const modal = mountSvelteComponent(
@@ -140,6 +142,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
         const div = this.plugin.settings.IgnoredProperties.enabled
             ? setting.settingEl.createDiv({cls: "metaedit-hidden"})
             : undefined;
+        if (div) setting.settingEl.classList.add("metaedit-setting-with-details");
         setting.addExtraButton(b => b.onClick(() => hidden = toggleHiddenEl(div, hidden)));
 
         if (div) {
@@ -190,6 +193,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
             .setName("Edit Mode")
             .setDesc(df);
         const div = setting.settingEl.createDiv({cls: "metaedit-hidden"});
+        setting.settingEl.classList.add("metaedit-setting-with-details");
 
         setting
             .addDropdown(dropdown => {
@@ -274,6 +278,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
             });
 
         const div = setting.settingEl.createDiv({cls: "metaedit-hidden"});
+        setting.settingEl.classList.add("metaedit-setting-with-details");
         setting.addExtraButton(button => button.onClick(() => hidden = toggleHiddenEl(div, hidden)));
 
         const modal = mountSvelteComponent(

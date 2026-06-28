@@ -18,6 +18,10 @@
     display: none;
 }
 
+.metaedit-setting-with-details {
+    display: block;
+}
+
 .metaedit-table-label {
     margin-bottom: 0;
 }
