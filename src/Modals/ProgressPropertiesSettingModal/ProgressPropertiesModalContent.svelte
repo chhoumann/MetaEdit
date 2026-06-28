@@ -1,22 +1,34 @@
 <script lang="ts">
+    import {untrack} from "svelte";
     import {ProgressPropertyOptions} from "../../Types/progressPropertyOptions";
     import type {ProgressProperty} from "../../Types/progressProperty";
 
     const options: string[] = Object.keys(ProgressPropertyOptions)
         .map(k => ProgressPropertyOptions[k]);
 
-    export let save: (properties: ProgressProperty[]) => void;
-    export let properties: ProgressProperty[];
+    let {
+        save,
+        properties: initialProperties = [],
+    }: {
+        save: (properties: ProgressProperty[]) => void;
+        properties?: ProgressProperty[];
+    } = $props();
 
-    function addNewProperty() {
-        let newProp: ProgressProperty = {name: "", type: ProgressPropertyOptions.TaskTotal}
-        properties = [...properties, newProp];
-        save(properties);
+    let properties = $state<ProgressProperty[]>(untrack(() => initialProperties.map(property => ({...property}))));
+
+    function saveProperties() {
+        save($state.snapshot(properties) as ProgressProperty[]);
     }
 
-    function removeProperty(property) {
+    function addNewProperty() {
+        const newProp: ProgressProperty = {name: "", type: ProgressPropertyOptions.TaskTotal}
+        properties = [...properties, newProp];
+        saveProperties();
+    }
+
+    function removeProperty(property: ProgressProperty) {
         properties = properties.filter(prop => prop !== property);
-        save(properties);
+        saveProperties();
     }
 </script>
 
@@ -32,17 +44,17 @@
             {#each properties as property (property)}
                 <tr>
                     <td>
-                        <input type="text" placeholder="Property name" bind:value={property.name} on:change={() => save(properties)}>
+                        <input type="text" placeholder="Property name" bind:value={property.name} onchange={saveProperties}>
                     </td>
                     <td>
-                        <select bind:value={property.type} on:change={() => save(properties)}>
+                        <select bind:value={property.type} onchange={saveProperties}>
                             {#each options as text (text)}
                             <option value={text} label={text}></option>
                             {/each}
                         </select>
                     </td>
                     <td>
-                        <input type="button" class="not-a-button" on:click={() => removeProperty(property)} value="❌"/>
+                        <input type="button" class="not-a-button" onclick={() => removeProperty(property)} value="❌"/>
                     </td>
                 </tr>
             {/each}
@@ -50,7 +62,7 @@
     </table>
 
     <div class="buttonContainer">
-        <button on:click={addNewProperty} class="mod-cta">Add</button>
+        <button onclick={addNewProperty} class="mod-cta">Add</button>
     </div>
 </div>
 
