@@ -137,6 +137,11 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     }
 
     private static canStructureEdit(property: Property): boolean {
+        // Body tags have no `key:` line, so the property delete/transform actions
+        // (which match `key:`) silently no-op or mangle them. Until there is a
+        // real position-based tag delete, do not offer structure edits on tags -
+        // rename/remove a tag in the editor or via Obsidian's native tag tools.
+        if (property.type === MetaType.Tag) return false;
         return !property.isNested && !property.isVirtual;
     }
 

@@ -1,5 +1,6 @@
 import {MetaType} from "./Types/metaType";
 import {EditMode} from "./Types/editMode";
+import {isTagsKey} from "./tagEditing";
 
 /**
  * Pure, Obsidian-free helpers for editing multi-value (list) properties. Kept
@@ -36,6 +37,9 @@ export function isMultiValueYamlProperty(property: PropertyLike): boolean {
  */
 export function shouldUseMultiValueEditor(property: PropertyLike, editMode: EditModeSettings): boolean {
     if (isMultiValueYamlProperty(property)) return true;
+    // Frontmatter `tags`/`tag` is inherently multi-value in Obsidian even when
+    // stored as a scalar or comma/space string, so always edit it as a list.
+    if (property.type === MetaType.YAML && isTagsKey(property.key)) return true;
     if (editMode.mode === EditMode.AllMulti) return true;
     if (editMode.mode === EditMode.SomeMulti && !!property.key && editMode.properties.includes(property.key)) {
         return true;

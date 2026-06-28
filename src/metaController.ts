@@ -14,7 +14,7 @@ import type {AutoProperty} from "./Types/autoProperty";
 import {findAutoProperty, isMultiAutoProperty, toValueArray, withChoiceAdded} from "./autoProperties";
 import {applyMultiValueEdit, isMultiValueYamlProperty, shouldUseMultiValueEditor, type MultiValueEdit} from "./multiValue";
 import {getYamlPath, isYamlParentContainerValue, parseYamlPath, setYamlPath, YamlPathError, type SetYamlPathOptions, type YamlPathSegment} from "./yamlPath";
-import {computeTagRewrite, isNestedTag, spliceTag, stripHash, tagLeaf, type TagEditMode} from "./tagEditing";
+import {computeTagRewrite, isNestedTag, isTagsKey, splitFrontmatterTags, spliceTag, stripHash, tagLeaf, canonicalizeFrontmatterTag, type TagEditMode} from "./tagEditing";
 import {setPendingValueContext} from "./Modals/GenericPrompt/promptValueContext";
 
 const fileWriteQueues: Map<string, Promise<unknown>> = new Map();
@@ -47,6 +47,12 @@ export default class MetaController {
 
     public async addYamlProp(propName: string, propValue: unknown, file: TFile): Promise<void> {
         const settings = this.plugin.settings;
+
+        // A new `tags`/`tag` property is stored as a canonical, `#`-free list.
+        if (isTagsKey(propName)) {
+            propValue = splitFrontmatterTags(propValue);
+        }
+
         const activeAutoProperty = this.getActiveAutoProperty(propName);
         const autoPropertyKeepsScalar = !!activeAutoProperty &&
             !isMultiAutoProperty(activeAutoProperty, settings.EditMode, propName);
@@ -274,10 +280,16 @@ export default class MetaController {
         // and spelling (commas and `[[wikilinks]]` included). An inline field (or
         // a YAML value stored as a comma string) has no real array, so it is
         // split on commas and re-joined.
-        const editsArray = isMultiValueYamlProperty(property);
-        const writeBase: unknown[] = editsArray
-            ? (property.content as unknown[])
-            : this.splitMultiValue(property);
+        // Frontmatter `tags` is always edited as a canonical list: any stored
+        // shape (list, scalar, comma/space string) is read with the `#` stripped,
+        // and it is written back as a YAML list (Obsidian's canonical form).
+        const tagsKey = property.type === MetaType.YAML && isTagsKey(property.key);
+        const editsArray = tagsKey || isMultiValueYamlProperty(property);
+        const writeBase: unknown[] = tagsKey
+            ? splitFrontmatterTags(property.content)
+            : editsArray
+                ? (property.content as unknown[])
+                : this.splitMultiValue(property);
         // The selectable view is always strings, kept 1:1 with `writeBase` so a
         // selection maps back to the correct element.
         const displayValues: string[] = editsArray
@@ -322,6 +334,10 @@ export default class MetaController {
         }
 
         if (!tempValue) return false;
+
+        // A tag entered with a leading `#` (`#area/x`) is stored without it.
+        if (tagsKey) tempValue = canonicalizeFrontmatterTag(tempValue);
+        if (tagsKey && tempValue === "") return false;
 
         const edit: MultiValueEdit =
             selectedOption === ADD_FIRST_SELECTION ? {kind: "addFirst", value: tempValue} :
@@ -404,8 +420,15 @@ export default class MetaController {
                             expectedValue: property.content,
                             validateExpectedValue: true,
                         });
+                    } else if (isTagsKey(property.key)) {
+                        // Canonicalise `tags`: strip `#`, drop blanks, store a list.
+                        // When the last tag is gone, remove the key (Decision E)
+                        // rather than leave a dangling `tags:` / `tags: []`.
+                        const tags = splitFrontmatterTags(newValue);
+                        if (tags.length === 0) delete frontmatter[property.key!];
+                        else frontmatter[property.key!] = tags;
                     } else {
-                        frontmatter[property.key] = newValue;
+                        frontmatter[property.key!] = newValue;
                     }
                 });
                 return;
