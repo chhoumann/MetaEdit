@@ -2,6 +2,7 @@
     import {untrack} from "svelte";
     import {setIcon} from "obsidian";
     import type {AutoProperty, AutoPropertyType} from "../../Types/autoProperty";
+    import {normalizeChoices, splitPastedChoices} from "../../autoProperties";
 
     let {
         save,
@@ -61,6 +62,19 @@
         saveProperties();
     }
 
+    // Paste a whole list (newline- or comma-separated) into a single value box and
+    // have it become individual choices (issue #47). A paste that is just one value
+    // falls through to the browser's default so normal single-value paste still works.
+    function pasteChoices(property: AutoProperty, event: ClipboardEvent) {
+        const text = event.clipboardData?.getData("text") ?? "";
+        const pasted = splitPastedChoices(text);
+        if (pasted.length < 2) return;
+
+        event.preventDefault();
+        property.choices = normalizeChoices([...property.choices, ...pasted]);
+        saveProperties();
+    }
+
     function setType(property: AutoProperty, value: string) {
         property.type = value as AutoPropertyType;
         saveProperties();
@@ -116,9 +130,10 @@
                     <div class="metaedit-ap-choice">
                         <input
                             type="text"
-                            placeholder="Value"
+                            placeholder="Value (or paste a list)"
                             bind:value={property.choices[i]}
                             onchange={saveProperties}
+                            onpaste={(e) => pasteChoices(property, e)}
                         />
                         <button
                             class="clickable-icon metaedit-ap-icon"
