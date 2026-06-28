@@ -682,6 +682,26 @@ export default class MetaController {
         });
     }
 
+    /**
+     * Run a `processFrontMatter` mutation serialized through this file's write
+     * queue, so it interleaves safely with every other MetaEdit write to the same
+     * file (the inline/tag `vault.read`+`vault.modify` paths in particular, which
+     * Obsidian does NOT serialize against a bare `processFrontMatter`). This is the
+     * queue-aware entry point for collaborators that compute and apply a frontmatter
+     * change in one callback - e.g. the bulk editor - rather than reimplementing the
+     * queue.
+     *
+     * Internal: reachable via the public `plugin.controller` but NOT part of the
+     * `IMetaEditApi` contract; treat it as a controller-internal escape hatch. The
+     * `update` callback runs at the top of the queue and MUST NOT itself enqueue
+     * another write to the same file (e.g. call back into a queued controller
+     * method), because that inner write would chain behind this one's still-pending
+     * promise and deadlock.
+     */
+    public async enqueueFrontmatterWrite(file: TFile, update: (frontmatter: Record<string, unknown>) => void): Promise<void> {
+        await this.enqueueFileWrite(file, () => this.processFrontMatter(file, update));
+    }
+
     private async processFrontMatter(file: TFile, update: (frontmatter: Record<string, unknown>) => void): Promise<void> {
         await this.app.fileManager.processFrontMatter(file, update);
     }
