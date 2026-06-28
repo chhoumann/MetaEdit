@@ -4,6 +4,33 @@ import { createMetaEditE2EHarness, evalJsonAsync, PLUGIN_ID } from "./harness";
 const getContext = createMetaEditE2EHarness("audit-repro");
 
 describe("AUDIT repro: confirmed bug candidates", () => {
+	test("CTRL: deleting an inline field does not remove a same-named frontmatter key", async () => {
+		const { obsidian, sandbox } = getContext();
+		const notePath = sandbox.path("delete-inline-collision.md");
+		const content = await evalJsonAsync<string>(
+			obsidian,
+			`
+			(async () => {
+				const c = app.plugins.plugins.${PLUGIN_ID}.controller;
+				const path = ${JSON.stringify(notePath)};
+				const body = "---\\nkey: yaml-value\\n---\\nkey:: inline-value\\n";
+				let f = app.vault.getAbstractFileByPath(path);
+				if (f) { await app.vault.modify(f, body); } else { f = await app.vault.create(path, body); }
+				await new Promise((r) => setTimeout(r, 300));
+				// The inline Dataview field (type 1), not the YAML key (type 0).
+				const inline = (await c.getPropertiesInFile(f)).find((p) => p.key === "key" && p.type === 1);
+				await c.deleteProperty(inline, f);
+				await new Promise((r) => setTimeout(r, 200));
+				return await app.vault.read(f);
+			})()
+		`,
+		);
+		// The inline field is gone; the same-named frontmatter key survives.
+		expect(content).toContain("key: yaml-value");
+		expect(content).not.toContain("key:: inline-value");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
 	test("CTRL: deleteProperty on a block-style YAML list must not orphan value lines", async () => {
 		const { obsidian, sandbox } = getContext();
 		const notePath = sandbox.path("delete-block-list.md");
