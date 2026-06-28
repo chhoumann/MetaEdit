@@ -70,7 +70,14 @@ let md = "";
 md += "# MetaEdit End-to-End Audit Tracker\n\n";
 md += "Single source of truth for the full end-to-end audit. One row per canonical user story.\n";
 md += "Generated from `audit/canonical-stories.json` (story content) + `audit/status.json` (live status) via `node audit/generate-tracker.mjs`. Edit `status.json` and regenerate; do not hand-edit this table.\n\n";
-md += "Full code-derived expected behavior, edge cases, and pre-test risk hypotheses per story live in `AUDIT_NOTES.md`.\n\n";
+md += "Full code-derived expected behavior, edge cases, and pre-test risk hypotheses per story live in `AUDIT_NOTES.md`. Test environments and the mobile-sweep methodology are in `AUDIT_ENVIRONMENT.md`.\n\n";
+
+md += "## Delivered fixes (merged to master)\n\n";
+md += "Every defect was reproduced live, fixed at the root with regression tests, retested on desktop + mobile, and shipped as area-grouped PRs:\n";
+md += "- **#143** fix(core,api): clean Run no-op with no active file; block-list-safe, queued property deletion; inline-delete scoped to `::`; getFilesWithProperty presence check; getPropertiesInFile returns `[]`.\n";
+md += "- **#144** fix(suggester): well-formed duplicate Notice; modal closes on write failure; transform surfaces failures; new-property suggestions exclude present keys.\n";
+md += "- **#145** fix(automators): Completed Tasks counts only `[x]`/`[X]`; Kanban settings null-guard.\n";
+md += "\nKnown low-priority limitation (flagged, not fixed): AUTO-08 - a *Multi* Auto Property feeding a single nested-tag leaf fails safely with an 'invalid tag' notice (degenerate combination; the Single-value hook works).\n\n";
 
 md += "## Progress\n\n";
 md += `- Total stories: **${total}**\n`;
