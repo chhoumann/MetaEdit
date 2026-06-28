@@ -2,6 +2,7 @@ import type {App, CachedMetadata, FrontMatterInfo, TFile} from "obsidian";
 import {getFrontMatterInfo, parseYaml} from "obsidian";
 import {MetaType} from "./Types/metaType";
 import {formatYamlPath, isPlainYamlObject, isYamlScalarLeaf, type YamlPath} from "./yamlPath";
+import type {TagPosition} from "./tagEditing";
 
 export type Property = {
 	key: string,
@@ -11,6 +12,9 @@ export type Property = {
 	rootKey?: string,
 	isNested?: boolean,
 	isVirtual?: boolean,
+	// For MetaType.Tag only: the exact span of this body-tag occurrence, so an
+	// edit rewrites that one token in place instead of guessing by key.
+	position?: TagPosition,
 };
 // `start`/`end` are the field's span in the line; `sepEnd` is the offset just
 // after `::`; `valueEnd` is where the value content ends (the closing bracket
@@ -52,9 +56,15 @@ export default class MetaEditParser {
         const tags = cache.tags;
         if (!tags) return [];
 
-        const mTags: Property[] = [];
-        tags.forEach(tag => mTags.push({key: tag.tag, content: tag.tag, type: MetaType.Tag}));
-        return mTags;
+        // Carry each occurrence's document-offset span so the write path can
+        // rewrite that exact token (incl. mid-line and duplicate tags) without
+        // touching the rest of the line.
+        return tags.map(tag => ({
+            key: tag.tag,
+            content: tag.tag,
+            type: MetaType.Tag,
+            position: {start: tag.position.start.offset, end: tag.position.end.offset},
+        }));
     }
 
     public async parseFrontmatter(file: TFile): Promise<Property[]> {

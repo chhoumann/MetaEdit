@@ -1,10 +1,14 @@
 import type {App} from "obsidian";
 import type {MetaType} from "../../Types/metaType";
+import type {TagEditMode} from "../../tagEditing";
 
 export interface PromptValueContext {
     app: App;
     key: string;
     type: MetaType;
+    // For a body-tag edit: which suggestions to source - full tag names for a
+    // rename, leaf segments for a last-segment edit.
+    tagMode?: TagEditMode;
 }
 
 let pending: PromptValueContext | null = null;

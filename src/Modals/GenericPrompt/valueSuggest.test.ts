@@ -93,18 +93,39 @@ describe("getValueSuggestions - frontmatter values", () => {
 });
 
 describe("getValueSuggestions - tags", () => {
-    it("suggests leaf segments (not full paths) ranked by count", () => {
-        const app = makeApp({
-            tags: {
-                "#topic/science": 2,
-                "#topic/history": 1,
-                "#topic": 5,
-                "#status/active": 3,
-            },
-        });
+    const sample = {
+        tags: {
+            "#topic/science": 2,
+            "#topic/history": 1,
+            "#topic": 5,
+            "#status/active": 3,
+        },
+    };
 
-        // leaves: science(2), history(1), topic(5), active(3) -> by count desc
+    it("rename (default) suggests full tag paths (no #) ranked by count", () => {
+        const app = makeApp(sample);
+
+        // full names by count desc: topic(5), status/active(3), topic/science(2), topic/history(1)
         expect(getValueSuggestions(app, "#topic/science", MetaType.Tag)).toEqual([
+            "topic",
+            "status/active",
+            "topic/science",
+            "topic/history",
+        ]);
+        // Explicit rename mode behaves the same as the default.
+        expect(getValueSuggestions(app, "#topic/science", MetaType.Tag, "rename")).toEqual([
+            "topic",
+            "status/active",
+            "topic/science",
+            "topic/history",
+        ]);
+    });
+
+    it("leaf mode suggests leaf segments ranked by count", () => {
+        const app = makeApp(sample);
+
+        // leaves: topic(5), active(3), science(2), history(1) -> by count desc
+        expect(getValueSuggestions(app, "#topic/science", MetaType.Tag, "leaf")).toEqual([
             "topic",
             "active",
             "science",
@@ -112,7 +133,7 @@ describe("getValueSuggestions - tags", () => {
         ]);
     });
 
-    it("merges identical leaf segments under different parents", () => {
+    it("leaf mode merges identical leaf segments under different parents", () => {
         const app = makeApp({
             tags: {
                 "#a/draft": 1,
@@ -121,7 +142,7 @@ describe("getValueSuggestions - tags", () => {
             },
         });
 
-        expect(getValueSuggestions(app, "#a/draft", MetaType.Tag)).toEqual(["draft"]);
+        expect(getValueSuggestions(app, "#a/draft", MetaType.Tag, "leaf")).toEqual(["draft"]);
     });
 });
 
