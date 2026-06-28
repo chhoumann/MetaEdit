@@ -249,18 +249,36 @@ export default class MetaController {
             return;
         }
 
-        const fileContent = await this.app.vault.read(file);
-        const splitContent = fileContent.split("\n");
-        // Escape the key (so a key like `c++` is not read as regex) and use a real
-        // `\s` so an indented property line still matches its own line, not another.
-        const regexp = new RegExp(`^\\s*${this.escapeSpecialCharacters(property.key)}\\s*:`);
+        // Serialize with every other MetaEdit write to this file. The previous
+        // implementation read/modified outside the queue and could race a queued
+        // write (lost update), and the transform-property flow deletes-then-adds.
+        await this.enqueueFileWrite(file, async () => {
+            // A top-level YAML key is removed through the frontmatter primitive so
+            // a multi-line block value (a block list or map) is deleted whole. The
+            // old single-line regex stripped only the `key:` line and orphaned its
+            // `- a` / `- b` continuation lines, corrupting the frontmatter.
+            if (property.type === MetaType.YAML) {
+                await this.processFrontMatter(file, (frontmatter) => {
+                    delete frontmatter[property.key];
+                });
+                return;
+            }
 
-        const idx = splitContent.findIndex(s => s.match(regexp));
-        const newFileContent = splitContent.filter((v, i) => {
-            if (i != idx) return true;
-        }).join("\n");
+            // Inline (Dataview) and other line-based fields: remove the matching
+            // line, preserving the file's existing newline so a CRLF note keeps it.
+            const fileContent = await this.app.vault.read(file);
+            const newline = fileContent.includes("\r\n") ? "\r\n" : "\n";
+            const splitContent = fileContent.split(/\r?\n/);
+            // Escape the key (so a key like `c++` is not read as regex) and use a real
+            // `\s` so an indented property line still matches its own line, not another.
+            const regexp = new RegExp(`^\\s*${this.escapeSpecialCharacters(property.key)}\\s*:`);
 
-        await this.app.vault.modify(file, newFileContent);
+            const idx = splitContent.findIndex(s => s.match(regexp));
+            if (idx === -1) return;
+            splitContent.splice(idx, 1);
+
+            await this.app.vault.modify(file, splitContent.join(newline));
+        });
     }
 
     private async progressPropHelper(progressProps: ProgressProperty[], meta: Property[], counts: {total: number, complete: number, incomplete: number}) {
