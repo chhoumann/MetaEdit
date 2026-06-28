@@ -213,7 +213,10 @@ export default class MetaController {
             let total: number = 0, complete: number = 0, incomplete: number = 0;
 
             total = tasks.length;
-            complete = tasks.filter(i => i.task != " ").length;
+            // Only a checked task ([x]/[X]) counts as complete. Custom markers like
+            // [/] in-progress, [-] cancelled, [>] forwarded or [?] are NOT complete;
+            // counting every non-blank marker as complete over-reported progress.
+            complete = tasks.filter(i => (i.task ?? "").toLowerCase() === "x").length;
             incomplete = total - complete;
 
             const props = await this.progressPropHelper(properties, meta, {total, complete, incomplete});
