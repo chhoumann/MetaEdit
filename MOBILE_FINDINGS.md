@@ -1,6 +1,6 @@
 # MetaEdit Mobile Findings
 
-Status: device-independent setup complete; real-device verification pending.
+Status: Android emulator verification passed; iPhone verification pending.
 
 ## Scope
 
@@ -24,10 +24,13 @@ but they are not a mobile verdict until the probes below pass on a real device.
   `getFrontMatterInfo(content)`, with a modern Obsidian runtime floor.
 - Desktop/local isolated Obsidian E2E coverage exists for frontmatter reads and
   writes, but that does not prove the behavior inside Obsidian iOS.
+- Android emulator verification on 2026-06-28 passed the issue #99 probe and the
+  broader core smoke probe using Obsidian Android 1.12.7 and MetaEdit 1.8.4.
 
 ## Harness Added
 
 - `scripts/mobile/metaedit_ios.py`
+- `scripts/mobile/metaedit_android.py`
 - `scripts/mobile/README.md`
 - `scripts/mobile/probes/issue99_frontmatter.js`
 - `scripts/mobile/probes/core_smoke.js`
@@ -60,6 +63,73 @@ uv run --no-project --with pymobiledevice3 python scripts/mobile/metaedit_ios.py
 uv run --no-project --with pymobiledevice3 python scripts/mobile/metaedit_ios.py logs --seconds 60
 uv run --no-project --with pymobiledevice3 python scripts/mobile/metaedit_ios.py restore
 ```
+
+## Android Emulator Result
+
+Environment:
+
+- Emulator: `MetaEditMobileApi35`
+- Android: 15 / SDK 35
+- Device model: `sdk_gphone64_arm64`
+- ABI: `arm64-v8a`
+- WebView user agent: Chrome/124 Android WebView
+- Obsidian APK: official `Obsidian-1.12.7.apk`
+- Vault: `/sdcard/Documents/MetaEditMobile`
+- MetaEdit: local 1.8.4 build from this worktree
+
+Setup summary:
+
+```bash
+brew install android-platform-tools android-commandlinetools
+yes | ANDROID_HOME=/opt/homebrew/share/android-commandlinetools sdkmanager --licenses
+ANDROID_HOME=/opt/homebrew/share/android-commandlinetools sdkmanager \
+  "emulator" \
+  "platform-tools" \
+  "platforms;android-35" \
+  "system-images;android-35;google_apis;arm64-v8a"
+printf 'no\n' | ANDROID_HOME=/opt/homebrew/share/android-commandlinetools avdmanager create avd \
+  --force \
+  --name MetaEditMobileApi35 \
+  --package "system-images;android-35;google_apis;arm64-v8a" \
+  --device pixel_7
+```
+
+Commands run against the booted emulator:
+
+```bash
+uv run --no-project --with websockets python scripts/mobile/metaedit_android.py diagnose
+uv run --no-project --with websockets python scripts/mobile/metaedit_android.py deploy
+uv run --no-project --with websockets python scripts/mobile/metaedit_android.py eval --file scripts/mobile/probes/issue99_frontmatter.js
+uv run --no-project --with websockets python scripts/mobile/metaedit_android.py eval --file scripts/mobile/probes/core_smoke.js
+```
+
+Issue #99 probe result: `ok: true`.
+
+- `mobile_status` read back as `updated-on-mobile`.
+- `mobile_new` read back as `created-on-mobile`.
+- `mobile_empty` read back as `null`.
+- `mobile_clear` read back as `null`.
+- Parsed property keys were `mobile_status`, `mobile_empty`, `mobile_keep`,
+  `mobile_new`, `mobile_clear`, and `inline_mobile`.
+- Raw note content had no top-level `position:` line.
+- Scratch note cleanup deleted
+  `MetaEdit Mobile Debug/issue-99-frontmatter.md` without errors.
+
+Core smoke result: `ok: true`.
+
+- Edit Meta listed `status` and `inline_status`.
+- Inline field content became `inline_status:: published`.
+- Auto Properties wrote `ap_status: done`.
+- Progress Properties wrote `readProgress: "2"` and left the matching body text
+  `readProgress: 0` unchanged.
+- Kanban helper changed the linked note to `status: In Progress`.
+- Scratch file cleanup deleted all created smoke files without errors.
+
+Log check:
+
+- `adb logcat -d -t 1000` filtered for Obsidian/WebView/fatal/crash/exception
+  showed no MetaEdit or Obsidian fatal errors. The remaining lines were expected
+  IME, frame timing, media scanner, and MediaProvider cleanup noise.
 
 ## Issue #99 Verdict Criteria
 
@@ -95,8 +165,7 @@ The smoke probe keeps settings mutations in memory, restores the in-memory
 settings snapshot in `finally`, and deletes the scratch files it created after
 collecting evidence.
 
-## Pending
+## Pending iPhone Verification
 
-No iPhone is currently connected over USB, and Android tooling is not installed
-on this Mac. Do not deploy or run the write probes until Christian connects the
-iPhone and gives explicit per-session approval to touch the real `notes` vault.
+Do not deploy or run the write probes on an iPhone until Christian connects it
+and gives explicit per-session approval to touch the real `notes` vault.

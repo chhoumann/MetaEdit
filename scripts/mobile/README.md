@@ -131,6 +131,40 @@ created after collecting evidence. If Web Inspector disconnects mid-run, rerun
 
 ## Android
 
-The safdeb Android path uses `adb` plus WebView CDP forwarding. This Mac does not
-currently have `adb` installed and has no AVD configured, so Android verification
-is intentionally secondary for this investigation.
+The Android harness uses `adb` plus WebView CDP forwarding. It expects Obsidian
+to be running and a scratch vault to be open.
+
+One emulator setup used for this investigation:
+
+```bash
+brew install android-platform-tools android-commandlinetools
+yes | ANDROID_HOME=/opt/homebrew/share/android-commandlinetools sdkmanager --licenses
+ANDROID_HOME=/opt/homebrew/share/android-commandlinetools sdkmanager \
+  "emulator" \
+  "platform-tools" \
+  "platforms;android-35" \
+  "system-images;android-35;google_apis;arm64-v8a"
+printf 'no\n' | ANDROID_HOME=/opt/homebrew/share/android-commandlinetools avdmanager create avd \
+  --force \
+  --name MetaEditMobileApi35 \
+  --package "system-images;android-35;google_apis;arm64-v8a" \
+  --device pixel_7
+ANDROID_HOME=/opt/homebrew/share/android-commandlinetools \
+  /opt/homebrew/share/android-commandlinetools/emulator/emulator \
+  -avd MetaEditMobileApi35 \
+  -no-snapshot \
+  -no-window \
+  -gpu swiftshader_indirect \
+  -no-audio \
+  -no-boot-anim
+```
+
+Install Obsidian's official Android APK, create/open a scratch vault at
+`/sdcard/Documents/MetaEditMobile`, then run:
+
+```bash
+uv run --no-project --with websockets python scripts/mobile/metaedit_android.py diagnose
+uv run --no-project --with websockets python scripts/mobile/metaedit_android.py deploy
+uv run --no-project --with websockets python scripts/mobile/metaedit_android.py eval --file scripts/mobile/probes/issue99_frontmatter.js
+uv run --no-project --with websockets python scripts/mobile/metaedit_android.py eval --file scripts/mobile/probes/core_smoke.js
+```
