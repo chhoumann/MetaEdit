@@ -80,6 +80,8 @@ When updating inline Dataview fields, non-string values are stringified. YAML fr
 
 `update` is replace-by-design: when a note has several inline `name:: value` lines with the same name, it rewrites all of them to the new value. To add a new instance instead and leave the existing ones untouched, use [`appendDataviewField`](#appenddataviewfieldpropertyname-string-propertyvalue-unknown-file-tfile--string-options-location-afterlastmatch--end).
 
+When the named property is a body `#tag`, `update` renames that one occurrence in place (`update("#topic", "science", file)` writes `#science`, not `#topic/science`). The value is normalized to a valid tag (a leading `#` is optional) and an invalid name - one with spaces, commas, or punctuation Obsidian would not index as a single tag - is rejected rather than written.
+
 ### `createYamlProperty(propertyName: string, propertyValue: unknown, file: TFile | string)`
 Creates a YAML frontmatter property in the given file.
 
