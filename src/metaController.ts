@@ -272,9 +272,10 @@ export default class MetaController {
             const fileContent = await this.app.vault.read(file);
             const newline = fileContent.includes("\r\n") ? "\r\n" : "\n";
             const splitContent = fileContent.split(/\r?\n/);
-            // Escape the key (so a key like `c++` is not read as regex) and use a real
-            // `\s` so an indented property line still matches its own line, not another.
-            const regexp = new RegExp(`^\\s*${this.escapeSpecialCharacters(property.key)}\\s*:`);
+            // Escape the key (so a key like `c++` is not read as regex) and require
+            // the inline `::` separator, so deleting an inline `key:: value` never
+            // matches a same-named YAML frontmatter `key:` line earlier in the file.
+            const regexp = new RegExp(`^\\s*${this.escapeSpecialCharacters(property.key)}\\s*::`);
 
             const idx = splitContent.findIndex(s => s.match(regexp));
             if (idx === -1) return;

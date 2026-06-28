@@ -12,7 +12,7 @@
     R.getPropertyValue = (await api.getPropertyValue('existing', f)) === 1;
 
     // API-03 fix: falsy value presence
-    let f2 = await mk('m-falsy.md', '---\npub: false\n---\nx\n'); await sleep(300);
+    await mk('m-falsy.md', '---\npub: false\n---\nx\n'); await sleep(300);
     R.api03_falsy = api.getFilesWithProperty('pub').some(x=>x.path==='m-falsy.md');
 
     // API-07 fix: bad path returns []
