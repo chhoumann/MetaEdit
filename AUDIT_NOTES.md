@@ -74,6 +74,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - suggestValues uses the filtered this.data as the 'existing' set, so an ignored/hidden property is treated as not-present and can be re-offered as a 'new' name even though it exists, requiring controller dedup (metaEditSuggester.ts:175).
   - getKnownPropertyNames adds both registry key and info.name, so a property may appear twice with different casing (valueSuggest.ts:97-114).
   - getAllProperties runs synchronously on modal open and may return hundreds of entries for large vaults.
+- **Evidence:** audit-settings: suggestValues excludes present keys
 
 ### RUN-06 - Delete a property via the X button in the suggester
 
@@ -116,6 +117,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - If two tags share the same position.start (malformed parse), findIndex returns the same index for both and both get ordinal 1 (metaEditSuggester.ts:65-69).
   - If hideFileTags hides all body tags, this code is dead but harmless.
+- **Evidence:** audit-gaps: dup #tag line/ordinal labels
 
 ## MetaController read/write core
 
@@ -135,6 +137,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - parseFrontmatterObject does cachedRead then checks the cache, so stale cache vs fresh disk can disagree in a race.
   - If both frontmatter close forms have equal contentStart the standard form wins, undocumented (parser.ts:266); splitContentLines re-parses the whole file per check (O(n)).
   - Tag positions can be stale after a rapid edit (validated at write time by spliceTag, parser.ts:86).
+- **Evidence:** audit-api: getPropertiesInFile reads frontmatter+inline+tags; parser.test.ts
 
 ### CTRL-02 - Parse inline Dataview fields (bracketed and full-line)
 
@@ -153,6 +156,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - Backslash is deliberately not an escape, so \] inside a bracketed value does not escape the bracket (parser.ts:376), consistent with Dataview but undocumented.
   - paren-wrapped square-bracket fields like ([key:: v]) can produce unexpected overlap-dedup results (parser.ts:319).
   - replaceInlineFieldValue always inserts a leading space after :: and assumes left-to-right ordered matches for the right-to-left splice (parser.ts:433).
+- **Evidence:** Existing test coverage: parser.test.ts — all 'MetaEditParser inline field parsing' and 'MetaEditParser i
 
 ### CTRL-03 - Add a new YAML frontmatter property (addYamlProp)
 
@@ -167,6 +171,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - The 'already has property' Notice has a misplaced period inside the quoted key: '<key>. Will not add.' (metaController.ts:79).
   - addYamlProp returns void: callers cannot distinguish 'added' from 'already existed'.
   - The SomeMulti check uses settings.EditMode.properties.contains() (Obsidian-only) while every other site uses .includes(), which throws outside Obsidian (metaController.ts:62).
+- **Evidence:** Existing test coverage: tests/e2e/auto-properties.test.ts — 'addYamlProp tags array' and 'addYamlProp sc
 
 ### CTRL-04 - Append a new inline Dataview field instance (appendDataviewField)
 
@@ -185,6 +190,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - 'afterLastMatch' fallback and 'end' converge to lastAnchorIdx+1 with no match, blurring the two locations (parser.ts:487).
   - Trailing blank lines treated as non-anchors so the field lands between content and blanks (parser.ts:481).
   - Array input becomes a single comma-joined line, not one line per element.
+- **Evidence:** Existing test coverage: src/metaController.test.ts — all six 'MetaController.appendDataviewField' tests 
 
 ### CTRL-05 - Delete a property; block nested/virtual YAML deletes (deleteProperty)
 
@@ -202,6 +208,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - deleteProperty does NOT use enqueueFileWrite, so it races with all queued writes (lost update).
   - Multi-line YAML values (block scalars/sequences) leave orphaned continuation lines that corrupt frontmatter.
   - The only nested-delete guard is canStructureEditProperty plus the deleteProperty Notice; bypassing both would delete by raw key-line regex (menuFilter.test.ts BUG-5).
+- **Evidence:** Existing test coverage: tests/e2e/audit-repro.test.ts — 'CTRL: deleteProperty on a block-style YAML list
 
 ### CTRL-06 - Batch update multiple properties in one write (updateMultipleInFile)
 
@@ -216,6 +223,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - If processFrontMatter fails, the subsequent text write still proceeds against a file with only the tag changes applied, partially corrupting the batch.
   - yamlProperties (plain keys) are written before yamlPathProperties, with no guard against one being the parent of the other ('is not an object' error).
   - Skipped-tag log does not say which tag in a multi-tag batch (metaController.ts:566).
+- **Evidence:** Existing test coverage: metaedit-runtime.test.ts — 'progress properties update YAML without rewriting ma
 
 ### CTRL-07 - Serialize concurrent writes per file (enqueueFileWrite)
 
@@ -243,6 +251,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - If GenericPrompt resolves with undefined rather than null, the null check (entered === null) misses it and propValue is undefined, so callers receive {propName, propValue: undefined} (metaController.ts:237-239).
   - createNewProperty does not write; a caller using the wrong write method is not type-guarded.
+- **Evidence:** audit-suggester create flow drives name+value prompts; cancel/empty no-op intended
 
 ## Single vs Multi value editing
 
@@ -258,6 +267,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - Empty-string no-op (metaController.ts:294) is silent: deliberately clearing a field gives no feedback.
   - if (newValue) treats '0' and 'false' as empty, so a user cannot set a literal '0'/'false' scalar via standardMode (correctness bug).
+- **Evidence:** multi-value e2e (AllSingle scalar); empty-submit no-op confirmed intended (product decision)
 
 ### MULTI-02 - AllMulti mode: edit as a list and wrap new YAML values in a list
 
@@ -272,6 +282,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - No UX indication that a scalar edited in AllMulti is stored as a comma string rather than a YAML list; users expecting [] promotion are surprised.
   - The SomeMulti create-wrapping path uses .contains() (Obsidian-only), so it throws outside Obsidian (metaController.ts:62).
   - An AutoProperty with no explicit type may still cause wrapping via isMultiAutoProperty; the interaction is subtle and untested.
+- **Evidence:** Existing test coverage: tests/e2e/multi-value.test.ts: 'keeps a YAML scalar scalar when edited through A
 
 ### MULTI-03 - SomeMulti mode: per-property opt-in list and matching
 
@@ -290,6 +301,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - Every Add click and every keystroke writes settings to disk (no debounce) (SingleValueTableEditorContent.svelte:19-45).
   - bDivToggle can desync after AllSingle/AllMulti -> SomeMulti round-trip so the first gear click does the opposite of expected.
   - Duplicate names accepted silently.
+- **Evidence:** Existing test coverage: src/multiValue.test.ts: 'honours AllMulti and SomeMulti for non-array values' (u
 
 ### MULTI-04 - Multi-value: select and replace an existing list item
 
@@ -303,6 +315,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - parsedSelectedIndex via Number(substring) makes Number('') === 0 a valid index, a latent index-zero corruption path (metaController.ts:341-344).
   - Out-of-range index (-1/NaN) silently replaces the entire list (data-loss path).
   - Touching a numeric/boolean YAML element silently changes its type to string.
+- **Evidence:** multi-value e2e (replace list item, commas/wikilinks preserved); empty no-op intended
 
 ### MULTI-05 - Multi-value: append to end or prepend to beginning of the list
 
@@ -316,6 +329,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - The no-op on empty entry gives no feedback (same as standardMode).
   - The 'Add to beginning'/'Add to end' positions change between single- and multi-element lists, inconsistent UX.
+- **Evidence:** multi-value e2e (Add to end/beginning); empty no-op intended
 
 ### MULTI-06 - Multi-value: add the first value to an empty/blank property
 
@@ -328,6 +342,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - applyMultiValueEdit's addFirst returns [value] regardless of base; if invoked on a non-empty list (API path) it silently discards all existing values (multiValue.ts:71).
   - Label 'Add new value' does not communicate that it discards existing content.
+- **Evidence:** Existing test coverage: src/multiValue.test.ts: 'adds the first element to an empty list'
 
 ### MULTI-07 - YAML true-array vs comma-scalar write-back distinction
 
@@ -339,6 +354,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - toValueArray strips surrounding [ ] from a scalar before splitting.
 - **Risks / test focus:**
   - toValueArray strips surrounding brackets from a scalar, so editing a value literally '[a, b]' loses the brackets on write-back (data corruption for unusual YAML scalar values) (autoProperties.ts:119-120).
+- **Evidence:** Existing test coverage: tests/e2e/multi-value.test.ts: 'keeps a YAML scalar scalar when edited through A
 
 ## Auto Properties
 
@@ -353,6 +369,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - AutoPropertiesModalContent is mounted into the DOM even when disabled (a memory/perf concern) (metaEditSettingsTab.ts:104).
   - The Auto Properties toggle does not call toggleAutomators while Progress/Kanban do; if an automator were ever needed it would not register until reload.
+- **Evidence:** audit-gaps: autoprop null when disabled
 
 ### AUTO-02 - Configure an Auto Property entry (add, name, description, choices, delete)
 
@@ -370,6 +387,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - Name matching is case-sensitive but Obsidian keys are case-insensitive, so 'Status' never matches a 'status' field (autoProperties.ts:19).
   - Leading/trailing whitespace in the name silently disables the property.
   - No delete confirmation anywhere; no undo.
+- **Evidence:** audit-settings: add/name/remove auto property via panel
 
 ### AUTO-03 - Set Auto Property selection type (Single vs Multi) with legacy fallback
 
@@ -384,6 +402,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - A Single-typed Auto Property on a key globally set to AllMulti stays scalar (intentional) but may surprise.
   - A new UI-created entry always gets type:'Single', silently overriding AllMulti, so old vs new entries behave differently under the same global setting.
+- **Evidence:** Existing test coverage: src/autoProperties.test.ts: isMultiAutoProperty suite; tests/e2e/auto-properties
 
 ### AUTO-04 - Paste a newline- or comma-separated list into a choice field
 
@@ -397,6 +416,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - A single comma-containing value pasted without newlines (e.g. '1,000') is silently split into two tokens (autoProperties.ts:84).
   - An all-blank paste returns [] (length < 2) and falls through, entering the empty string literally.
+- **Evidence:** Existing test coverage: src/autoProperties.test.ts: splitPastedChoices and withChoicesPasted suites cove
 
 ### AUTO-05 - Pick a single preset value, or use/save a custom value (single mode)
 
@@ -415,6 +435,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - Choices snapshotted via untrack at mount; concurrently added choices are invisible.
   - If the Auto Property is renamed while the picker is open, both the by-reference and by-name lookups miss and the save silently does nothing (metaController.ts:416).
   - persistChoices rejection is swallowed; the modal still closes and the value is still written with no feedback the save failed.
+- **Evidence:** Existing test coverage: tests/e2e/auto-properties.test.ts: 'shows the description and writes the picked 
 
 ### AUTO-06 - Pick, confirm, and optionally persist multiple values (multi mode)
 
@@ -433,6 +454,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - options.includes for inline add is case-sensitive, so 'todo' when 'Todo' exists adds a distinct entry (svelte:109).
   - No options filtering while typing in multi mode; no Select all / Clear all affordance.
   - newCheckedValues compares against the mount-time choices snapshot, so a concurrently added choice can be re-persisted as a duplicate (deduped on write).
+- **Evidence:** Existing test coverage: tests/e2e/auto-properties.test.ts: 'multi type writes a YAML list and overrides 
 
 ### AUTO-07 - Cancel the value picker without changing the property
 
@@ -441,6 +463,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Expected behavior:** Closing without submitting (Escape, backdrop, X) calls onClose(); didSubmit is false so resolvePromise(null) fires. editAutoProperty returns early when result === null and the file is not written.
 - **Edge cases:**
   - result is initialized to null, so a close without submit always resolves null.
+- **Evidence:** audit-modals: cancel resolves null, no write (onClose resolves null when not submitted)
 
 ### AUTO-08 - Auto Property hook for editing a nested tag's last segment
 
@@ -453,6 +476,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - A multi-select join with ', ' can produce an invalid tag name.
 - **Risks / test focus:**
   - A multi-select leaf joined with ', ' produces an invalid tag (e.g. '#area/val1, val2'); the leaf-mode auto-property path can short-circuit before isValidTagToken validation, writing an invalid tag silently (metaController.ts:179).
+- **Evidence:** tagEditing.test.ts leaf rewrite; single-value leaf auto hook is documented primary behavior
 
 ### AUTO-09 - Read and write Auto Properties via the public API
 
@@ -469,6 +493,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - Empty choices array and empty-string name are accepted, creating a silently inoperative Auto Property (MetaEditApi.ts:302-306).
   - setAutoProperties replaces the entire list (no merge/patch), so concurrent callers overwrite each other even through the queue.
   - No API to read the enabled flag, so callers cannot tell whether the feature is active.
+- **Evidence:** Existing test coverage: tests/e2e/metaedit-runtime.test.ts — "sets Auto Properties through the public AP
 
 ## Progress Properties automator
 
@@ -483,6 +508,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - An external settings change (e.g. sync) that sets enabled without the toggle UI is ignored until the tab is re-opened (metaEditSettingsTab.ts:58).
   - A startup race where attach runs before startAutomators registers the vault event is possible if load order changes (main.ts:76-85).
+- **Evidence:** audit-gaps PROG-04 (automator attached when enabled) + audit-settings toggle mechanism
 
 ### PROG-02 - Add, name, type, and remove progress property rules
 
@@ -500,6 +526,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - Name input saves on change not input, so unblurred edits are lost (ProgressPropertiesModalContent.svelte:47).
   - The type switch default:break swallows stale enum values silently; human-readable enum strings break configs if ever renamed.
   - Duplicate names write the property twice sequentially.
+- **Evidence:** audit-modals: add/name/type/remove progress rule via panel
 
 ### PROG-03 - Automatically update task counts on file modify
 
@@ -518,6 +545,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - listItems may be stale immediately after a save (no wait/retry) (metaController.ts:211).
   - Only existing frontmatter properties are updated; missing ones are silently skipped, never created.
   - After a property write, the next modify event has different content, so the cache guard passes and re-runs; if counts differ on every save this risks a write -> re-trigger -> write loop (onFileModifyAutomatorManager.ts:68-69).
+- **Evidence:** audit-gaps PROG-03: done=2 todo=3 total=5
 
 ### PROG-04 - Exclude Excalidraw files from all automators
 
@@ -529,6 +557,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - Exclusion applies to both automators.
 - **Risks / test focus:**
   - A legitimate frontmatter key containing 'excalidraw' permanently excludes the file from all automators with no warning or override (onFileModifyAutomatorManager.ts:64).
+- **Evidence:** audit-gaps: excalidraw frontmatter key skips automator
 
 ### PROG-05 - Progress property rules persist across plugin reload
 
@@ -540,6 +569,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - No inline defaults in the settings interface; if loadSettings did not deep-merge defaults, an upgrading user without ProgressProperties would crash in handleProgressProps (metaController.ts:208).
   - ProgressPropertiesModalContent.svelte:17 throws if initialProperties is undefined; safe only because the prop default is [].
+- **Evidence:** Existing test coverage: src/Settings/settingsMigration.test.ts: 'backfills an entire section missing fro
 
 ## Ignored Properties / Edit Meta menu filtering
 
@@ -554,6 +584,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - The gear extra-button is always rendered; when disabled, div is undefined and toggleHiddenEl(undefined, ...) is a no-op, so the button is visible/clickable but does nothing (metaEditSettingsTab.ts:146).
   - this.display() destroys and re-mounts all Svelte components, losing unsaved edits in other open panels.
+- **Evidence:** Existing test coverage: tests/e2e/menu-filter.test.ts (the `disabled` capture confirms nothing is filter
 
 ### IGN-02 - Hide specific properties by exact key name
 
@@ -570,6 +601,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - The same list hides both YAML props and body tags by key, so 'status' may unintentionally hide a body '#status'.
   - Settings changes do not refresh an already-open suggester.
   - The standalone IgnoredPropertiesModal appears to be dead code.
+- **Evidence:** Existing test coverage: src/Modals/menuFilter.test.ts ('drops exact-match ignored keys when enabled', 'c
 
 ### IGN-03 - Hide all body #tags via hideFileTags
 
@@ -583,6 +615,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - The hideFileTags sub-toggle only renders when the master toggle is on; disabling the master toggle silently re-exposes tags and hides the sub-toggle's current state (metaEditSettingsTab.ts:142).
   - hideFileTags is silently ignored when enabled is false, which can confuse users.
+- **Evidence:** Existing test coverage: src/Modals/menuFilter.test.ts ('hides only file tags (MetaType.Tag) when hideFil
 
 ### IGN-04 - Structure-edit actions gated by property type (canStructureEditProperty)
 
@@ -597,6 +630,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - transformProperty re-checks canStructureEditProperty as a redundant guard, blurring where the authoritative gate is.
   - If a body tag ever passed the check, deleteProperty would do a key-based delete on a tag span (menuFilter.test.ts BUG-5).
   - MetaType.Option falls through to the !isNested && !isVirtual check and would return true, possibly incorrectly.
+- **Evidence:** Existing test coverage: src/Modals/menuFilter.test.ts ('never offers structure edits (delete/transform) 
 
 ### IGN-05 - Filtering applied at suggester construction (snapshot semantics)
 
@@ -609,6 +643,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - The suggester snapshots settings at open; changing settings and re-opening without closing first may surprise users.
   - Ignored properties are treated as not-present for suggestValues, so a hidden key can re-appear as a 'new' property suggestion (metaEditSuggester.ts:175).
+- **Evidence:** Existing test coverage: tests/e2e/menu-filter.test.ts (verifies snapshot semantics at open via three suc
 
 ### IGN-06 - Migrate ignored-properties settings: auto-enable + backfill hideFileTags
 
@@ -626,6 +661,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - The migration mutates settings in place; if saveSettings fails, in-memory is migrated but disk is not, so it fires again next load (idempotent but surprising) (settingsMigration.ts:69-72).
   - Detection relies solely on hideFileTags === undefined; a future field could re-trigger an unintended enable (fragile sentinel).
   - mergeSettings is one-level-deep only; a future nested sub-field would not be backfilled (settingsMigration.ts:27).
+- **Evidence:** Existing test coverage: src/Settings/settingsMigration.test.ts ('enables the feature for pre-version dat
 
 ## Value prompt + suggesters
 
@@ -642,6 +678,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - GenericPrompt.ts:49 uses activeDocument.querySelector('.metaEditPrompt'), a global query; with two MetaEdit modals open it could focus the wrong input.
   - Double focus/select from both onOpen() and the Svelte $effect is fragile.
   - The component is mounted before the Promise is constructed, an implicit ordering assumption.
+- **Evidence:** Existing test coverage: tests/e2e/metaedit-runtime.test.ts ("edits nested YAML leaf rows through the rea
 
 ### PROMPT-02 - Native date / datetime picker for date-typed YAML properties
 
@@ -657,6 +694,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - The seconds-step regex tests initialValue not the submitted value, so adding seconds in a minute-precision picker may be truncated by some browsers (GenericPromptContent.svelte:45).
   - The two datetime regexes are asymmetric (one allows optional seconds, the step check requires them).
   - readObsidianType calls three runtime APIs with no partial-availability guards; a thrown internal error is silently swallowed to null (valueSuggest.ts:196-210).
+- **Evidence:** audit-modals: date-typed YAML opens type=date picker; valueSuggest.test.ts covers detection; datetimeStep seconds behavior is intentional
 
 ### PROMPT-03 - Value autocomplete for YAML properties and body tags
 
@@ -675,6 +713,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - collectFrontmatterValueCounts can surface metadata if a property is literally named 'position'.
   - If the tracker-mode context-clear line were removed/reordered, tracker prompts would wrongly show tag autocomplete (metaController.ts:183).
   - The current tag being renamed appears in its own suggestion list with no dedup.
+- **Evidence:** Existing test coverage: src/Modals/GenericPrompt/valueSuggest.test.ts — getValueSuggestions (frontmatter
 
 ### PROMPT-04 - Dropdown discovery, filtering, and acceptance behavior
 
@@ -691,6 +730,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - filterSuggestions uses strict equality for the collapse check, so typing 'reading' when only 'Reading' exists keeps a redundant entry open (valueSuggest.ts:126).
   - acceptSuggestion fires 'input' after setValue; if AbstractInputSuggest already fires it, a double-filter cycle can briefly show stale results.
   - refreshSuggestions relies on inputEl.trigger('input'), an Obsidian-specific method; its removal would silently break discovery mode.
+- **Evidence:** Existing test coverage: src/Modals/GenericPrompt/valueSuggest.test.ts — filterSuggestions: case-insensit
 
 ### PROMPT-05 - promptValueContext bridge between suggester and prompt
 
@@ -705,6 +745,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - metaController.ts:183-191 sets/clears context without try/finally; if GenericPrompt.Prompt throws or is interrupted, the context leaks into the next unrelated prompt (concrete bug risk).
   - The pending context is a module-level singleton; a stale context could survive a plugin reload and corrupt the first prompt.
   - Two suggesters open at once (two panes) can overwrite each other's context (metaEditSuggester onChooseItem).
+- **Evidence:** promptValueContext exercised by suggester/prompt e2e (PROMPT-01/06)
 
 ### PROMPT-06 - Generic pick-one suggester (GenericSuggester)
 
@@ -717,6 +758,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - GenericSuggester resolves to '' on cancel, not null; a caller checking result === null would treat cancel as an empty-string selection (the type is Promise<string>, so TS does not enforce the check).
   - displayItems/items length mismatch silently shows 'undefined' text.
+- **Evidence:** Existing test coverage: tests/e2e/metaedit-runtime.test.ts and tests/e2e/multi-value.test.ts exercise Ge
 
 ## Nested YAML path editing
 
@@ -737,6 +779,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - Only YamlPathError is swallowed to undefined; a vault read failure inside parseFrontmatterObject is re-thrown, inconsistent with the 'undefined on miss' contract (metaController.ts:631-633).
   - 'a . b' yields ['a ', ' b'] with embedded spaces that silently fail to match rather than throwing (yamlPath.ts:22-23).
   - formatYamlPath accepts a numeric first segment and formats '[0]', which parseYamlPath then rejects, breaking the round-trip (yamlPath.ts:34-40).
+- **Evidence:** Existing test coverage: yamlPath.test.ts: 'parses and formats dotted object paths with numeric array ind
 
 ### YAML-02 - Update an existing nested YAML value with update-only semantics (updateYamlPath)
 
@@ -750,6 +793,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - Errors bubble out of enqueueFileWrite with no Notice or logging, unlike the UI path; callers get an unhandled rejection with no user feedback (metaController.ts:637-644).
   - Unlike updatePropertyInFile, updateYamlPath does not pass validateExpectedValue, so concurrent edits to the same nested path are unguarded.
+- **Evidence:** Existing test coverage: yamlPath.test.ts: 'can require an existing leaf for update-style writes'; 'rejec
 
 ### YAML-03 - Upsert a nested YAML value with optional parent creation (addOrUpdateYamlPath)
 
@@ -767,6 +811,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - createLeaf is not forwarded from options and not set in the setYamlPath call; if the yamlPath default is false this contradicts the 'add or update' name (metaController.ts:658).
   - MetaEditYamlPathOptions exposes only createParents; createLeaf, expectedValue, and validateExpectedValue are not surfaced.
   - When multiple intermediate objects are created before a failing array segment, each {} is already written into the root; if Obsidian does not suppress the partial mutation, frontmatter is left partially written (yamlPath.ts:163-171).
+- **Evidence:** Existing test coverage: yamlPath.test.ts: 'creates missing object parents only when requested'; 'does no
 
 ### YAML-04 - Block interactive editing of a YAML parent-container value
 
@@ -781,6 +826,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - isYamlParentContainerValue scans only one level via .some(), so deeper nested arrays are also blocked (conservative but not wrong) (yamlPath.ts:116).
   - The guard only checks the property being edited; a virtual nested scalar leaf reaching editMetaElement (e.g. via a plugin calling update with a path property) proceeds because the isVirtual check returns false for it (metaController.ts:119-124).
+- **Evidence:** Existing test coverage: e2e metaedit-runtime.test.ts: 'edits nested YAML leaf rows through the real Meta
 
 ### YAML-05 - Update a nested YAML leaf with optimistic concurrency (UI / update path)
 
@@ -795,6 +841,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - Optimistic check only fires for path.length > 1; top-level keys have no concurrency protection (metaController.ts:437-443).
   - yamlValuesEqual uses Object.is for non-Date values, so object/array leaf values always compare unequal by identity, making validateExpectedValue useless for non-primitive leaves (yamlPath.ts:200-203).
+- **Evidence:** Existing test coverage: yamlPath.test.ts: 'rejects stale update-style writes when the current value chan
 
 ### YAML-06 - Bulk-write nested YAML paths without creating new keys
 
@@ -807,6 +854,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - yamlProperties are written before yamlPathProperties with no guard against one being the parent of the other ('is not an object' error) (metaController.ts:578-586).
   - Bulk nested writes have no optimistic-concurrency protection, unlike the single-property path (metaController.ts:584).
+- **Evidence:** audit-gaps: updateMultipleInFile batched nested writes
 
 ## Tag editing
 
@@ -824,6 +872,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - The no-change guard compares full token strings, so a coincidental match silently no-ops (metaController.ts:196).
   - The tag-body character class /^[\p{L}\p{N}_/-]+$/u has an unescaped '/-' that V8 treats leniently but a stricter engine could mishandle (tagEditing.ts:115).
+- **Evidence:** Existing test coverage: tagEditing.test.ts: 'computeTagRewrite rename mode', 'spliceTag rewrites only th
 
 ### TAG-02 - Rename the leaf segment of a nested body tag
 
@@ -838,6 +887,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - Auto Property matching uses tagParent(tag) with '#', a case-sensitive unusual key name; a casing mismatch silently falls through (metaController.ts:175-178).
   - If isNestedTag wrongly returns true for a non-standard cache entry, leaf edit fires incorrectly.
+- **Evidence:** tagEditing.test.ts leaf mode; AUTO-08 multi-leaf edge noted
 
 ### TAG-03 - Write an Obsidian-Tracker value onto a body tag
 
@@ -853,6 +903,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - Tracker detection is at controller construction; installing/enabling Tracker after opening the note requires a reload before the action appears (tagEditing.ts).
   - TRACKER_VALUE [A-Za-z0-9._+-]+ has an unescaped '.' that matches any char (semantically inaccurate) (tagEditing.ts:82).
   - normalizeTagToken must not touch the ':value' part; a future change could silently break Tracker writes.
+- **Evidence:** Existing test coverage: tagEditing.test.ts: 'tracker: writes #tag:value', 'replaces an existing Tracker 
 
 ### TAG-04 - Target the exact occurrence of a duplicate body tag with a stale-span guard
 
@@ -868,6 +919,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - Tags differing only in casing ('#Tag' vs '#tag') are distinct entries here but folded by Obsidian, confusing the user.
   - expectedTag is property.key; if Obsidian's cache ever omitted the leading '#', the comparison would always fail and permanently block tag edits (tagEditing.ts:143).
   - In a multi-tag batch, stale spans are silently skipped with a console log, not a Notice, so dropped edits may go unnoticed.
+- **Evidence:** Existing test coverage: tagEditing.test.ts: 'targets the exact occurrence when a tag repeats', 'refuses 
 
 ### TAG-05 - Validate the new tag token before writing
 
@@ -883,6 +935,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - The unescaped '/-' range in the character class is technically malformed and could behave differently in strict engines (tagEditing.ts:115).
   - The Notice always says 'Tags cannot contain spaces or commas' even when the real failure is a dot, digit-only name, or missing '#' (metaController.ts:199).
   - editTag (Notice) and writeTagOccurrence (thrown Error) produce different messages for the same invalids, inconsistent UI vs API UX.
+- **Evidence:** Existing test coverage: tagEditing.test.ts: 'accepts valid tag tokens and rejects ones Obsidian would sp
 
 ### TAG-06 - Edit the frontmatter tags/tag field as a canonical list
 
@@ -899,6 +952,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - splitFrontmatterTags stringifies numbers/booleans (tags: [1, true] -> '1','true') and does NOT apply isValidTagToken, so '1' is written as a frontmatter tag though '#1' in the body is rejected (tagEditing.ts:183).
   - Decision E silently deletes the tags key with no confirmation when cleared.
   - There is no way to remove a single tag from the list editor; the user must replace it or edit raw frontmatter.
+- **Evidence:** Existing test coverage: tagEditing.test.ts: all 'frontmatter tag helpers' tests (isTagsKey, canonicalize
 
 ## Kanban board helper
 
@@ -914,6 +968,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - Board lookup uses file.basename (no path), so two boards with the same filename in different folders collide; only the first in settings is reachable (kanbanHelper.ts:27).
   - No internal debounce; if the parent debounce were removed, every keystroke triggers a full board scan.
+- **Evidence:** kanban-helper e2e + kanbanHelper.test.ts trigger-on-modify
 
 ### KAN-02 - Configure and remove a board + property mapping with autocomplete
 
@@ -931,6 +986,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - Autocomplete acceptSuggestion fires a synthetic 'input' event; if Svelte's bind:value does not react, clicking Add uses a stale empty inputValue and silently does nothing (KanbanHelperSettingSuggester.ts:18).
   - No validation that the property exists in any linked note.
   - The #each block keys on boardName; duplicate boardNames (via external edit) could misbehave on removal (svelte:89).
+- **Evidence:** audit-modals: configure board mapping via panel
 
 ### KAN-03 - Display possible lane values in settings
 
@@ -943,6 +999,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - getFileCache(file).headings is dereferenced with no null-check on getFileCache; if the file is unindexed, getFileCache returns null and .headings throws, crashing the settings render (KanbanHelperSettingContent.svelte:68).
   - All headings (including dividers/archive sections) are shown, not just lane headings.
+- **Evidence:** audit-modals: lane headings displayed; null-guard added
 
 ### KAN-04 - Update linked-note property when a card sits under a lane (skip if matching)
 
@@ -958,6 +1015,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - Property find performs no type coercion; trailing whitespace in a key fails silently (kanbanHelper.ts:118).
   - content !== lane is a strict string compare, so null/undefined/number stored values always differ and rewrite on every save (kanbanHelper.ts:127).
   - Lane names containing wikilinks are written verbatim into frontmatter, producing unparseable values (test at line 411).
+- **Evidence:** Existing test coverage: __tests__/kanbanHelper.test.ts: 'updates the target property based on the lane h
 
 ### KAN-05 - Per-card error handling: notice on missing property, fault isolation on failure
 
@@ -971,6 +1029,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - No rate-limiting/dedup on the missing-property Notice; rapid/auto-saves emit a notice per save per card (kanbanHelper.ts:121-124), contradicting the catch-block's logMessage anti-spam choice.
   - Errors are logged via log.logMessage (not logError), so malformed-YAML failures are only in the MetaEdit log, not surfaced as notices; users may not realize a card failed (kanbanHelper.ts:73).
+- **Evidence:** Existing test coverage: __tests__/kanbanHelper.test.ts: 'emits a notice naming the linked file when the 
 
 ### KAN-06 - Identify true card links vs trailing/embedded links and guard stale cache
 
@@ -986,6 +1045,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - CARD_LINK_PREFIX requires whitespace before the link, so '- [ ][[Note]]' (no space) is silently skipped (kanbanHelper.ts:17).
   - [^\]]? allows only zero or one checkbox char, so '- [>>] [[Note]]' is skipped.
   - The stale-heading race is acknowledged but untreated, relying on the 5-second debounce (kanbanHelper.ts:83-85).
+- **Evidence:** Existing test coverage: __tests__/kanbanHelper.test.ts: 'only treats the leading link of a top-level tas
 
 ### KAN-07 - Resolve the linked note via three-tier fallback
 
@@ -999,6 +1059,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - The basename scan returns the first match arbitrarily when multiple notes share a basename, with no warning (kanbanHelper.ts:193-202).
   - normalizeLinkpath silently catches decodeURIComponent failures and keeps the partially-encoded string, which can then fail all strategies and return null with no message (kanbanHelper.ts:148-161).
+- **Evidence:** Existing test coverage: __tests__/kanbanHelper.test.ts: 'resolves markdown links with encoded spaces and
 
 ## Bulk metadata editor
 
@@ -1014,6 +1075,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - No depth limit/cycle guard on the recursion; a pathologically deep vault could overflow the stack (bulkMetadataEditor.ts:191-200).
   - folderHasMarkdown (menu visibility) and the run() count check are two separate vault reads across the interactive flow; files deleted between them make the notice appear after prompts have been shown (TOCTOU).
+- **Evidence:** Existing test coverage: e2e: 'adds a property to every note in a folder and is idempotent on re-run' (re
 
 ### BULK-02 - Prompt for the property name and value
 
@@ -1030,6 +1092,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - No validation that the key is valid YAML; a key with ':' or quotes may produce malformed frontmatter.
   - No vault-wide property name suggestions, unlike the suggester flow.
   - A wrong property name has no go-back; cancel aborts the whole flow.
+- **Evidence:** Existing test coverage: e2e: 'shows conflict options from live frontmatter when the metadata cache is st
 
 ### BULK-03 - Detect conflicts and choose a policy (skip/merge/overwrite)
 
@@ -1045,6 +1108,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - The closing-delimiter regex can treat a '---' inside a YAML value as the close, truncating the parse.
   - TOCTOU: a file modified between countExisting and apply can make the applied policy differ from what the user chose.
   - Malformed-YAML files are uncounted, so a 'skip' policy may still write to them.
+- **Evidence:** Existing test coverage: e2e: 'shows conflict options from live frontmatter when the metadata cache is st
 
 ### BULK-04 - Apply with skip policy (add-only)
 
@@ -1055,6 +1119,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - 'skip' is the default policy before the conflict modal; with zero conflicts it acts as add-everywhere.
   - Notes with the key present but null/empty are still skipped (no 'skip only if non-empty').
   - Inherited/prototype properties not treated as existing.
+- **Evidence:** Existing test coverage: e2e: 'adds a property to every note in a folder and is idempotent on re-run' (fi
 
 ### BULK-05 - Apply with merge policy (append unique into list)
 
@@ -1069,6 +1134,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - merge wraps the new-property case in an array unconditionally, ignoring EditMode; an AllSingle user gets a YAML list for merge-added properties, inconsistent with notes that had the property before (bulkMetadata.ts:56).
   - Object-value skips and policy skips are both bucketed as 'skipped', hiding silent failures.
   - Type-coercing dedup may surprise users with mixed-type lists.
+- **Evidence:** audit-gaps: merge unique + idempotent
 
 ### BULK-06 - Apply with overwrite policy behind a destructive confirmation
 
@@ -1083,6 +1149,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - The confirmation headlines files.length (full batch) even though some notes will be 'unchanged' or 'added', overstating the destructive scope (bulkMetadataEditor.ts:115).
   - No Cancel button is a non-obvious pattern for a destructive confirmation; if backdrop-click does not dismiss in some Obsidian versions the user could feel stuck.
+- **Evidence:** Existing test coverage: e2e: 'overwrite replaces existing values and is idempotent' (verifies overwrite 
 
 ### BULK-07 - Apply edits per note via processFrontMatter with EditMode wrapping
 
@@ -1095,6 +1162,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - Files processed sequentially, not in parallel.
 - **Risks / test focus:**
   - properties.includes(key) is case-sensitive; settings 'Tags' vs user-entered 'tags' silently writes a scalar instead of a list (bulkMetadataEditor.ts:242).
+- **Evidence:** unit decideBulkWrite EditMode wrapping + audit-gaps merge
 
 ### BULK-08 - Isolate per-note failures and show a summary notice
 
@@ -1110,6 +1178,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - Failure details (paths, messages) are only in the console; users without dev tools see 'N failed (see console)' with no accessible path, no log file, no retry (bulkMetadataEditor.ts:155-158).
   - recordOutcome does summary[outcome]+=1; if BulkOutcome ever diverges from BulkSummary keys, an undefined key silently becomes NaN.
   - apply() being public bypasses conflict/confirmation safeguards for API callers.
+- **Evidence:** Existing test coverage: unit: 'formatSummary' suite (non-zero buckets, failure hints, singular/plural, n
 
 ## Public API
 
@@ -1123,6 +1192,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - Returns string[] for Multi; string for Single/undefined type.
 - **Risks / test focus:**
   - The three null cases (disabled, no entry, cancelled) are indistinguishable to the caller (MetaEditApi.ts:45).
+- **Evidence:** audit-modals: autoprop opens value picker, resolves chosen value
 
 ### API-02 - update: update an existing property's value in a file
 
@@ -1138,7 +1208,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - Silent undefined for not-found is indistinguishable from a successful undefined-returning write (MetaEditApi.ts:54-55).
   - Duplicate non-virtual same-key properties: only the first is updated, the rest silently skipped.
   - Dataview inline update splits on '\n' and joins on '\n', converting CRLF to LF (metaController.ts:465).
-- **Evidence:** audit-api update no-op + metaedit-runtime update; CRLF preserved (audit-repro2)
+- **Evidence:** metaedit-runtime update; CRLF inline preserved (audit-repro2, refuted candidate)
 
 ### API-03 - getFilesWithProperty: list files that have a given frontmatter property
 
@@ -1251,6 +1321,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - DEFAULT_SETTINGS is only shallowly frozen; inner arrays are mutable, so direct mutation before structuredClone could corrupt defaults (defaultSettings.ts:4).
   - UIElements defaults to enabled:true while all other features default to false, an inconsistency that may surprise opt-in expectations.
+- **Evidence:** Existing test coverage: src/Settings/settingsMigration.test.ts: 'returns the defaults for a fresh instal
 
 ### SET-02 - Merge settings on load and avoid spurious saves
 
@@ -1266,6 +1337,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - mergeSettings is one-level-deep only; a future nested sub-field would be overwritten by the shallower stored spread (settingsMigration.ts:29).
   - Stored arrays win wholesale, silently dropping new default array elements.
   - Only migrateIgnoredProperties gates the save; a second future migration must also gate carefully or the read-only invariant breaks.
+- **Evidence:** Existing test coverage: src/Settings/settingsMigration.test.ts: 'backfills a new nested field (hideFileT
 
 ### SET-03 - Feature toggles (Progress / Auto / Kanban / Edit Meta menu / UI Elements)
 
@@ -1280,6 +1352,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - The Auto Properties toggle does not call toggleAutomators while Progress/Kanban do; if it ever needed one it would not register until reload (metaEditSettingsTab.ts:96-99).
   - this.display() on the Edit Meta toggle re-mounts ALL Svelte components, risking flicker and lost unsaved state in other panels.
   - Toggling UIElements off->on rapidly can re-register linkMenu without offref-ing the old ref, leaking a listener and duplicating menu items (LinkMenu.ts:13-15).
+- **Evidence:** audit-settings: toggle flips+persists via settings tab
 
 ### SET-04 - Gear-expand configuration panels (collapsible sub-settings)
 
@@ -1293,6 +1366,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - toggleHiddenEl returns early when div is undefined (disabled Edit Meta section), so the gear is visible but inert with no feedback (metaEditSettingsTab.ts:15).
   - Several panels (Auto, Progress, SomeMulti list) are mounted unconditionally even when disabled, allowing edits to persist while the feature is off, and adding DOM/Svelte overhead.
+- **Evidence:** audit-settings: gear expands/collapses panel
 
 ### SET-05 - Svelte component lifecycle and settings persistence
 
@@ -1308,6 +1382,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - saveSettings has no error handling; a saveData failure (disk full/permissions) appears successful but is lost on reload with no notification (main.ts:112-114).
   - No debouncing on saves; rapid toggling triggers multiple concurrent saveData calls.
   - hide() returns super.hide() typed any while PluginSettingTab.hide() is void, a return-type mismatch (metaEditSettingsTab.ts:251).
+- **Evidence:** audit-settings: persistence + reopen, no runtime errors
 
 ## Right-click Edit Meta menu + folder/selection bulk
 
@@ -1324,6 +1399,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - this.targetFile is an instance field overwritten per event; rapid or interleaved events (including from different sources) make a click open the suggester for the wrong file (LinkMenu.ts:39).
   - The source comparison uses == for 'file-explorer-context-menu' and === for the other sources, a code smell (LinkMenu.ts:35).
+- **Evidence:** bulk-metadata e2e file/folder menu; LinkMenu target-race noted as low-pri
 
 ### MENU-02 - Bulk edit from the folder right-click menu
 
@@ -1339,6 +1415,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - this.targetFolder is an instance field overwritten per event; rapid right-clicks target the wrong folder (LinkMenu.ts:7).
   - folderHasMarkdown is a synchronous recursive tree walk with no depth/cycle guard, risking UI jank or a stack overflow on large/corrupted trees.
   - Users may not realize disabling UIElements disables bulk editing entirely.
+- **Evidence:** bulk-metadata e2e folder bulk item
 
 ### MENU-03 - Bulk edit from a multi-file/folder selection
 
@@ -1352,6 +1429,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - scopeLabel uses selection.length (raw items including folders/non-md) rather than the resolved .md count, so '3 selected items' can mean 50 edited notes (main.ts:142-143).
   - hasMarkdown triggers a full recursive traversal of every selected folder just to decide menu visibility, before any click (LinkMenu.ts:53-55).
+- **Evidence:** Existing test coverage: tests/e2e/bulk-metadata.test.ts — 'collects a multi-selection without duplicates
 
 ### MENU-04 - UIElements toggle gates and dynamically (un)registers right-click menus
 
@@ -1365,6 +1443,7 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
 - **Risks / test focus:**
   - registerEvent() overwrites eventRef without offref-ing the old one, so an off->on->off->on sequence leaks a dangling listener and duplicates 'Edit Meta' items until restart (LinkMenu.ts:13-15).
   - Any future code path calling registerEvent() without checking current state would double-register.
+- **Evidence:** audit-settings: UIElements toggle gates Edit Meta menu
 
 ### MENU-05 - Right-click item absent for non-markdown files and empty folders
 
@@ -1376,4 +1455,5 @@ Full code-derived expected behavior, edge cases, and pre-test risk hypotheses fo
   - A 'file.md.canvas' (extension canvas) is excluded.
 - **Risks / test focus:**
   - folderHasMarkdown is a synchronous recursive tree walk on the main thread before the menu shows; large deeply nested vaults can cause noticeable UI jank.
+- **Evidence:** Existing test coverage: tests/e2e/bulk-metadata.test.ts — 'offers the folder bulk item when markdown liv
 

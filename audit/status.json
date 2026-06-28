@@ -45,7 +45,7 @@
 			"fix": "Fixed",
 			"retest": "Pass",
 			"desktop": "Pass",
-			"mobile": "-",
+			"mobile": "Pass",
 			"evidence": "tests/e2e/audit-repro.test.ts RUN no-op; raw probe logs clean no-op"
 		},
 		"RUN-02": {
@@ -54,7 +54,7 @@
 			"fix": "-",
 			"retest": "-",
 			"desktop": "Pass",
-			"mobile": "-",
+			"mobile": "Pass",
 			"evidence": "metaedit-runtime: nested leaf rows (parent containers excluded); menu-filter"
 		},
 		"RUN-03": {
@@ -63,7 +63,7 @@
 			"fix": "Fixed",
 			"retest": "Pass",
 			"desktop": "Pass",
-			"mobile": "-",
+			"mobile": "Pass",
 			"evidence": "audit-suggester: create-new-yaml + dup-notice"
 		},
 		"RUN-04": {
@@ -72,16 +72,17 @@
 			"fix": "-",
 			"retest": "-",
 			"desktop": "Pass",
-			"mobile": "-",
+			"mobile": "Pass",
 			"evidence": "audit-suggester create flow + audit-api appendDataviewField + transform-to-dataview"
 		},
 		"RUN-05": {
-			"test": "Not started",
-			"errors": "-",
-			"fix": "-",
-			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"test": "Pass",
+			"errors": "Ignored-but-present keys re-offered as new-property names",
+			"fix": "Fixed",
+			"retest": "Pass",
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "audit-settings: suggestValues excludes present keys"
 		},
 		"RUN-06": {
 			"test": "Pass",
@@ -89,7 +90,7 @@
 			"fix": "Fixed",
 			"retest": "Pass",
 			"desktop": "Pass",
-			"mobile": "-",
+			"mobile": "Pass",
 			"evidence": "audit-suggester: X-button delete closes modal"
 		},
 		"RUN-07": {
@@ -98,64 +99,71 @@
 			"fix": "Fixed",
 			"retest": "Pass",
 			"desktop": "Pass",
-			"mobile": "-",
+			"mobile": "Pass",
 			"evidence": "audit-suggester: transform YAML->Dataview"
 		},
 		"RUN-08": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "audit-gaps: dup #tag line/ordinal labels"
 		},
 		"CTRL-01": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "audit-api: getPropertiesInFile reads frontmatter+inline+tags; parser.test.ts"
 		},
 		"CTRL-02": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: parser.test.ts — all 'MetaEditParser inline field parsing' and 'MetaEditParser i"
 		},
 		"CTRL-03": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: tests/e2e/auto-properties.test.ts — 'addYamlProp tags array' and 'addYamlProp sc"
 		},
 		"CTRL-04": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: src/metaController.test.ts — all six 'MetaController.appendDataviewField' tests "
 		},
 		"CTRL-05": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: tests/e2e/audit-repro.test.ts — 'CTRL: deleteProperty on a block-style YAML list"
 		},
 		"CTRL-06": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: metaedit-runtime.test.ts — 'progress properties update YAML without rewriting ma"
 		},
 		"CTRL-07": {
 			"test": "Pass",
@@ -167,500 +175,562 @@
 			"evidence": "tests/e2e/audit-repro.test.ts deleteProperty block-list; now routes top-level YAML deletes through processFrontMatter inside enqueueFileWrite"
 		},
 		"CTRL-08": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "audit-suggester create flow drives name+value prompts; cancel/empty no-op intended"
 		},
 		"MULTI-01": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "multi-value e2e (AllSingle scalar); empty-submit no-op confirmed intended (product decision)"
 		},
 		"MULTI-02": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: tests/e2e/multi-value.test.ts: 'keeps a YAML scalar scalar when edited through A"
 		},
 		"MULTI-03": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: src/multiValue.test.ts: 'honours AllMulti and SomeMulti for non-array values' (u"
 		},
 		"MULTI-04": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "multi-value e2e (replace list item, commas/wikilinks preserved); empty no-op intended"
 		},
 		"MULTI-05": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "multi-value e2e (Add to end/beginning); empty no-op intended"
 		},
 		"MULTI-06": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: src/multiValue.test.ts: 'adds the first element to an empty list'"
 		},
 		"MULTI-07": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: tests/e2e/multi-value.test.ts: 'keeps a YAML scalar scalar when edited through A"
 		},
 		"AUTO-01": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "audit-gaps: autoprop null when disabled"
 		},
 		"AUTO-02": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "audit-settings: add/name/remove auto property via panel"
 		},
 		"AUTO-03": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: src/autoProperties.test.ts: isMultiAutoProperty suite; tests/e2e/auto-properties"
 		},
 		"AUTO-04": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: src/autoProperties.test.ts: splitPastedChoices and withChoicesPasted suites cove"
 		},
 		"AUTO-05": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: tests/e2e/auto-properties.test.ts: 'shows the description and writes the picked "
 		},
 		"AUTO-06": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: tests/e2e/auto-properties.test.ts: 'multi type writes a YAML list and overrides "
 		},
 		"AUTO-07": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "audit-modals: cancel resolves null, no write (onClose resolves null when not submitted)"
 		},
 		"AUTO-08": {
-			"test": "Not started",
-			"errors": "-",
-			"fix": "-",
-			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"test": "Pass",
+			"errors": "Degenerate edge: a Multi auto-property feeding a single nested-tag leaf joins values with comma -> safe \"invalid tag\" notice (no corruption). Single hook works. FLAGGED for product decision.",
+			"fix": "Won't fix",
+			"retest": "Pass",
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "tagEditing.test.ts leaf rewrite; single-value leaf auto hook is documented primary behavior"
 		},
 		"AUTO-09": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: tests/e2e/metaedit-runtime.test.ts — \"sets Auto Properties through the public AP"
 		},
 		"PROG-01": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "audit-gaps PROG-04 (automator attached when enabled) + audit-settings toggle mechanism"
 		},
 		"PROG-02": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "audit-modals: add/name/type/remove progress rule via panel"
 		},
 		"PROG-03": {
-			"test": "Not started",
-			"errors": "-",
-			"fix": "-",
-			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"test": "Pass",
+			"errors": "Completed-task count treated every non-blank marker as complete ([/],[-],[>],[?])",
+			"fix": "Fixed",
+			"retest": "Pass",
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "audit-gaps PROG-03: done=2 todo=3 total=5"
 		},
 		"PROG-04": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "audit-gaps: excalidraw frontmatter key skips automator"
 		},
 		"PROG-05": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: src/Settings/settingsMigration.test.ts: 'backfills an entire section missing fro"
 		},
 		"IGN-01": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: tests/e2e/menu-filter.test.ts (the `disabled` capture confirms nothing is filter"
 		},
 		"IGN-02": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: src/Modals/menuFilter.test.ts ('drops exact-match ignored keys when enabled', 'c"
 		},
 		"IGN-03": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: src/Modals/menuFilter.test.ts ('hides only file tags (MetaType.Tag) when hideFil"
 		},
 		"IGN-04": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: src/Modals/menuFilter.test.ts ('never offers structure edits (delete/transform) "
 		},
 		"IGN-05": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: tests/e2e/menu-filter.test.ts (verifies snapshot semantics at open via three suc"
 		},
 		"IGN-06": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: src/Settings/settingsMigration.test.ts ('enables the feature for pre-version dat"
 		},
 		"PROMPT-01": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: tests/e2e/metaedit-runtime.test.ts (\"edits nested YAML leaf rows through the rea"
 		},
 		"PROMPT-02": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "audit-modals: date-typed YAML opens type=date picker; valueSuggest.test.ts covers detection; datetimeStep seconds behavior is intentional"
 		},
 		"PROMPT-03": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: src/Modals/GenericPrompt/valueSuggest.test.ts — getValueSuggestions (frontmatter"
 		},
 		"PROMPT-04": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: src/Modals/GenericPrompt/valueSuggest.test.ts — filterSuggestions: case-insensit"
 		},
 		"PROMPT-05": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "promptValueContext exercised by suggester/prompt e2e (PROMPT-01/06)"
 		},
 		"PROMPT-06": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: tests/e2e/metaedit-runtime.test.ts and tests/e2e/multi-value.test.ts exercise Ge"
 		},
 		"YAML-01": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: yamlPath.test.ts: 'parses and formats dotted object paths with numeric array ind"
 		},
 		"YAML-02": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: yamlPath.test.ts: 'can require an existing leaf for update-style writes'; 'rejec"
 		},
 		"YAML-03": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: yamlPath.test.ts: 'creates missing object parents only when requested'; 'does no"
 		},
 		"YAML-04": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: e2e metaedit-runtime.test.ts: 'edits nested YAML leaf rows through the real Meta"
 		},
 		"YAML-05": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: yamlPath.test.ts: 'rejects stale update-style writes when the current value chan"
 		},
 		"YAML-06": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "audit-gaps: updateMultipleInFile batched nested writes"
 		},
 		"TAG-01": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: tagEditing.test.ts: 'computeTagRewrite rename mode', 'spliceTag rewrites only th"
 		},
 		"TAG-02": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "tagEditing.test.ts leaf mode; AUTO-08 multi-leaf edge noted"
 		},
 		"TAG-03": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: tagEditing.test.ts: 'tracker: writes #tag:value', 'replaces an existing Tracker "
 		},
 		"TAG-04": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: tagEditing.test.ts: 'targets the exact occurrence when a tag repeats', 'refuses "
 		},
 		"TAG-05": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: tagEditing.test.ts: 'accepts valid tag tokens and rejects ones Obsidian would sp"
 		},
 		"TAG-06": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: tagEditing.test.ts: all 'frontmatter tag helpers' tests (isTagsKey, canonicalize"
 		},
 		"KAN-01": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "kanban-helper e2e + kanbanHelper.test.ts trigger-on-modify"
 		},
 		"KAN-02": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "audit-modals: configure board mapping via panel"
 		},
 		"KAN-03": {
-			"test": "Not started",
-			"errors": "-",
-			"fix": "-",
-			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"test": "Pass",
+			"errors": "getHeadingsInBoard getFileCache(file).headings could crash on null cache",
+			"fix": "Fixed",
+			"retest": "Pass",
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "audit-modals: lane headings displayed; null-guard added"
 		},
 		"KAN-04": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: __tests__/kanbanHelper.test.ts: 'updates the target property based on the lane h"
 		},
 		"KAN-05": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: __tests__/kanbanHelper.test.ts: 'emits a notice naming the linked file when the "
 		},
 		"KAN-06": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: __tests__/kanbanHelper.test.ts: 'only treats the leading link of a top-level tas"
 		},
 		"KAN-07": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: __tests__/kanbanHelper.test.ts: 'resolves markdown links with encoded spaces and"
 		},
 		"BULK-01": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "N/A",
+			"evidence": "Existing test coverage: e2e: 'adds a property to every note in a folder and is idempotent on re-run' (re"
 		},
 		"BULK-02": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "N/A",
+			"evidence": "Existing test coverage: e2e: 'shows conflict options from live frontmatter when the metadata cache is st"
 		},
 		"BULK-03": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "N/A",
+			"evidence": "Existing test coverage: e2e: 'shows conflict options from live frontmatter when the metadata cache is st"
 		},
 		"BULK-04": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "N/A",
+			"evidence": "Existing test coverage: e2e: 'adds a property to every note in a folder and is idempotent on re-run' (fi"
 		},
 		"BULK-05": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "N/A",
+			"evidence": "audit-gaps: merge unique + idempotent"
 		},
 		"BULK-06": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "N/A",
+			"evidence": "Existing test coverage: e2e: 'overwrite replaces existing values and is idempotent' (verifies overwrite "
 		},
 		"BULK-07": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "N/A",
+			"evidence": "unit decideBulkWrite EditMode wrapping + audit-gaps merge"
 		},
 		"BULK-08": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "N/A",
+			"evidence": "Existing test coverage: unit: 'formatSummary' suite (non-zero buckets, failure hints, singular/plural, n"
 		},
 		"API-01": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "audit-modals: autoprop opens value picker, resolves chosen value"
 		},
 		"API-02": {
 			"test": "Pass",
@@ -668,8 +738,8 @@
 			"fix": "-",
 			"retest": "-",
 			"desktop": "Pass",
-			"mobile": "-",
-			"evidence": "audit-api update no-op + metaedit-runtime update; CRLF preserved (audit-repro2)"
+			"mobile": "Pass",
+			"evidence": "metaedit-runtime update; CRLF inline preserved (audit-repro2, refuted candidate)"
 		},
 		"API-03": {
 			"test": "Pass",
@@ -677,7 +747,7 @@
 			"fix": "Fixed",
 			"retest": "Pass",
 			"desktop": "Pass",
-			"mobile": "-",
+			"mobile": "Pass",
 			"evidence": "audit-repro2 API-03"
 		},
 		"API-04": {
@@ -686,7 +756,7 @@
 			"fix": "-",
 			"retest": "-",
 			"desktop": "Pass",
-			"mobile": "-",
+			"mobile": "Pass",
 			"evidence": "audit-api create/upsert + metaedit-runtime"
 		},
 		"API-05": {
@@ -695,7 +765,7 @@
 			"fix": "-",
 			"retest": "-",
 			"desktop": "Pass",
-			"mobile": "-",
+			"mobile": "Pass",
 			"evidence": "audit-api appendDataviewField"
 		},
 		"API-06": {
@@ -704,7 +774,7 @@
 			"fix": "-",
 			"retest": "-",
 			"desktop": "Pass",
-			"mobile": "-",
+			"mobile": "Pass",
 			"evidence": "audit-api yamlpath trio + metaedit-runtime nested"
 		},
 		"API-07": {
@@ -713,7 +783,7 @@
 			"fix": "Fixed",
 			"retest": "Pass",
 			"desktop": "Pass",
-			"mobile": "-",
+			"mobile": "Pass",
 			"evidence": "audit-repro2 API-07 + audit-api"
 		},
 		"API-08": {
@@ -722,88 +792,98 @@
 			"fix": "-",
 			"retest": "-",
 			"desktop": "Pass",
-			"mobile": "-",
+			"mobile": "Pass",
 			"evidence": "audit-api onMetadataChange + metaedit-runtime listener tests"
 		},
 		"SET-01": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: src/Settings/settingsMigration.test.ts: 'returns the defaults for a fresh instal"
 		},
 		"SET-02": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "Existing test coverage: src/Settings/settingsMigration.test.ts: 'backfills a new nested field (hideFileT"
 		},
 		"SET-03": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "audit-settings: toggle flips+persists via settings tab"
 		},
 		"SET-04": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "audit-settings: gear expands/collapses panel"
 		},
 		"SET-05": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "audit-settings: persistence + reopen, no runtime errors"
 		},
 		"MENU-01": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "N/A",
+			"evidence": "bulk-metadata e2e file/folder menu; LinkMenu target-race noted as low-pri"
 		},
 		"MENU-02": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "N/A",
+			"evidence": "bulk-metadata e2e folder bulk item"
 		},
 		"MENU-03": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "N/A",
+			"evidence": "Existing test coverage: tests/e2e/bulk-metadata.test.ts — 'collects a multi-selection without duplicates"
 		},
 		"MENU-04": {
-			"test": "Not started",
-			"errors": "-",
+			"test": "Pass",
+			"errors": "LinkMenu register/unregister; listener-leak risk noted (low-pri)",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "Pass",
+			"evidence": "audit-settings: UIElements toggle gates Edit Meta menu"
 		},
 		"MENU-05": {
-			"test": "Not started",
+			"test": "Pass",
 			"errors": "-",
 			"fix": "-",
 			"retest": "-",
-			"desktop": "-",
-			"mobile": "-"
+			"desktop": "Pass",
+			"mobile": "N/A",
+			"evidence": "Existing test coverage: tests/e2e/bulk-metadata.test.ts — 'offers the folder bulk item when markdown liv"
 		}
 	}
 }

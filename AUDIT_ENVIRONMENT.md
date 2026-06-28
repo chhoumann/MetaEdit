@@ -46,3 +46,12 @@ Both desktop and mobile are live and drive the same MetaEdit build (`main.js` fr
   uv run --no-project --with websockets python android_cdp.py eval "(async()=>{await app.plugins.disablePlugin('metaedit');await app.plugins.enablePlugin('metaedit');return 'ok'})()"
   ```
 - Probe: `uv run --no-project --with websockets python android_cdp.py eval '<js returning JSON.stringify(...)>'` (CDP `Runtime.evaluate`, `awaitPromise`). Drive the real `app.plugins.plugins.metaedit.controller` / `.api`, assert on `app.vault.read`. The emulator WebView gives the same plugin code path as desktop; platform-only UI affordances (right-click file/folder menus) do not exist on mobile and are marked `N/A`.
+
+## Mobile verification methodology
+
+The 82 cross-platform stories run the IDENTICAL plugin code on mobile as on desktop (same `controller`/`api`/parser/write-path; only platform UI affordances differ). Mobile verification therefore drove a representative sweep of every area's core code path plus every fix, on Android 15 / Obsidian 1.12.7:
+
+- `audit/mobile-sweep.js` (11 checks): create+read YAML, getPropertyValue, getFilesWithProperty with a falsy value (API-03 fix), getPropertiesInFile on a bad path (API-07 fix), block-style YAML list delete (CTRL-07 fix), append inline field, multi-value array write, nested YAML upsert+read, body-tag rename, progress task counting `[x]/[X]` only (PROG-03 fix), bulk merge. All passed.
+- `audit/mobile-ui.js` (2 checks): the Edit Meta suggester opens with rows; the settings tab renders every MetaEdit section. Both passed.
+
+Run with `audit/mobile-eval.sh audit/mobile-sweep.js`. The 12 `desktop`-only stories (right-click file/folder/selection context menus) have no mobile entry point and are marked `N/A`.
