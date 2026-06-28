@@ -12,6 +12,7 @@ import argparse
 import asyncio
 import json
 import os
+import posixpath
 import subprocess
 import sys
 import urllib.request
@@ -50,6 +51,17 @@ def adb_out(args: list[str]) -> str:
 
 def js(value: str) -> str:
 	return json.dumps(value)
+
+
+def normalize_android_path(path: str) -> str:
+	normalized = posixpath.normpath(path.strip())
+	if not normalized.startswith("/"):
+		raise SystemExit(f"Android vault path must be absolute: {path!r}")
+	return normalized
+
+
+def expected_vault_name(vault_path: str) -> str:
+	return posixpath.basename(normalize_android_path(vault_path))
 
 
 def forward_cdp(port: int = CDP_PORT) -> int:
@@ -126,6 +138,7 @@ async def runtime_state() -> dict[str, Any]:
 		return {{
 			title: document.title,
 			vaultName: app?.vault?.getName?.() ?? null,
+			vaultBasePath: app?.vault?.adapter?.basePath ?? app?.vault?.adapter?.getBasePath?.() ?? null,
 			apiVersion: window.apiVersion ?? null,
 			manifestKnown: app?.plugins?.manifests?.[id] ?? null,
 			enabled: Array.from(app?.plugins?.enabledPlugins ?? []).includes(id),
@@ -136,6 +149,31 @@ async def runtime_state() -> dict[str, Any]:
 			body: document.body?.innerText?.slice(0, 500) ?? "",
 		}};
 	}})()""")
+
+
+def assert_open_vault_matches_vault_path(state: dict[str, Any], vault_path: str) -> None:
+	expected_name = expected_vault_name(vault_path)
+	open_name = state.get("vaultName")
+	if open_name != expected_name:
+		raise SystemExit(
+			"Refusing to deploy because the open Android vault differs from --vault-path.\n"
+			f"--vault-path: {normalize_android_path(vault_path)!r}\n"
+			f"Expected open vault name: {expected_name!r}\n"
+			f"Open Obsidian vault: {open_name!r}\n"
+			"Open the scratch vault in Obsidian Android, then rerun diagnose/deploy."
+		)
+
+	vault_base_path = state.get("vaultBasePath")
+	if vault_base_path:
+		expected_path = normalize_android_path(vault_path)
+		open_path = normalize_android_path(str(vault_base_path))
+		if open_path != expected_path:
+			raise SystemExit(
+				"Refusing to deploy because the open Android vault path differs from --vault-path.\n"
+				f"--vault-path: {expected_path!r}\n"
+				f"Open Obsidian vault path: {open_path!r}\n"
+				"Open the scratch vault in Obsidian Android, then rerun diagnose/deploy."
+			)
 
 
 async def enable_metaedit() -> dict[str, Any]:
@@ -162,7 +200,8 @@ async def enable_metaedit() -> dict[str, Any]:
 
 def deploy_artifacts(vault_path: str) -> None:
 	files = ensure_local_artifacts()
-	target = f"{vault_path.rstrip('/')}/.obsidian/plugins/{PLUGIN_ID}"
+	vault_path = normalize_android_path(vault_path)
+	target = f"{vault_path}/.obsidian/plugins/{PLUGIN_ID}"
 	adb_out(["shell", "mkdir", "-p", target])
 	for path in files.values():
 		run_adb(["push", str(path), f"{target}/"])
@@ -184,13 +223,15 @@ async def cmd_deploy(args: argparse.Namespace) -> None:
 			"Refusing to deploy without --confirm-scratch-vault. "
 			"Android deploy has no backup/restore path and is intended only for disposable scratch vaults."
 		)
-	deploy_artifacts(args.vault_path)
 	forward_cdp(args.port)
+	state_before = await runtime_state()
+	assert_open_vault_matches_vault_path(state_before, args.vault_path)
+	deploy_artifacts(args.vault_path)
 	result = await enable_metaedit()
 	state = await runtime_state()
 	local_manifest = json.loads((REPO / "manifest.json").read_text(encoding="utf-8"))
 	print(json.dumps({
-		"deployTarget": f"{args.vault_path.rstrip('/')}/.obsidian/plugins/{PLUGIN_ID}",
+		"deployTarget": f"{normalize_android_path(args.vault_path)}/.obsidian/plugins/{PLUGIN_ID}",
 		"enable": result,
 		"runtime": state,
 	}, indent=2, ensure_ascii=False))

@@ -58,10 +58,12 @@ uv run --no-project --with pymobiledevice3 python scripts/mobile/metaedit_ios.py
 uv run --no-project --with pymobiledevice3 python scripts/mobile/metaedit_ios.py restore
 ```
 
-Deploy also checks that the vault open in Obsidian's WebView has the same name as
-the AFC target vault before writing. The harness is not an iCloud-container
-deployer; if a vault is not visible under Obsidian's app Documents container, it
-will stop before deploy.
+Deploy checks that the vault open in Obsidian's WebView has the same name as the
+AFC target vault before writing. Restore also checks the backup's AFC plugin path
+against the connected device's current vault path, and verifies that the same
+target vault is open before restoring the saved enabled/disabled state. The
+harness is not an iCloud-container deployer; if a vault is not visible under
+Obsidian's app Documents container, it will stop before deploy or restore.
 
 ## Commands
 
@@ -148,7 +150,9 @@ disconnects mid-run, rerun `restore`/`reload` before continuing.
 The Android harness uses `adb` plus WebView CDP forwarding. It expects Obsidian
 to be running and a disposable scratch vault to be open. Android deploy does not
 snapshot or restore plugin files, so it refuses to deploy unless
-`--confirm-scratch-vault` is passed.
+`--confirm-scratch-vault` is passed. Before pushing files or enabling MetaEdit,
+it checks the currently open Obsidian Android vault against `--vault-path` and
+refuses to continue when they differ.
 
 Optional emulator setup:
 

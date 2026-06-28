@@ -65,6 +65,17 @@ def safe_segment(value: str) -> str:
 	return re.sub(r"[^A-Za-z0-9_.-]+", "-", value).strip("-") or "unknown"
 
 
+def vault_name_from_plugin_dir(remote_plugin_dir: str) -> str | None:
+	parts = remote_plugin_dir.strip("/").split("/")
+	if len(parts) == 5 and parts[0] == "Documents" and parts[2:] == [".obsidian", "plugins", PLUGIN_ID]:
+		return parts[1]
+	return None
+
+
+def plugin_dir_for_vault(vault_path: str) -> str:
+	return f"{vault_path}/.obsidian/plugins/{PLUGIN_ID}"
+
+
 async def afc_open(lockdown: Any) -> HouseArrestService:
 	return await HouseArrestService.create(lockdown, OBSIDIAN_BUNDLE, documents_only=True)
 
@@ -353,14 +364,14 @@ async def enable_metaedit(session: Any) -> dict[str, Any]:
 	}})()""")
 
 
-def assert_open_vault_matches_afc_vault(state: dict[str, Any], vault_name: str) -> None:
+def assert_open_vault_matches_afc_vault(state: dict[str, Any], vault_name: str, operation: str) -> None:
 	open_vault = state.get("vaultName")
 	if open_vault != vault_name:
 		raise SystemExit(
-			"Refusing to deploy because the AFC target vault and the open Obsidian vault differ.\n"
+			f"Refusing to {operation} because the AFC target vault and the open Obsidian vault differ.\n"
 			f"AFC target vault: {vault_name!r}\n"
 			f"Open Obsidian vault: {open_vault!r}\n"
-			"Open the target vault on the phone, then rerun diagnose/deploy."
+			f"Open the target vault on the phone, then rerun {operation}."
 		)
 
 
@@ -380,7 +391,7 @@ async def cmd_diagnose(lockdown: Any, args: argparse.Namespace) -> None:
 	afc = await afc_open(lockdown)
 	try:
 		vault_path, vaults = await afc_find_vault(afc, args.vault)
-		plugin_dir = f"{vault_path}/.obsidian/plugins/{PLUGIN_ID}"
+		plugin_dir = plugin_dir_for_vault(vault_path)
 		print("\n# AFC vault state")
 		print(json.dumps({
 			"vaultPath": vault_path,
@@ -411,9 +422,9 @@ async def cmd_deploy(lockdown: Any, args: argparse.Namespace) -> None:
 			try:
 				vault_path, _vaults = await afc_find_vault(afc, args.vault)
 				vault_name = vault_path.rsplit("/", 1)[-1]
-				plugin_dir = f"{vault_path}/.obsidian/plugins/{PLUGIN_ID}"
+				plugin_dir = plugin_dir_for_vault(vault_path)
 				device_id = getattr(lockdown, "udid", None) or getattr(lockdown, "identifier", None) or "usb-device"
-				assert_open_vault_matches_afc_vault(state_before, vault_name)
+				assert_open_vault_matches_afc_vault(state_before, vault_name, "deploy")
 				backup_dir = await backup_existing_plugin(afc, plugin_dir, str(device_id), vault_name, state_before)
 
 				print(f"# backup\n{backup_dir}\n")
@@ -465,6 +476,12 @@ async def cmd_restore(lockdown: Any, args: argparse.Namespace) -> None:
 	remote_parent = remote_plugin_dir.rsplit("/", 1)[0]
 	local_plugin_dir = source / PLUGIN_ID
 	desired_enabled = (manifest.get("stateBeforeDeploy") or {}).get("enabled")
+	vault_name = manifest.get("vaultName") or vault_name_from_plugin_dir(remote_plugin_dir)
+	if not vault_name:
+		raise SystemExit(
+			"Backup manifest does not identify a restorable Obsidian vault. "
+			f"remotePluginDir={remote_plugin_dir!r}"
+		)
 	expected_device_id = manifest.get("deviceId")
 	current_device_id = getattr(lockdown, "udid", None) or getattr(lockdown, "identifier", None) or "usb-device"
 	if expected_device_id and expected_device_id != str(current_device_id) and not args.force:
@@ -476,13 +493,13 @@ async def cmd_restore(lockdown: Any, args: argparse.Namespace) -> None:
 
 	afc = await afc_open(lockdown)
 	try:
-		if manifest.get("vaultName"):
-			vault_path, _vaults = await afc_find_vault(afc, manifest["vaultName"])
-			if not remote_plugin_dir.startswith(f"{vault_path}/"):
-				raise SystemExit(
-					"Backup vault path does not match the connected device's current vault path. "
-					f"backup={remote_plugin_dir} current={vault_path}"
-				)
+		vault_path, _vaults = await afc_find_vault(afc, vault_name)
+		expected_plugin_dir = plugin_dir_for_vault(vault_path)
+		if remote_plugin_dir != expected_plugin_dir:
+			raise SystemExit(
+				"Backup plugin path does not match the connected device's current vault plugin path. "
+				f"backup={remote_plugin_dir} current={expected_plugin_dir}"
+			)
 		if await afc.exists(remote_plugin_dir):
 			undeleted = await afc.rm(remote_plugin_dir, force=True)
 			if undeleted:
@@ -512,6 +529,8 @@ async def cmd_restore(lockdown: Any, args: argparse.Namespace) -> None:
 	try:
 		async with inspector:
 			_, session = await open_session(inspector)
+			state = await read_plugin_state(session)
+			assert_open_vault_matches_afc_vault(state, vault_name, "restore enabled state")
 			result = await apply_enabled_state(session, desired_enabled)
 			print("# restored enabled state")
 			print(json.dumps(result, indent=2, ensure_ascii=False))
