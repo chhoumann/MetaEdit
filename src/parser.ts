@@ -12,6 +12,11 @@ export type Property = {
 	isNested?: boolean,
 	isVirtual?: boolean,
 };
+// Where to insert a newly appended inline field instance.
+// - "afterLastMatch": right after the last existing `name::` line, else end of body.
+// - "end": always at the end of the body (after the last content, after a trailing
+//   closed code fence), never inside frontmatter or a fenced code block.
+export type InlineFieldInsertLocation = "afterLastMatch" | "end";
 // `start`/`end` are the field's span in the line; `sepEnd` is the offset just
 // after `::`; `valueEnd` is where the value content ends (the closing bracket
 // for a bracketed field, or end-of-line for a full-line field). The latter two
@@ -401,6 +406,65 @@ export default class MetaEditParser {
             result = result.slice(0, field.sepEnd) + " " + newValue + result.slice(field.valueEnd);
         }
         return result;
+    }
+
+    /**
+     * Compute the line index at which to splice a new `name:: value` inline field.
+     *
+     * This is the write-placement counterpart to {@link parseInlineContent}: it walks
+     * the content with the SAME frontmatter, fenced-code, and inline-field detection so
+     * the insertion point is always consistent with what MetaEdit reads as a field. The
+     * returned index is into `content.split(/\r?\n/)` (the same split
+     * {@link splitContentLines} performs), so a caller can splice directly.
+     *
+     * Guarantees: the index is never inside YAML frontmatter or a fenced code block.
+     * - "afterLastMatch": just after the last body line that declares `name` (full-line
+     *   or bracketed), falling back to "end" when there is no such field.
+     * - "end": just after the last body content line or trailing closing code fence.
+     * When the note has no body content (empty or frontmatter-only), the field is placed
+     * at the start of the body, or at the very end when the whole file is frontmatter.
+     */
+    public computeInlineInsertIndex(content: string, name: string, location: InlineFieldInsertLocation = "afterLastMatch"): number {
+        const lines = this.splitContentLines(content);
+        const frontmatterInfo = this.getFrontmatterInfo(content);
+
+        let openFence: string | null = null;
+        let lastMatchIdx = -1;   // last body line that declares `name`
+        let lastAnchorIdx = -1;  // last line we may insert AFTER (body content or a closing fence)
+        let firstBodyIdx = -1;   // first line at/after the frontmatter block
+
+        for (let i = 0; i < lines.length; i++) {
+            const {text: line, start} = lines[i];
+
+            // Inside the YAML frontmatter block - never a valid target (mirrors parseInlineContent).
+            if (frontmatterInfo?.exists && start < frontmatterInfo.contentStart) continue;
+            if (firstBodyIdx === -1) firstBodyIdx = i;
+
+            const fence = line.match(CODE_FENCE);
+            if (fence) {
+                const marker = fence[1][0];
+                if (openFence === null) {
+                    openFence = marker;   // opening marker: inserting after it would land inside the fence
+                    continue;
+                }
+                if (openFence === marker) {
+                    openFence = null;     // closing marker: inserting after it is outside the fence
+                    lastAnchorIdx = i;
+                    continue;
+                }
+                // A fence-looking line of a different marker while inside a fence is interior content.
+            }
+            if (openFence !== null) continue; // fence interior - never a target
+
+            if (line.trim() !== "") lastAnchorIdx = i;
+            if (line.includes("::") && this.parseLineFields(line).some(field => field.key === name)) {
+                lastMatchIdx = i;
+            }
+        }
+
+        if (location === "afterLastMatch" && lastMatchIdx !== -1) return lastMatchIdx + 1;
+        if (lastAnchorIdx !== -1) return lastAnchorIdx + 1;
+        return firstBodyIdx !== -1 ? firstBodyIdx : lines.length;
     }
 
 }
