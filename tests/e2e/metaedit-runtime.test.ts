@@ -29,6 +29,7 @@ describe("MetaEdit runtime", () => {
 		expect(state.apiMethods).toEqual([
 			"addOrUpdateProperty",
 			"addOrUpdateYamlPath",
+			"appendDataviewField",
 			"autoprop",
 			"createYamlProperty",
 			"getAutoProperties",
