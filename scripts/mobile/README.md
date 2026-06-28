@@ -28,15 +28,24 @@ uv run --no-project --with pymobiledevice3 python scripts/mobile/metaedit_ios.py
 
 ## Safety
 
-The phone vault is real. Christian's current phone uses an AFC-reachable local
-vault named `notes`, so deploy targets:
+The phone vault is real. Use a clearly named scratch vault when possible and
+pass it explicitly:
+
+```bash
+uv run --no-project --with pymobiledevice3 python scripts/mobile/metaedit_ios.py diagnose --vault MetaEditMobileScratch
+uv run --no-project --with pymobiledevice3 python scripts/mobile/metaedit_ios.py deploy --vault MetaEditMobileScratch --confirm-real-vault
+```
+
+Christian's primary phone vault has historically been an AFC-reachable local
+vault named `notes`. If `--vault` is omitted, deploy targets:
 
 ```text
 /Documents/notes/.obsidian/plugins/metaedit
 ```
 
-`deploy` refuses to run unless `--confirm-real-vault` is passed. Before writing,
-it snapshots the existing phone plugin folder into:
+Do not deploy to `notes` unless Christian explicitly approves that target for
+the current session. `deploy` refuses to run unless `--confirm-real-vault` is
+passed. Before writing, it snapshots the existing phone plugin folder into:
 
 ```text
 ~/.metaedit-mobile-backups/metaedit/<device>/<vault>/<timestamp>/
@@ -60,12 +69,14 @@ Diagnose install/runtime state:
 
 ```bash
 uv run --no-project --with pymobiledevice3 python scripts/mobile/metaedit_ios.py diagnose
+uv run --no-project --with pymobiledevice3 python scripts/mobile/metaedit_ios.py diagnose --vault MetaEditMobileScratch
 ```
 
 Deploy the local build after explicit approval:
 
 ```bash
 uv run --no-project --with pymobiledevice3 python scripts/mobile/metaedit_ios.py deploy --confirm-real-vault
+uv run --no-project --with pymobiledevice3 python scripts/mobile/metaedit_ios.py deploy --vault MetaEditMobileScratch --confirm-real-vault
 ```
 
 Reload the already-installed plugin:
@@ -134,7 +145,7 @@ created after collecting evidence. If Web Inspector disconnects mid-run, rerun
 The Android harness uses `adb` plus WebView CDP forwarding. It expects Obsidian
 to be running and a scratch vault to be open.
 
-One emulator setup used for this investigation:
+Optional emulator setup:
 
 ```bash
 brew install android-platform-tools android-commandlinetools

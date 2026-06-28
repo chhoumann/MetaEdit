@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import base64
 import hashlib
 import json
 import logging
@@ -34,6 +35,9 @@ PLUGIN_ID = "metaedit"
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_VAULT = "notes"
 TOKEN = "__metaedit_ios_debug_result"
+SOURCE_TOKEN = "__metaedit_ios_debug_source"
+INSPECTOR_CALL_TIMEOUT = 10.0
+EVAL_CHUNK_SIZE = 768
 
 LOCAL_FILES = {
 	"main.js": REPO / "main.js",
@@ -119,18 +123,47 @@ async def open_session(inspector: WebinspectorService) -> tuple[Any, Any]:
 	return target, session
 
 
+async def runtime_evaluate(
+	session: Any,
+	expression: str,
+	*,
+	return_by_value: bool = True,
+	timeout: float = INSPECTOR_CALL_TIMEOUT,
+) -> Any:
+	try:
+		return await asyncio.wait_for(
+			session.runtime_evaluate(expression, return_by_value=return_by_value),
+			timeout=timeout,
+		)
+	except TimeoutError as exc:
+		raise TimeoutError(
+			f"Web Inspector Runtime.evaluate timed out after {timeout}s: {expression[:120]}"
+		) from exc
+
+
 async def ev(session: Any, expr: str, timeout: float = 30.0) -> Any:
+	encoded = base64.b64encode(expr.encode("utf-8")).decode("ascii")
+	await runtime_evaluate(session, f"window.{SOURCE_TOKEN}='';0")
+	for index in range(0, len(encoded), EVAL_CHUNK_SIZE):
+		await runtime_evaluate(
+			session,
+			f"window.{SOURCE_TOKEN}+={js(encoded[index:index + EVAL_CHUNK_SIZE])};0",
+		)
+
 	kickoff = (
-		f"(()=>{{window.{TOKEN}=undefined;"
-		f"(async()=>{{try{{window.{TOKEN}={{ok:JSON.stringify(await ({expr}))}}}}"
+		f"(()=>{{const __bytes=Uint8Array.from(atob(window.{SOURCE_TOKEN}),c=>c.charCodeAt(0));"
+		f"const __source=new TextDecoder('utf-8').decode(__bytes);"
+		f"window.{TOKEN}=undefined;"
+		f"(async()=>{{try{{const __runner=new Function('return (async()=>{{return await ('+__source+');}})()');"
+		f"window.{TOKEN}={{ok:JSON.stringify(await __runner())}}}}"
 		f"catch(e){{window.{TOKEN}={{err:String((e&&e.stack)||e)}}}}}})();return 0}})()"
 	)
-	await session.runtime_evaluate(kickoff, return_by_value=True)
+	await runtime_evaluate(session, kickoff)
 
 	waited = 0.0
 	poll = f"JSON.stringify(window.{TOKEN}===undefined?null:window.{TOKEN})"
 	while waited < timeout:
-		result = await session.runtime_evaluate(poll, return_by_value=True)
+		result = await runtime_evaluate(session, poll)
 		if result and result != "null":
 			obj = json.loads(result)
 			if "err" in obj:
