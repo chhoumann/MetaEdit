@@ -376,10 +376,16 @@ export class MetaEditApi {
         }
 
         if (value && typeof value === "object") {
-            return Object.entries(value as Record<string, unknown>).reduce((clone, [key, item]) => {
-                clone[key] = this.cloneValue(item);
-                return clone;
-            }, {} as Record<string, unknown>);
+            const clone: Record<string, unknown> = {};
+            for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+                Object.defineProperty(clone, key, {
+                    value: this.cloneValue(item),
+                    enumerable: true,
+                    configurable: true,
+                    writable: true,
+                });
+            }
+            return clone;
         }
 
         return value;
