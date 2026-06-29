@@ -23,6 +23,46 @@ function setupApi(flush: () => Promise<void>) {
 	return {api, plugin, settings};
 }
 
+function setupPrivateApi() {
+	return new MetaEditApi({app: {}} as never) as unknown as {
+		cloneValue(value: unknown): unknown;
+	};
+}
+
+describe("MetaEditApi.cloneValue", () => {
+	it("copies an own enumerable __proto__ data key without changing the clone prototype", () => {
+		const api = setupPrivateApi();
+		const source = {
+			normal: {
+				nested: ["value", {deep: 1}],
+			},
+		} as Record<string, unknown>;
+		const protoValue = {x: 1};
+		Object.defineProperty(source, "__proto__", {
+			value: protoValue,
+			enumerable: true,
+			configurable: true,
+			writable: true,
+		});
+
+		const clone = api.cloneValue(source) as Record<string, unknown>;
+		const clonedProtoValue = Object.getOwnPropertyDescriptor(clone, "__proto__")?.value;
+
+		expect(Object.getPrototypeOf(clone)).toBe(Object.prototype);
+		expect(Object.prototype.hasOwnProperty.call(clone, "__proto__")).toBe(true);
+		expect(clonedProtoValue).toEqual({x: 1});
+		expect(clonedProtoValue).not.toBe(protoValue);
+		expect(clone.normal).toEqual(source.normal);
+		expect(clone.normal).not.toBe(source.normal);
+
+		const clonedNormal = clone.normal as {nested: unknown[]};
+		const sourceNormal = source.normal as {nested: unknown[]};
+		expect(clonedNormal.nested).toEqual(sourceNormal.nested);
+		expect(clonedNormal.nested).not.toBe(sourceNormal.nested);
+		expect(clonedNormal.nested[1]).not.toBe(sourceNormal.nested[1]);
+	});
+});
+
 describe("MetaEditApi.setAutoProperties", () => {
 	it("rejects invalid input immediately, without waiting behind a pending settings save", async () => {
 		let releaseSave!: () => void;
