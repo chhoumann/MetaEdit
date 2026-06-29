@@ -1,4 +1,4 @@
-import {type CachedMetadata, type HeadingCache, type LinkCache, Notice, type TFile, getLinkpath, normalizePath} from "obsidian";
+import {type CachedMetadata, type HeadingCache, type LinkCache, type TFile, getLinkpath, normalizePath} from "obsidian";
 import type MetaEdit from "../../main";
 import type {KanbanProperty} from "../../Types/kanbanProperty";
 import {abstractFileToMarkdownTFile} from "../../utility";
@@ -120,7 +120,6 @@ export class KanbanHelper extends OnFileModifyAutomator {
             // Only real card notes reach this point, so the warning is now actionable.
             const message = `'${board.property}' not found in "${linkFile.basename}" (Kanban board '${board.boardName}').`;
             log.logWarning(message);
-            new Notice(message); // This notice helps users debug "property not found" errors.
             return;
         }
 

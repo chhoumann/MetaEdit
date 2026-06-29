@@ -1,10 +1,26 @@
-import {describe, it, expect, vi} from "vitest";
+import {afterEach, beforeEach, describe, it, expect, vi} from "vitest";
 import {KanbanHelper} from "../src/automators/onFileModifyAutomators/kanbanHelper";
-import {TFile} from "obsidian";
+import {Notice, TFile} from "obsidian";
+import {log} from "../src/logger/logManager";
+import {GuiLogger} from "../src/logger/guiLogger";
 
 type MockFn = ReturnType<typeof vi.fn>;
 
 vi.spyOn(console, "debug").mockImplementation(() => {});
+
+const resetRegisteredLoggers = () => {
+  (log.constructor as {loggers: unknown[]}).loggers = [];
+};
+
+beforeEach(() => {
+  resetRegisteredLoggers();
+  Notice.messages = [];
+});
+
+afterEach(() => {
+  resetRegisteredLoggers();
+  Notice.messages = [];
+});
 
 type MockApp = {
   metadataCache: {
@@ -582,15 +598,18 @@ describe("KanbanHelper updates linked file properties", () => {
     expect(plugin.controller.updatePropertyInFile).toHaveBeenCalledTimes(1);
   });
 
-  it("emits a notice naming the linked file when the tracked property is missing", async () => {
+  it("emits one GUI notice naming the linked file when the tracked property is missing", async () => {
     const board = "## Doing\n\n- [ ] [[Note]]\n";
     const {helper, plugin, boardFile} = setupBoard(board, {
       Note: {status: undefined}, // note exists but has no status property
     });
+    log.register(new GuiLogger({} as any));
 
     await helper.onFileModify(boardFile);
 
     expect(plugin.controller.updatePropertyInFile).not.toHaveBeenCalled();
+    expect(Notice.messages).toHaveLength(1);
+    expect(Notice.messages[0]).toContain("'status' not found in \"Note\" (Kanban board 'Board').");
   });
 
   it("does nothing when the modified file is not a configured board", async () => {
