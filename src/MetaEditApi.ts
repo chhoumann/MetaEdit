@@ -183,17 +183,27 @@ export class MetaEditApi {
 
     private getSetAutoPropertiesFunction() {
         return async (autoProperties: AutoProperty[]): Promise<void> => {
+            // Validate up front, outside the queue: it is a pure check on the caller's
+            // input, so invalid input should reject immediately rather than wait behind
+            // unrelated settings saves.
+            const nextAutoProperties = this.validateAutoProperties(autoProperties);
+
             // Share the plugin's single settings write queue, so a full-list replace
             // here serializes with the controller's per-choice persistence instead of
-            // racing it. Validation runs inside the critical section so a reject leaves
-            // the live settings untouched.
+            // racing it.
             await this.plugin.updateSettings(() => {
-                const nextAutoProperties = this.validateAutoProperties(autoProperties);
                 const previousAutoProperties = this.plugin.settings.AutoProperties.properties;
 
                 this.plugin.settings.AutoProperties.properties = nextAutoProperties;
 
-                return () => { this.plugin.settings.AutoProperties.properties = previousAutoProperties; };
+                // Compare-and-restore: only undo OUR write. If a concurrent writer
+                // replaced the list after ours, leave their value in place rather than
+                // clobbering it with our stale snapshot.
+                return () => {
+                    if (this.plugin.settings.AutoProperties.properties === nextAutoProperties) {
+                        this.plugin.settings.AutoProperties.properties = previousAutoProperties;
+                    }
+                };
             });
         }
     }

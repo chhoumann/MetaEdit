@@ -454,7 +454,9 @@ export default class MetaController {
 
                 const previous = list[idx];
                 list[idx] = updated;
-                return () => { list[idx] = previous; }; // roll back if the save fails
+                // Compare-and-restore: only undo OUR write if the save fails, so a
+                // concurrent writer's change to the same slot is not clobbered.
+                return () => { if (list[idx] === updated) list[idx] = previous; };
             });
         } catch (error) {
             // The prompt's value is still valid for the note; only the choice-list save
