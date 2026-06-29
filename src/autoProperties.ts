@@ -201,9 +201,9 @@ export function applyAutoPropertySettingsOperation(
         case "replaceChoiceWithChoices": {
             const property = findAutoPropertyOperationTarget(next, operation.target);
             if (!property) return false;
-            const choiceIndex = findWritableChoiceIndex(property.choices, operation.index, operation.previousValue);
-            if (choiceIndex >= property.choices.length) {
-                property.choices.push(...operation.values);
+            const choiceIndex = findExistingChoiceIndex(property.choices, operation.index, operation.previousValue);
+            if (choiceIndex === -1) {
+                property.choices = withChoicesInserted(property.choices, operation.index, operation.values);
             } else {
                 property.choices = withChoicesPasted(property.choices, choiceIndex, operation.values);
             }
@@ -247,6 +247,22 @@ function findWritableChoiceIndex(choices: string[], index: number, value: string
     const existingIndex = findExistingChoiceIndex(choices, index, value);
     if (existingIndex !== -1) return existingIndex;
     return boundedInsertIndex(index, choices.length);
+}
+
+function withChoicesInserted(choices: string[], index: number, tokens: string[]): string[] {
+    const next = [...choices];
+    const taken = new Set(next.map((c) => (c ?? "").trim()).filter((c) => c !== ""));
+    const inserted: string[] = [];
+
+    for (const raw of tokens) {
+        const choice = (raw ?? "").trim();
+        if (choice === "" || taken.has(choice)) continue;
+        taken.add(choice);
+        inserted.push(choice);
+    }
+
+    next.splice(boundedInsertIndex(index, next.length), 0, ...inserted);
+    return next;
 }
 
 function isValidIndex(index: number, length: number): boolean {

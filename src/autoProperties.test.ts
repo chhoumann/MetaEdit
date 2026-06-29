@@ -193,6 +193,21 @@ describe("applyAutoPropertySettingsOperation", () => {
         expect(next).toEqual([{name: "status", choices: ["external"]}]);
     });
 
+    it("inserts pasted choices without replacing a live choice when the stale row disappeared", () => {
+        const next = applyAutoPropertySettingsOperation(
+            [{name: "status", choices: ["todo", "external"]}],
+            {
+                kind: "replaceChoiceWithChoices",
+                target,
+                index: 1,
+                previousValue: "",
+                values: ["doing", "blocked"],
+            },
+        );
+
+        expect(next).toEqual([{name: "status", choices: ["todo", "doing", "blocked", "external"]}]);
+    });
+
     it("keeps live-added properties when the tab edits another property", () => {
         const next = applyAutoPropertySettingsOperation(
             [
