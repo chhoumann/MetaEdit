@@ -513,15 +513,12 @@ export default class MetaController {
                 return;
             }
 
+            if (property.type !== MetaType.Dataview || !property.key) return;
+
             const fileContent = await this.app.vault.read(file);
-
-            const newFileContent = fileContent.split("\n").map(line => {
-                if (this.lineMatch(property, line)) {
-                    return this.updatePropertyLine(property, newValue, line);
-                }
-
-                return line;
-            }).join("\n");
+            const newFileContent = this.parser.replaceInlineFieldValuesInContent(fileContent, [
+                {key: property.key, value: String(newValue)},
+            ]);
 
             await this.app.vault.modify(file, newFileContent);
         });
@@ -573,44 +570,6 @@ export default class MetaController {
         }
     }
 
-    private lineMatch(property: Partial<Property>, line: string): boolean {
-        if (!property.key) return false;
-
-        const tagRegex = new RegExp(`^\\s*${this.escapeSpecialCharacters(property.key)}`);
-
-        if (property.key.contains('#')) {
-            return tagRegex.test(line);
-        }
-
-        if (property.type === MetaType.Dataview) {
-            return this.dataviewPropertyRegex(property.key).test(line);
-        }
-
-        const propertyRegex = new RegExp(`^\\s*${this.escapeSpecialCharacters(property.key)}\\s*:`);
-        return propertyRegex.test(line);
-    }
-
-    private updatePropertyLine(property: Partial<Property>, newValue: unknown, line: string) {
-        if (!property.key) return line;
-
-        let newLine: string;
-        switch (property.type) {
-            case MetaType.Dataview:
-                newLine = this.parser.replaceInlineFieldValue(line, property.key, String(newValue));
-                break;
-            case MetaType.YAML:
-                newLine = `${property.key}: ${newValue}`;
-                break;
-            // Body tags are rewritten by span in writeTagOccurrence, never here.
-            default:
-                // Never collapse a matched line to just the key - leave it untouched.
-                newLine = line;
-                break;
-        }
-
-        return newLine;
-    }
-
     private async updateMultipleInFile(properties: Property[], file: TFile): Promise<void> {
         // Refuse a batch with ANY reserved YAML key BEFORE the write starts. This
         // method splices body tags before writing frontmatter, so validating up
@@ -634,7 +593,7 @@ export default class MetaController {
             const yamlProperties = properties.filter(prop => prop.type === MetaType.YAML && !prop.path);
             const yamlPathProperties = properties.filter(prop => prop.type === MetaType.YAML && prop.path);
             const tagProperties = properties.filter(prop => prop.type === MetaType.Tag);
-            const textProperties = properties.filter(prop => prop.type !== MetaType.YAML && prop.type !== MetaType.Tag);
+            const textProperties = properties.filter(prop => prop.type === MetaType.Dataview && prop.key);
 
             // Splice body tags FIRST, while their parsed offsets still match the
             // file. A later processFrontMatter write only touches the frontmatter,
@@ -672,17 +631,11 @@ export default class MetaController {
             }
 
             if (textProperties.length > 0) {
-                let lines = (await this.app.vault.read(file)).split("\n");
-                for (const prop of textProperties) {
-                    lines = lines.map(line => this.lineMatch(prop, line) ? this.updatePropertyLine(prop, prop.content, line) : line);
-                }
-                await this.app.vault.modify(file, lines.join("\n"));
+                const content = await this.app.vault.read(file);
+                const replacements = textProperties.map(prop => ({key: prop.key, value: String(prop.content)}));
+                await this.app.vault.modify(file, this.parser.replaceInlineFieldValuesInContent(content, replacements));
             }
         });
-    }
-
-    private dataviewPropertyRegex(propertyKey: string): RegExp {
-        return new RegExp(`(^|[\\s\\[\\(])(${this.escapeSpecialCharacters(propertyKey)})::[ ]*([^\\)\\]\\n\\r]*)(\\]\\]|[\\]\\)]?)`, "g");
     }
 
     private splitMultiValue(property: Partial<Property>): string[] {
