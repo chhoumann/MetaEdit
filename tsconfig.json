@@ -13,11 +13,6 @@
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true,
 		"types": ["node", "svelte", "vitest"],
-		"lib": ["DOM", "ES2020"],
-		"baseUrl": ".",
-		"paths": {
-			"src": ["src"],
-			"src/*": ["src/*"]
-		}
+		"lib": ["DOM", "ES2020"]
 	}
 }
