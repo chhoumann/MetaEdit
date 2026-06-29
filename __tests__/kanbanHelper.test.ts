@@ -160,22 +160,49 @@ describe("KanbanHelper link resolution", () => {
     expect(app.metadataCache.getFirstLinkpathDest).toHaveBeenCalledWith("Folder/My Note", "Board.md");
   });
 
-  it("falls back to vault path resolution when metadata cache misses", () => {
+  it("falls back to vault path resolution when metadata cache misses for an explicit-path link", () => {
     const app = createApp();
     const plugin = createPlugin(app);
     const helper = new KanbanHelper(plugin as any);
 
-    const targetFile = new TFile("Note.md");
+    // Path resolution is only used for links that already name a folder path: such a
+    // path identifies exactly one file, so the direct lookup is unambiguous.
+    const targetFile = new TFile("Folder/Note.md");
     app.metadataCache.getFirstLinkpathDest.mockReturnValue(null);
     app.vault.getAbstractFileByPath.mockImplementation((path: string) => {
-      return path === "Note.md" ? targetFile : null;
+      return path === "Folder/Note.md" ? targetFile : null;
     });
 
-    const link = {link: "Note", original: "[[Note]]"};
+    const link = {link: "Folder/Note", original: "[[Folder/Note]]"};
     const resolved = (helper as any).resolveLinkFile(link, "Board.md");
 
     expect(resolved).toBe(targetFile);
-    expect(app.vault.getAbstractFileByPath).toHaveBeenCalledWith("Note.md");
+    expect(app.vault.getAbstractFileByPath).toHaveBeenCalledWith("Folder/Note.md");
+  });
+
+  it("does not resolve a bare link via the vault-root path (defers to the unique-basename guard)", () => {
+    // The wrong-file-write class the deepsec finding (other-wrong-file-write) describes
+    // is wider than the basename fallback: direct path resolution would turn a bare
+    // [[Note]] into getAbstractFileByPath("Note.md") and pick the ROOT note even when
+    // the board displays a folder-local same-named note. A bare link must never resolve
+    // by that root guess, so when several "Note" notes exist the helper bails.
+    const app = createApp();
+    const plugin = createPlugin(app);
+    const helper = new KanbanHelper(plugin as any);
+
+    const rootNote = new TFile("Note.md");
+    const folderNote = new TFile("Areas/Note.md");
+    app.metadataCache.getFirstLinkpathDest.mockReturnValue(null);
+    // The real vault WOULD return the root file here; the fix must not act on it.
+    app.vault.getAbstractFileByPath.mockImplementation((path: string) =>
+      path === "Note.md" ? rootNote : null
+    );
+    app.vault.getMarkdownFiles.mockReturnValue([rootNote, folderNote]);
+
+    const link = {link: "Note", original: "[[Note]]"};
+    const resolved = (helper as any).resolveLinkFile(link, "Projects/Board.md");
+
+    expect(resolved).toBeNull();
   });
 
   it("falls back to basename match when direct path lookup fails for basename-only links", () => {
@@ -476,23 +503,26 @@ describe("KanbanHelper updates linked file properties", () => {
     expect(plugin.controller.updatePropertyInFile).not.toHaveBeenCalled();
   });
 
-  it("does not write to any note when the card's basename is ambiguous (only the basename fallback resolves)", async () => {
-    // Cache + direct-path resolution both miss, so resolution would fall through to
-    // the basename fallback. Two notes share the basename "Task", so the helper must
-    // write to neither rather than corrupt an arbitrarily-chosen same-named note.
+  it("does not write to any note when the card's basename is ambiguous, even if a root file exists", async () => {
+    // End-to-end repro of deepsec other-wrong-file-write: cold cache, a bare [[Task]]
+    // card, and two notes sharing the basename "Task" - one of them at the vault root.
+    // The pre-fix code resolved the bare link straight to the root Task.md via the
+    // direct path lookup and silently wrote the lane there. The helper must instead
+    // write to neither, since it cannot know which "Task" the card meant.
     const app = createApp();
     const plugin = createPlugin(app, [{boardName: "Board", property: "status"}]);
     const helper = new KanbanHelper(plugin as any);
     const boardFile = new TFile("Board.md");
-    const noteA = new TFile("Areas/Task.md");
-    const noteB = new TFile("Archive/Task.md");
+    const rootTask = new TFile("Task.md");
+    const archiveTask = new TFile("Archive/Task.md");
 
     const board = "## Doing\n\n- [ ] [[Task]]\n";
     app.metadataCache.getFileCache.mockReturnValue(buildBoardCache(board));
     app.vault.cachedRead.mockResolvedValue(board);
     app.metadataCache.getFirstLinkpathDest.mockReturnValue(null);
-    app.vault.getAbstractFileByPath.mockReturnValue(null);
-    app.vault.getMarkdownFiles.mockReturnValue([noteA, noteB]);
+    // The real vault returns the root note for "Task.md"; the fix must not act on it.
+    app.vault.getAbstractFileByPath.mockImplementation((p: string) => (p === "Task.md" ? rootTask : null));
+    app.vault.getMarkdownFiles.mockReturnValue([rootTask, archiveTask]);
     plugin.controller.getPropertiesInFile.mockResolvedValue([{key: "status", content: "Backlog", type: "YAML"}]);
 
     await helper.onFileModify(boardFile);
