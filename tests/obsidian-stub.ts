@@ -21,10 +21,13 @@ export class TFile {
 }
 
 export class Notice {
+  static messages: string[] = [];
+
   message: string;
 
   constructor(message: string) {
     this.message = message;
+    Notice.messages.push(message);
   }
 }
 
