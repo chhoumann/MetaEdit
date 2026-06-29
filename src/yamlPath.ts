@@ -15,6 +15,30 @@ export class YamlPathError extends Error {
 	}
 }
 
+/**
+ * Property names that alias JavaScript object machinery when assigned through a
+ * dynamic `frontmatter[key] = value`, so they can never be written as ordinary
+ * frontmatter keys:
+ *
+ *  - `__proto__` is an accessor inherited from `Object.prototype`. Assigning a
+ *    string (`frontmatter["__proto__"] = "x"`) is silently dropped - no own key
+ *    is created - while assigning an array/object mutates the object's prototype
+ *    instead. Either way the note is left unchanged, yet the operation reports
+ *    success: the report disagrees with what was written.
+ *  - `constructor`/`prototype` do create a real own enumerable property today,
+ *    but it shadows the inherited slot. They are refused alongside `__proto__`
+ *    so a write never produces object-machinery-aliasing keys - the standard
+ *    reserved-key set, applied uniformly.
+ *
+ * This is the single home for the predicate because the lowest-level dynamic-key
+ * sink ({@link setYamlPath}) lives here; the bulk editor re-exports it so its
+ * callers keep a stable import. Matching is exact: a padded literal such as
+ * `" __proto__ "` is an ordinary key (it aliases nothing) and is left alone.
+ */
+export function isReservedFrontmatterKey(key: string): boolean {
+	return key === "__proto__" || key === "constructor" || key === "prototype";
+}
+
 export function parseYamlPath(path: string | readonly YamlPathSegment[]): YamlPath {
 	if (Array.isArray(path)) return validateYamlPath(path);
 	if (typeof path !== "string") throw new YamlPathError("YAML path must be a string or path segment array.");
@@ -57,6 +81,20 @@ export function setYamlPath(
 	options: SetYamlPathOptions = {},
 ): void {
 	const resolvedPath = parseYamlPath(path);
+
+	// Refuse a write to ANY reserved object-machinery segment (leaf or parent),
+	// before traversing, so a path like `safe.__proto__.x` can never assign
+	// through the prototype chain. Reads are intentionally left untouched: they
+	// resolve own keys via `hasOwnProperty` and `formatYamlPath` must keep
+	// accepting these segments for error messages.
+	for (const segment of resolvedPath) {
+		if (typeof segment === "string" && isReservedFrontmatterKey(segment)) {
+			throw new YamlPathError(
+				`Cannot write YAML path '${formatYamlPath(resolvedPath)}': '${segment}' is a reserved property name.`,
+			);
+		}
+	}
+
 	let current: unknown = root;
 
 	for (let idx = 0; idx < resolvedPath.length; idx++) {

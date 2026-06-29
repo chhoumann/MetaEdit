@@ -2,6 +2,7 @@ import {describe, expect, it} from "vitest";
 import {
 	formatYamlPath,
 	getYamlPath,
+	isReservedFrontmatterKey,
 	parseYamlPath,
 	setYamlPath,
 	YamlPathError,
@@ -122,5 +123,61 @@ describe("YAML path helpers", () => {
 
 		expect(getYamlPath(root, ["metadata", "child.with.dot"])).toBe("new");
 		expect(root).toEqual({metadata: {"child.with.dot": "new"}});
+	});
+});
+
+describe("isReservedFrontmatterKey", () => {
+	it("flags the object-machinery keys that alias prototype slots", () => {
+		for (const key of ["__proto__", "constructor", "prototype"]) {
+			expect(isReservedFrontmatterKey(key)).toBe(true);
+		}
+	});
+
+	it("leaves ordinary keys alone, matching exactly (no trim, no case-folding)", () => {
+		for (const key of ["status", "proto", "__proto__x", " __proto__ ", "__Proto__", "Constructor", ""]) {
+			expect(isReservedFrontmatterKey(key)).toBe(false);
+		}
+	});
+});
+
+describe("setYamlPath reserved-key guard", () => {
+	it("refuses a reserved leaf segment without mutating the object", () => {
+		const root: Record<string, unknown> = {safe: {}};
+
+		for (const reserved of ["__proto__", "constructor", "prototype"]) {
+			expect(() => setYamlPath(root, ["safe", reserved], "x", {createLeaf: true}))
+				.toThrow(/reserved property name/);
+		}
+
+		expect(root).toEqual({safe: {}});
+	});
+
+	it("refuses a reserved intermediate segment before traversing or creating parents", () => {
+		const root: Record<string, unknown> = {};
+
+		expect(() => setYamlPath(root, "safe.__proto__.x", "y", {createParents: true}))
+			.toThrow(/reserved property name/);
+
+		// The guard runs before traversal, so no `safe` parent is created.
+		expect(root).toEqual({});
+	});
+
+	it("does not pollute the prototype when a reserved object value is written", () => {
+		const root: Record<string, unknown> = {};
+
+		expect(() => setYamlPath(root, "__proto__", {polluted: true}, {createLeaf: true}))
+			.toThrow(YamlPathError);
+
+		// No prototype pollution: a fresh object never gains the injected property.
+		expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+		expect(root).toEqual({});
+	});
+
+	it("still allows ordinary keys that merely contain a reserved substring", () => {
+		const root: Record<string, unknown> = {meta: {}};
+
+		setYamlPath(root, ["meta", "__proto__x"], "ok", {createLeaf: true});
+
+		expect(root).toEqual({meta: {__proto__x: "ok"}});
 	});
 });
