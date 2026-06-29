@@ -5,6 +5,7 @@ import {
 	decideBulkWrite,
 	emptySummary,
 	formatSummary,
+	isReservedFrontmatterKey,
 	recordOutcome,
 	toArray,
 	uniqueConcat,
@@ -46,6 +47,28 @@ describe("decideBulkWrite - add (key missing)", () => {
 			value: ["draft"],
 			outcome: "added",
 		});
+	});
+});
+
+describe("isReservedFrontmatterKey", () => {
+	it("flags the object-machinery keys that alias prototype slots", () => {
+		for (const key of ["__proto__", "constructor", "prototype"]) {
+			expect(isReservedFrontmatterKey(key)).toBe(true);
+		}
+	});
+
+	it("leaves ordinary keys alone, matching exactly (no trim, no case-folding)", () => {
+		for (const key of [
+			"status",
+			"proto",
+			"__proto__x",
+			" __proto__ ", // padded literal is an ordinary key - it aliases nothing
+			"__Proto__", // case-sensitive: only the exact lowercase form aliases
+			"Constructor",
+			"",
+		]) {
+			expect(isReservedFrontmatterKey(key)).toBe(false);
+		}
 	});
 });
 
