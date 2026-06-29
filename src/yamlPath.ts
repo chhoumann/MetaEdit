@@ -235,7 +235,20 @@ function validateLeafWrite(
 	}
 }
 
-function yamlValuesEqual(left: unknown, right: unknown): boolean {
+export function yamlValuesEqual(left: unknown, right: unknown): boolean {
 	if (left instanceof Date && right instanceof Date) return left.getTime() === right.getTime();
+	if (Array.isArray(left) && Array.isArray(right)) {
+		if (left.length !== right.length) return false;
+		return left.every((value, index) => yamlValuesEqual(value, right[index]));
+	}
+	if (isPlainYamlObject(left) && isPlainYamlObject(right)) {
+		const leftKeys = Object.keys(left);
+		const rightKeys = Object.keys(right);
+		if (leftKeys.length !== rightKeys.length) return false;
+		return leftKeys.every(key =>
+			Object.prototype.hasOwnProperty.call(right, key) &&
+			yamlValuesEqual(left[key], right[key])
+		);
+	}
 	return Object.is(left, right);
 }

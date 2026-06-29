@@ -9,6 +9,7 @@ import {getKnownPropertyNames} from "./GenericPrompt/valueSuggest";
 import {setPendingValueContext} from "./GenericPrompt/promptValueContext";
 import {canStructureEditProperty, filterMenuItems} from "./menuFilter";
 import {isReservedFrontmatterKey, isYamlParentContainerValue} from "../yamlPath";
+import {shouldUseTypedListEditor} from "../typedList";
 
 const DELETE_PROPERTY_ICON = "trash-2";
 const TRANSFORM_PROPERTY_ICON = "replace";
@@ -115,11 +116,11 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
 
         if (MetaEditSuggester.isYamlParentContainer(item)) return;
 
-        // Hand the prompt the property it is editing so it can offer value
-        // autocomplete and a native date picker, without routing UI concerns
-        // through the controller's write/parse core. Cleared in finally so it
-        // never outlives this edit.
-        setPendingValueContext({app: this.app, key: item.key, type: item.type});
+        // Hand legacy GenericPrompt the property it is editing so it can offer
+        // value autocomplete and a native date picker. The typed list modal owns
+        // its inputs and does not consume this singleton context.
+        if (shouldUseTypedListEditor(item)) setPendingValueContext(null);
+        else setPendingValueContext({app: this.app, key: item.key, type: item.type});
         try {
             await this.controller.editMetaElement(item, this.data, this.file);
         } finally {

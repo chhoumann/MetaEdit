@@ -13,15 +13,21 @@ import AutoPropertyValueModal from "./Modals/AutoPropertyValueModal/AutoProperty
 import type {AutoProperty} from "./Types/autoProperty";
 import {findAutoProperty, isMultiAutoProperty, toValueArray, withChoiceAdded} from "./autoProperties";
 import {applyMultiValueEdit, isMultiValueYamlProperty, shouldUseMultiValueEditor, type MultiValueEdit} from "./multiValue";
-import {getYamlPath, isReservedFrontmatterKey, isYamlParentContainerValue, parseYamlPath, setYamlPath, YamlPathError, type SetYamlPathOptions, type YamlPathSegment} from "./yamlPath";
+import {getYamlPath, isReservedFrontmatterKey, isYamlParentContainerValue, parseYamlPath, setYamlPath, yamlValuesEqual, YamlPathError, type SetYamlPathOptions, type YamlPathSegment} from "./yamlPath";
 import {computeTagRewrite, isNestedTag, isTagsKey, isValidTagToken, normalizeTagToken, splitFrontmatterTags, spliceTag, stripHash, tagLeaf, tagParent, canonicalizeFrontmatterTag, type TagEditMode} from "./tagEditing";
 import {setPendingValueContext} from "./Modals/GenericPrompt/promptValueContext";
+import {shouldUseTypedListEditor} from "./typedList";
 
 const fileWriteQueues: Map<string, Promise<unknown>> = new Map();
 const ADD_FIRST_SELECTION = "metaedit:multi-value:add-first";
 const ADD_TO_BEGINNING_SELECTION = "metaedit:multi-value:add-beginning";
 const ADD_TO_END_SELECTION = "metaedit:multi-value:add-end";
 const VALUE_SELECTION_PREFIX = "metaedit:multi-value:value:";
+
+type UiWriteOptions = {
+	expectedValue?: unknown;
+	validateExpectedValue?: boolean;
+};
 
 export default class MetaController {
     private parser: MetaEditParser;
@@ -136,10 +142,14 @@ export default class MetaController {
             return;
         }
 
-        // A real YAML list is inherently multi-value, so it always uses the
-        // element-aware list editor - editing it as a single text line (the
-        // `standardMode` path) would flatten the list and shred elements that
-        // contain commas or `[[wikilinks]]`.
+        if (shouldUseTypedListEditor(property)) {
+            await this.typedListMode(property, file);
+            return;
+        }
+
+        // Tags, aliases, and inline/string multi-value fields keep the legacy
+        // element-aware flow. Ordinary top-level YAML lists are handled by the
+        // typed list modal above.
         if (shouldUseMultiValueEditor(property, this.plugin.settings.EditMode))
             await this.multiValueMode(property, file);
         else
@@ -403,6 +413,24 @@ export default class MetaController {
         return await this.updatePropertyFromUi(property, newValue, file);
     }
 
+    private async typedListMode(property: Property, file: TFile): Promise<boolean> {
+        if (!Array.isArray(property.content)) return false;
+
+        // Unit tests import the controller in a node/Vitest environment without
+        // Svelte transforms. Load the Svelte-backed modal only on this UI path.
+        const {default: TypedListPrompt} = await import("./Modals/TypedListPrompt/TypedListPrompt");
+        const result = await TypedListPrompt.open(this.app, {
+            propertyKey: property.key,
+            value: property.content,
+        });
+        if (result.kind === "cancel") return false;
+
+        return await this.updatePropertyFromUi(property, result.value, file, {
+            expectedValue: property.content,
+            validateExpectedValue: true,
+        });
+    }
+
     private getActiveAutoProperty(propertyName: string): AutoProperty | undefined {
         if (!this.plugin.settings.AutoProperties.enabled) return undefined;
         return findAutoProperty(this.plugin.settings.AutoProperties.properties, propertyName);
@@ -474,7 +502,7 @@ export default class MetaController {
         }
     }
 
-    public async updatePropertyInFile(property: Partial<Property>, newValue: unknown, file: TFile): Promise<void> {
+    public async updatePropertyInFile(property: Partial<Property>, newValue: unknown, file: TFile, options: UiWriteOptions = {}): Promise<void> {
         if (!property.key) return;
 
         // Guard the direct frontmatter key before opening the file. Deeper path
@@ -502,6 +530,10 @@ export default class MetaController {
                         if (tags.length === 0) delete frontmatter[property.key!];
                         else frontmatter[property.key!] = tags;
                     } else {
+                        if (options.validateExpectedValue &&
+                            !yamlValuesEqual(frontmatter[property.key!], options.expectedValue)) {
+                            throw new Error(`current value changed before update.`);
+                        }
                         frontmatter[property.key!] = newValue;
                     }
                 });
@@ -642,9 +674,9 @@ export default class MetaController {
         return toValueArray(property.content);
     }
 
-    private async updatePropertyFromUi(property: Property, newValue: unknown, file: TFile): Promise<boolean> {
+    private async updatePropertyFromUi(property: Property, newValue: unknown, file: TFile, options: UiWriteOptions = {}): Promise<boolean> {
         try {
-            await this.updatePropertyInFile(property, newValue, file);
+            await this.updatePropertyInFile(property, newValue, file, options);
             return true;
         } catch (error) {
             const reason = error instanceof Error ? error.message : String(error);

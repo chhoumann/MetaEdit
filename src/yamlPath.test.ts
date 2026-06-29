@@ -5,6 +5,7 @@ import {
 	isReservedFrontmatterKey,
 	parseYamlPath,
 	setYamlPath,
+	yamlValuesEqual,
 	YamlPathError,
 } from "./yamlPath";
 
@@ -179,5 +180,20 @@ describe("setYamlPath reserved-key guard", () => {
 		setYamlPath(root, ["meta", "__proto__x"], "ok", {createLeaf: true});
 
 		expect(root).toEqual({meta: {__proto__x: "ok"}});
+	});
+});
+
+describe("yamlValuesEqual", () => {
+	it("compares arrays structurally", () => {
+		expect(yamlValuesEqual([1, true, null, "[[A, B]]"], [1, true, null, "[[A, B]]"])).toBe(true);
+		expect(yamlValuesEqual([1, true], [1, false])).toBe(false);
+	});
+
+	it("compares nested plain objects and dates structurally", () => {
+		const leftDate = new Date("2026-01-02T00:00:00.000Z");
+		const rightDate = new Date("2026-01-02T00:00:00.000Z");
+
+		expect(yamlValuesEqual([{date: leftDate, tags: ["a", "b"]}], [{date: rightDate, tags: ["a", "b"]}])).toBe(true);
+		expect(yamlValuesEqual([{date: leftDate, tags: ["a", "b"]}], [{date: rightDate, tags: ["b", "a"]}])).toBe(false);
 	});
 });
