@@ -143,6 +143,60 @@ describe("MetaEdit settings tab", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
+	test("AUTO-03: settings tab saves do not clobber choices added elsewhere while open", async () => {
+		const { obsidian } = getContext();
+		const result = await evalJsonAsync<{
+			afterExternal: string[];
+			afterTabSave: { choices: string[]; description?: string };
+			persisted: { choices: string[]; description?: string };
+		}>(
+			obsidian,
+			`
+			(async () => {
+				${HELPERS}
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const snapshot = {
+					auto: JSON.parse(JSON.stringify(plugin.settings.AutoProperties)),
+				};
+
+				plugin.settings.AutoProperties.enabled = true;
+				plugin.settings.AutoProperties.properties = [{ name: "status", choices: ["todo"], type: "Single" }];
+				await plugin.saveSettings();
+
+				const root = await openTab();
+				const item = itemByName(root, "Auto Properties");
+				item.querySelector(".extra-setting-button").click();
+				await sleep(250);
+
+				await plugin.api.setAutoProperties([{ name: "status", choices: ["todo", "external"], type: "Single" }]);
+				const afterExternal = plugin.settings.AutoProperties.properties[0].choices.slice();
+
+				const desc = item.querySelector(".metaedit-ap-description");
+				desc.value = "tab edit";
+				desc.dispatchEvent(new Event("input", { bubbles: true }));
+				desc.dispatchEvent(new Event("change", { bubbles: true }));
+				await sleep(500);
+
+				const afterTabSave = JSON.parse(JSON.stringify(plugin.settings.AutoProperties.properties[0]));
+				const persisted = (await plugin.loadData()).AutoProperties.properties[0];
+
+				app.setting.close();
+				plugin.settings.AutoProperties = snapshot.auto;
+				await plugin.saveSettings();
+
+				return { afterExternal, afterTabSave, persisted };
+			})()
+		`,
+		);
+
+		expect(result.afterExternal).toEqual(["todo", "external"]);
+		expect(result.afterTabSave.choices).toEqual(["todo", "external"]);
+		expect(result.afterTabSave.description).toBe("tab edit");
+		expect(result.persisted.choices).toEqual(["todo", "external"]);
+		expect(result.persisted.description).toBe("tab edit");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
 	test("MENU-04: UIElements toggle registers and unregisters the Edit Meta file menu", async () => {
 		const { obsidian, sandbox } = getContext();
 		const notePath = sandbox.path("menu-toggle.md");

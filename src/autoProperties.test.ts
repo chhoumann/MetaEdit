@@ -1,6 +1,8 @@
 import {describe, expect, it} from "vitest";
 import {
+    applyAutoPropertySettingsOperation,
     autoPropertyType,
+    cloneAutoProperties,
     findAutoProperty,
     isMultiAutoProperty,
     isNewChoice,
@@ -143,6 +145,99 @@ describe("withChoicesPasted", () => {
 
     it("trims tokens", () => {
         expect(withChoicesPasted([""], 0, [" a ", "b"])).toEqual(["a", "b"]);
+    });
+});
+
+describe("applyAutoPropertySettingsOperation", () => {
+    const target = {name: "status", index: 0};
+
+    it("updates a tab-edited field without dropping a choice added to live settings", () => {
+        const live: AutoProperty[] = [{name: "status", choices: ["todo", "external"], type: "Single"}];
+
+        const next = applyAutoPropertySettingsOperation(live, {
+            kind: "setDescription",
+            target,
+            value: "Shown in the picker",
+        });
+
+        expect(next).toEqual([
+            {name: "status", choices: ["todo", "external"], type: "Single", description: "Shown in the picker"},
+        ]);
+        expect(live[0].choices).toEqual(["todo", "external"]);
+    });
+
+    it("renames the live property while preserving concurrently-added choices", () => {
+        const next = applyAutoPropertySettingsOperation(
+            [{name: "status", choices: ["todo", "external"], type: "Single"}],
+            {kind: "setName", target, value: "state"},
+        );
+
+        expect(next).toEqual([{name: "state", choices: ["todo", "external"], type: "Single"}]);
+    });
+
+    it("edits only the targeted choice and preserves live choices the tab never saw", () => {
+        const next = applyAutoPropertySettingsOperation(
+            [{name: "status", choices: ["todo", "external"]}],
+            {kind: "setChoice", target, index: 0, previousValue: "todo", value: "doing"},
+        );
+
+        expect(next).toEqual([{name: "status", choices: ["doing", "external"]}]);
+    });
+
+    it("removes only the targeted choice and preserves live choices the tab never saw", () => {
+        const next = applyAutoPropertySettingsOperation(
+            [{name: "status", choices: ["todo", "external"]}],
+            {kind: "removeChoice", target, index: 0, value: "todo"},
+        );
+
+        expect(next).toEqual([{name: "status", choices: ["external"]}]);
+    });
+
+    it("inserts pasted choices without replacing a live choice when the stale row disappeared", () => {
+        const next = applyAutoPropertySettingsOperation(
+            [{name: "status", choices: ["todo", "external"]}],
+            {
+                kind: "replaceChoiceWithChoices",
+                target,
+                index: 1,
+                previousValue: "",
+                values: ["doing", "blocked"],
+            },
+        );
+
+        expect(next).toEqual([{name: "status", choices: ["todo", "doing", "blocked", "external"]}]);
+    });
+
+    it("keeps live-added properties when the tab edits another property", () => {
+        const next = applyAutoPropertySettingsOperation(
+            [
+                {name: "status", choices: ["todo"]},
+                {name: "priority", choices: ["high"]},
+            ],
+            {kind: "setType", target, value: "Multi"},
+        );
+
+        expect(next).toEqual([
+            {name: "status", choices: ["todo"], type: "Multi"},
+            {name: "priority", choices: ["high"]},
+        ]);
+    });
+
+    it("returns false when the target property no longer exists", () => {
+        expect(applyAutoPropertySettingsOperation(
+            [{name: "priority", choices: ["high"]}],
+            {kind: "setDescription", target, value: "ignored"},
+        )).toBe(false);
+    });
+
+    it("clones Auto Properties without sharing choice arrays", () => {
+        const live: AutoProperty[] = [{name: "status", choices: ["todo"]}];
+        const clone = cloneAutoProperties(live);
+
+        clone[0].choices.push("done");
+
+        expect(live[0].choices).toEqual(["todo"]);
+        expect(clone[0].choices).toEqual(["todo", "done"]);
     });
 });
 

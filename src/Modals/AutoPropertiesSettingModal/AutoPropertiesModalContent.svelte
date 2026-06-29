@@ -2,18 +2,35 @@
     import {untrack} from "svelte";
     import {setIcon} from "obsidian";
     import type {AutoProperty, AutoPropertyType} from "../../Types/autoProperty";
-    import {splitPastedChoices, withChoicesPasted} from "../../autoProperties";
+    import {
+        cloneAutoProperty,
+        cloneAutoProperties,
+        splitPastedChoices,
+        withChoicesPasted,
+        type AutoPropertyOperationTarget,
+        type AutoPropertySettingsOperation,
+    } from "../../autoProperties";
+
+    interface EditableAutoProperty {
+        id: number;
+        property: AutoProperty;
+        targetName: string;
+        choiceTargets: string[];
+    }
 
     let {
         save,
         autoProperties: initialAutoProperties = [],
     }: {
-        save: (autoProperties: AutoProperty[]) => void;
+        save: (operation: AutoPropertySettingsOperation) => void | Promise<void>;
         autoProperties?: AutoProperty[];
     } = $props();
 
     const types: AutoPropertyType[] = ["Single", "Multi"];
-    let autoProperties = $state<AutoProperty[]>(untrack(() => cloneAutoProperties(initialAutoProperties)));
+    let nextPropertyId = 0;
+    let autoProperties = $state<EditableAutoProperty[]>(
+        untrack(() => createEditableAutoProperties(initialAutoProperties)),
+    );
 
     // Svelte action: render a lucide icon into an element via Obsidian's setIcon.
     function icon(node: HTMLElement, name: string) {
@@ -25,58 +42,110 @@
         return {update: render};
     }
 
-    function cloneAutoProperties(properties: AutoProperty[]): AutoProperty[] {
-        if (!Array.isArray(properties)) return [];
-
-        return properties.map(property => ({
-            ...property,
-            choices: Array.isArray(property.choices) ? [...property.choices] : [],
-        }));
-    }
-
     function indexes<T>(values: T[]): number[] {
         return values.map((_, i) => i);
     }
 
-    function saveProperties() {
-        save($state.snapshot(autoProperties) as AutoProperty[]);
+    function createEditableAutoProperties(properties: AutoProperty[]): EditableAutoProperty[] {
+        return cloneAutoProperties(properties).map(property => createEditableAutoProperty(property));
+    }
+
+    function createEditableAutoProperty(property: AutoProperty): EditableAutoProperty {
+        return {
+            id: nextPropertyId++,
+            property,
+            targetName: property.name,
+            choiceTargets: [...property.choices],
+        };
+    }
+
+    function targetFor(entry: EditableAutoProperty, index: number): AutoPropertyOperationTarget {
+        return {name: entry.targetName, index};
+    }
+
+    function persist(operation: AutoPropertySettingsOperation) {
+        void Promise.resolve(save(operation)).catch(error => {
+            console.error("MetaEdit could not save Auto Properties settings.", error);
+        });
     }
 
     function addNewProperty() {
-        autoProperties = [...autoProperties, {name: "", choices: [""], type: "Single"}];
-        saveProperties();
+        const property: AutoProperty = {name: "", choices: [""], type: "Single"};
+        const entry = createEditableAutoProperty(cloneAutoProperty(property));
+        const index = autoProperties.length;
+        autoProperties = [...autoProperties, entry];
+        persist({kind: "addProperty", index, property});
     }
 
-    function removeProperty(property: AutoProperty) {
-        autoProperties = autoProperties.filter(ac => ac !== property);
-        saveProperties();
+    function removeProperty(entry: EditableAutoProperty, index: number) {
+        const target = targetFor(entry, index);
+        autoProperties = autoProperties.filter(candidate => candidate !== entry);
+        persist({kind: "removeProperty", target});
     }
 
-    function removeChoice(property: AutoProperty, i: number) {
-        property.choices = property.choices.filter((_, index) => index !== i);
-        saveProperties();
+    function removeChoice(entry: EditableAutoProperty, propertyIndex: number, choiceIndex: number) {
+        const value = entry.choiceTargets[choiceIndex] ?? entry.property.choices[choiceIndex] ?? "";
+        entry.property.choices = entry.property.choices.filter((_, index) => index !== choiceIndex);
+        entry.choiceTargets = entry.choiceTargets.filter((_, index) => index !== choiceIndex);
+        persist({kind: "removeChoice", target: targetFor(entry, propertyIndex), index: choiceIndex, value});
     }
 
-    function addChoice(property: AutoProperty) {
-        property.choices = [...property.choices, ""];
-        saveProperties();
+    function addChoice(entry: EditableAutoProperty, propertyIndex: number) {
+        const index = entry.property.choices.length;
+        entry.property.choices = [...entry.property.choices, ""];
+        entry.choiceTargets = [...entry.choiceTargets, ""];
+        persist({kind: "addChoice", target: targetFor(entry, propertyIndex), index, value: ""});
     }
 
     // Paste a whole list (newline- or comma-separated) into a single value box and
     // have it become individual choices (issue #47). A paste that yields a single
     // token falls through to the browser's default, so pasting one value still works.
-    function pasteChoices(property: AutoProperty, index: number, event: ClipboardEvent) {
+    function pasteChoices(entry: EditableAutoProperty, propertyIndex: number, index: number, event: ClipboardEvent) {
         const tokens = splitPastedChoices(event.clipboardData?.getData("text") ?? "");
         if (tokens.length < 2) return;
 
         event.preventDefault();
-        property.choices = withChoicesPasted(property.choices, index, tokens);
-        saveProperties();
+        const previousValue = entry.choiceTargets[index] ?? entry.property.choices[index] ?? "";
+        entry.property.choices = withChoicesPasted(entry.property.choices, index, tokens);
+        entry.choiceTargets = withChoicesPasted(entry.choiceTargets, index, tokens);
+        persist({
+            kind: "replaceChoiceWithChoices",
+            target: targetFor(entry, propertyIndex),
+            index,
+            previousValue,
+            values: tokens,
+        });
     }
 
-    function setType(property: AutoProperty, value: string) {
-        property.type = value as AutoPropertyType;
-        saveProperties();
+    function setName(entry: EditableAutoProperty, index: number, value: string) {
+        const target = targetFor(entry, index);
+        entry.property.name = value;
+        entry.targetName = value;
+        persist({kind: "setName", target, value});
+    }
+
+    function setDescription(entry: EditableAutoProperty, index: number, value: string) {
+        entry.property.description = value;
+        persist({kind: "setDescription", target: targetFor(entry, index), value});
+    }
+
+    function setType(entry: EditableAutoProperty, index: number, value: string) {
+        const type = value as AutoPropertyType;
+        entry.property.type = type;
+        persist({kind: "setType", target: targetFor(entry, index), value: type});
+    }
+
+    function setChoice(entry: EditableAutoProperty, propertyIndex: number, choiceIndex: number, value: string) {
+        const previousValue = entry.choiceTargets[choiceIndex] ?? entry.property.choices[choiceIndex] ?? "";
+        entry.property.choices[choiceIndex] = value;
+        entry.choiceTargets[choiceIndex] = value;
+        persist({
+            kind: "setChoice",
+            target: targetFor(entry, propertyIndex),
+            index: choiceIndex,
+            previousValue,
+            value,
+        });
     }
 </script>
 
@@ -87,19 +156,21 @@
         </p>
     {/if}
 
-    {#each autoProperties as property (property)}
+    {#each autoProperties as entry, propertyIndex (entry.id)}
+        {@const property = entry.property}
         <div class="metaedit-ap-card">
             <div class="metaedit-ap-header">
                 <input
                     class="metaedit-ap-name"
                     type="text"
                     placeholder="Property name"
-                    bind:value={property.name}
-                    onchange={saveProperties}
+                    value={property.name}
+                    oninput={(e) => property.name = e.currentTarget.value}
+                    onchange={(e) => setName(entry, propertyIndex, e.currentTarget.value)}
                 />
                 <select
                     class="dropdown metaedit-ap-type"
-                    onchange={(e) => setType(property, e.currentTarget.value)}
+                    onchange={(e) => setType(entry, propertyIndex, e.currentTarget.value)}
                     aria-label="How many values this property holds"
                 >
                     {#each types as t (t)}
@@ -109,7 +180,7 @@
                 <button
                     class="clickable-icon metaedit-ap-icon"
                     aria-label="Remove this auto property"
-                    onclick={() => removeProperty(property)}
+                    onclick={() => removeProperty(entry, propertyIndex)}
                 >
                     <span use:icon={"trash-2"}></span>
                 </button>
@@ -119,8 +190,9 @@
                 class="metaedit-ap-description"
                 type="text"
                 placeholder="Description (shown when you pick a value) - optional"
-                bind:value={property.description}
-                onchange={saveProperties}
+                value={property.description ?? ""}
+                oninput={(e) => property.description = e.currentTarget.value}
+                onchange={(e) => setDescription(entry, propertyIndex, e.currentTarget.value)}
             />
 
             <div class="metaedit-ap-values">
@@ -130,20 +202,21 @@
                         <input
                             type="text"
                             placeholder="Value (or paste a list)"
-                            bind:value={property.choices[i]}
-                            onchange={saveProperties}
-                            onpaste={(e) => pasteChoices(property, i, e)}
+                            value={property.choices[i]}
+                            oninput={(e) => property.choices[i] = e.currentTarget.value}
+                            onchange={(e) => setChoice(entry, propertyIndex, i, e.currentTarget.value)}
+                            onpaste={(e) => pasteChoices(entry, propertyIndex, i, e)}
                         />
                         <button
                             class="clickable-icon metaedit-ap-icon"
                             aria-label="Remove value"
-                            onclick={() => removeChoice(property, i)}
+                            onclick={() => removeChoice(entry, propertyIndex, i)}
                         >
                             <span use:icon={"x"}></span>
                         </button>
                     </div>
                 {/each}
-                <button class="metaedit-ap-add-value" onclick={() => addChoice(property)}>
+                <button class="metaedit-ap-add-value" onclick={() => addChoice(entry, propertyIndex)}>
                     <span use:icon={"plus"}></span>
                     Add value
                 </button>
