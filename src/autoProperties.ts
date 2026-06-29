@@ -12,6 +12,22 @@ export interface EditModeSettings {
     properties: string[];
 }
 
+export interface AutoPropertyOperationTarget {
+    name: string;
+    index: number;
+}
+
+export type AutoPropertySettingsOperation =
+    | {kind: "addProperty"; index: number; property: AutoProperty}
+    | {kind: "removeProperty"; target: AutoPropertyOperationTarget}
+    | {kind: "setName"; target: AutoPropertyOperationTarget; value: string}
+    | {kind: "setDescription"; target: AutoPropertyOperationTarget; value: string}
+    | {kind: "setType"; target: AutoPropertyOperationTarget; value: AutoPropertyType}
+    | {kind: "addChoice"; target: AutoPropertyOperationTarget; index: number; value: string}
+    | {kind: "removeChoice"; target: AutoPropertyOperationTarget; index: number; value: string}
+    | {kind: "setChoice"; target: AutoPropertyOperationTarget; index: number; previousValue: string; value: string}
+    | {kind: "replaceChoiceWithChoices"; target: AutoPropertyOperationTarget; index: number; previousValue: string; values: string[]};
+
 /** Find the auto property whose name matches `propertyName` (first match wins). */
 export function findAutoProperty(
     properties: AutoProperty[] | undefined,
@@ -106,6 +122,135 @@ export function withChoicesPasted(choices: string[], index: number, tokens: stri
         inserted.push(choice);
     }
     return [...before, ...inserted, ...after];
+}
+
+export function cloneAutoProperty(property: AutoProperty): AutoProperty {
+    const clone: AutoProperty = {
+        name: property.name,
+        choices: Array.isArray(property.choices) ? [...property.choices] : [],
+    };
+
+    if (property.description !== undefined) clone.description = property.description;
+    if (property.type !== undefined) clone.type = property.type;
+    return clone;
+}
+
+export function cloneAutoProperties(properties: AutoProperty[] | undefined): AutoProperty[] {
+    if (!Array.isArray(properties)) return [];
+    return properties.map(cloneAutoProperty);
+}
+
+export function applyAutoPropertySettingsOperation(
+    properties: AutoProperty[],
+    operation: AutoPropertySettingsOperation,
+): AutoProperty[] | false {
+    const next = cloneAutoProperties(properties);
+
+    switch (operation.kind) {
+        case "addProperty": {
+            const index = boundedInsertIndex(operation.index, next.length);
+            next.splice(index, 0, cloneAutoProperty(operation.property));
+            return next;
+        }
+        case "removeProperty": {
+            const index = findAutoPropertyOperationTargetIndex(next, operation.target);
+            if (index === -1) return false;
+            next.splice(index, 1);
+            return next;
+        }
+        case "setName":
+        case "setDescription":
+        case "setType": {
+            const index = findAutoPropertyOperationTargetIndex(next, operation.target);
+            if (index === -1) return false;
+            const current = next[index];
+            if (operation.kind === "setName") {
+                if (current.name === operation.value) return false;
+                current.name = operation.value;
+            } else if (operation.kind === "setDescription") {
+                if ((current.description ?? "") === operation.value) return false;
+                current.description = operation.value;
+            } else {
+                if ((current.type ?? "Single") === operation.value) return false;
+                current.type = operation.value;
+            }
+            return next;
+        }
+        case "addChoice": {
+            const property = findAutoPropertyOperationTarget(next, operation.target);
+            if (!property) return false;
+            property.choices.splice(boundedInsertIndex(operation.index, property.choices.length), 0, operation.value);
+            return next;
+        }
+        case "removeChoice": {
+            const property = findAutoPropertyOperationTarget(next, operation.target);
+            if (!property) return false;
+            const choiceIndex = findExistingChoiceIndex(property.choices, operation.index, operation.value);
+            if (choiceIndex === -1) return false;
+            property.choices.splice(choiceIndex, 1);
+            return next;
+        }
+        case "setChoice": {
+            const property = findAutoPropertyOperationTarget(next, operation.target);
+            if (!property) return false;
+            if (operation.previousValue === operation.value) return false;
+            const choiceIndex = findWritableChoiceIndex(property.choices, operation.index, operation.previousValue);
+            property.choices.splice(choiceIndex, choiceIndex < property.choices.length ? 1 : 0, operation.value);
+            return next;
+        }
+        case "replaceChoiceWithChoices": {
+            const property = findAutoPropertyOperationTarget(next, operation.target);
+            if (!property) return false;
+            const choiceIndex = findWritableChoiceIndex(property.choices, operation.index, operation.previousValue);
+            if (choiceIndex >= property.choices.length) {
+                property.choices.push(...operation.values);
+            } else {
+                property.choices = withChoicesPasted(property.choices, choiceIndex, operation.values);
+            }
+            return next;
+        }
+    }
+}
+
+function boundedInsertIndex(index: number, length: number): number {
+    if (!Number.isFinite(index)) return length;
+    return Math.max(0, Math.min(index, length));
+}
+
+function findAutoPropertyOperationTarget(properties: AutoProperty[], target: AutoPropertyOperationTarget): AutoProperty | undefined {
+    const index = findAutoPropertyOperationTargetIndex(properties, target);
+    return index === -1 ? undefined : properties[index];
+}
+
+function findAutoPropertyOperationTargetIndex(properties: AutoProperty[], target: AutoPropertyOperationTarget): number {
+    if (isValidIndex(target.index, properties.length) && properties[target.index].name === target.name) {
+        return target.index;
+    }
+
+    if (target.name !== "") {
+        const namedIndex = properties.findIndex(property => property.name === target.name);
+        if (namedIndex !== -1) return namedIndex;
+    }
+
+    if (target.name === "" && isValidIndex(target.index, properties.length)) return target.index;
+
+    return -1;
+}
+
+function findExistingChoiceIndex(choices: string[], index: number, value: string): number {
+    if (isValidIndex(index, choices.length) && choices[index] === value) return index;
+
+    return choices.findIndex(choice => choice === value);
+}
+
+function findWritableChoiceIndex(choices: string[], index: number, value: string): number {
+    const existingIndex = findExistingChoiceIndex(choices, index, value);
+    if (existingIndex !== -1) return existingIndex;
+    return boundedInsertIndex(index, choices.length);
+}
+
+function isValidIndex(index: number, length: number): boolean {
+    return Number.isInteger(index) && index >= 0 && index < length;
 }
 
 // Historical string values are loose comma lists, not parsed YAML/JSON. Keep the

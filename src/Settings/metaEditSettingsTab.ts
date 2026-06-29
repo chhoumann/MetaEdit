@@ -1,4 +1,4 @@
-import {type App, PluginSettingTab, Setting} from "obsidian";
+import {type App, Notice, PluginSettingTab, Setting} from "obsidian";
 import type MetaEdit from "../main";
 import {EditMode} from "../Types/editMode";
 import ProgressPropertiesModalContent
@@ -7,9 +7,9 @@ import AutoPropertiesModalContent from "../Modals/AutoPropertiesSettingModal/Aut
 import KanbanHelperSettingContent from "../Modals/KanbanHelperSetting/KanbanHelperSettingContent.svelte";
 import SingleValueTableEditorContent from "../Modals/shared/SingleValueTableEditorContent.svelte";
 import type {ProgressProperty} from "../Types/progressProperty";
-import type {AutoProperty} from "../Types/autoProperty";
 import type {KanbanProperty} from "../Types/kanbanProperty";
 import {type MountedSvelteComponent, mountSvelteComponent, unmountSvelteComponent} from "../svelteMount";
+import {applyAutoPropertySettingsOperation, type AutoPropertySettingsOperation} from "../autoProperties";
 
 function toggleHiddenEl(el: HTMLElement | undefined, hidden: boolean) {
     if (!el) return hidden;
@@ -110,14 +110,34 @@ export class MetaEditSettingsTab extends PluginSettingTab {
             div,
             {
                 autoProperties: this.plugin.settings.AutoProperties.properties,
-                save: async (autoProperties: AutoProperty[]) => {
-                    this.plugin.settings.AutoProperties.properties = autoProperties;
-                    await this.plugin.saveSettings();
-                }
+                save: (operation: AutoPropertySettingsOperation) => this.saveAutoPropertiesOperation(operation),
             },
         );
 
         this.svelteElements.push(modal);
+    }
+
+    private async saveAutoPropertiesOperation(operation: AutoPropertySettingsOperation) {
+        try {
+            await this.plugin.updateSettings(() => {
+                const previousAutoProperties = this.plugin.settings.AutoProperties.properties;
+                const nextAutoProperties = applyAutoPropertySettingsOperation(previousAutoProperties, operation);
+                if (nextAutoProperties === false) return false;
+
+                this.plugin.settings.AutoProperties.properties = nextAutoProperties;
+
+                // Compare-and-restore: only undo this settings-tab operation if the
+                // failed flush still points at the array this operation assigned.
+                return () => {
+                    if (this.plugin.settings.AutoProperties.properties === nextAutoProperties) {
+                        this.plugin.settings.AutoProperties.properties = previousAutoProperties;
+                    }
+                };
+            });
+        } catch (error) {
+            const reason = error instanceof Error ? error.message : String(error);
+            new Notice(`MetaEdit could not save the Auto Properties setting: ${reason}`);
+        }
     }
 
     private addEditMetaMenuSetting(containerEl: HTMLElement) {
