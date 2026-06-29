@@ -181,8 +181,15 @@ export class KanbanHelper extends OnFileModifyAutomator {
         return null;
     }
 
+    // Direct path resolution is only safe for links that already name a folder path:
+    // an explicit path identifies at most one file. A bare (folder-less) link must NOT
+    // be resolved here, because getAbstractFileByPath would guess the vault-root note of
+    // that name - silently picking the root note even when Obsidian would link a
+    // folder-local same-named note, and bypassing the strict ambiguity guard in
+    // resolveByBasenameCandidates. Bare links fall through to that guard instead.
     private resolveByPathCandidates(candidates: string[]): TFile | null {
         for (const candidate of candidates) {
+            if (!candidate.includes("/")) continue;
             const file = this.app.vault.getAbstractFileByPath(this.ensureMarkdownExtension(candidate));
             const markdownFile = abstractFileToMarkdownTFile(file);
             if (markdownFile) return markdownFile;
@@ -190,14 +197,23 @@ export class KanbanHelper extends OnFileModifyAutomator {
         return null;
     }
 
+    // Sole resolver for bare (folder-less) links the metadata cache misses (e.g. an
+    // as-yet-unresolved link or a cold cache). A basename is only a safe target when
+    // exactly one note carries it: if several notes share it we cannot know which the
+    // card meant, so we bail rather than write the lane to an arbitrarily-chosen
+    // same-named note (silent data corruption). The caller logs the skip once. When the
+    // cache is warm Obsidian's own shortest-path resolution in resolveByMetadataCache
+    // already picked the note the board displays, so this path is reached only on a miss.
     private resolveByBasenameCandidates(candidates: string[]): TFile | null {
         const markdownFiles: TFile[] = this.app.vault.getMarkdownFiles();
         for (const candidate of candidates) {
             if (candidate.includes("/")) continue;
             const basename = this.stripMarkdownExtension(candidate.split("/").pop() ?? "");
             if (!basename) continue;
-            const found = markdownFiles.find(f => f.basename === basename);
-            if (found) return found;
+            const matches = markdownFiles.filter(f => f.basename === basename);
+            if (matches.length === 1) return matches[0];
+            // Ambiguous (>1): bail. Zero matches: keep checking remaining candidates.
+            if (matches.length > 1) return null;
         }
         return null;
     }
