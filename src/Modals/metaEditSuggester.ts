@@ -8,7 +8,7 @@ import type {AutoProperty} from "../Types/autoProperty";
 import {getKnownPropertyNames} from "./GenericPrompt/valueSuggest";
 import {setPendingValueContext} from "./GenericPrompt/promptValueContext";
 import {canStructureEditProperty, filterMenuItems} from "./menuFilter";
-import {isYamlParentContainerValue} from "../yamlPath";
+import {isReservedFrontmatterKey, isYamlParentContainerValue} from "../yamlPath";
 
 export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     public app: App;
@@ -87,7 +87,17 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
             if (!newProperty) return null;
 
             const {propName, propValue} = newProperty;
-            await this.controller.addYamlProp(propName, propValue, this.file);
+            // The add fails closed on a reserved object-machinery key
+            // (__proto__/constructor/prototype). Surface it as a Notice here so
+            // a typed reserved name does not become an uncaught rejection. The
+            // inline (Dataview) path below is line-based, not a frontmatter key,
+            // so it is intentionally NOT guarded.
+            try {
+                await this.controller.addYamlProp(propName, propValue, this.file);
+            } catch (error) {
+                const reason = error instanceof Error ? error.message : String(error);
+                new Notice(`MetaEdit could not add '${propName}': ${reason}`);
+            }
             return;
         }
 
@@ -132,6 +142,17 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
             evt.stopPropagation();
             const {item: property} = item;
             if (!MetaEditSuggester.canStructureEdit(property)) return;
+
+            // Transforming a non-YAML field INTO YAML would create a frontmatter
+            // key. Refuse a reserved key BEFORE toYaml deletes the source field,
+            // so the transform never deletes data it then cannot re-add. The
+            // reverse (YAML -> inline) is allowed: it removes the frontmatter key
+            // and is line-based, so it cannot alias object machinery.
+            if (property.type !== MetaType.YAML && isReservedFrontmatterKey(property.key)) {
+                new Notice(`MetaEdit: "${property.key}" is a reserved property name and can't be a YAML property.`);
+                this.close();
+                return;
+            }
 
             try {
                 if (property.type === MetaType.YAML) {

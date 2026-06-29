@@ -13,7 +13,7 @@ import AutoPropertyValueModal from "./Modals/AutoPropertyValueModal/AutoProperty
 import type {AutoProperty} from "./Types/autoProperty";
 import {findAutoProperty, isMultiAutoProperty, toValueArray, withChoiceAdded} from "./autoProperties";
 import {applyMultiValueEdit, isMultiValueYamlProperty, shouldUseMultiValueEditor, type MultiValueEdit} from "./multiValue";
-import {getYamlPath, isYamlParentContainerValue, parseYamlPath, setYamlPath, YamlPathError, type SetYamlPathOptions, type YamlPathSegment} from "./yamlPath";
+import {getYamlPath, isReservedFrontmatterKey, isYamlParentContainerValue, parseYamlPath, setYamlPath, YamlPathError, type SetYamlPathOptions, type YamlPathSegment} from "./yamlPath";
 import {computeTagRewrite, isNestedTag, isTagsKey, isValidTagToken, normalizeTagToken, splitFrontmatterTags, spliceTag, stripHash, tagLeaf, tagParent, canonicalizeFrontmatterTag, type TagEditMode} from "./tagEditing";
 import {setPendingValueContext} from "./Modals/GenericPrompt/promptValueContext";
 
@@ -46,6 +46,12 @@ export default class MetaController {
     }
 
     public async addYamlProp(propName: string, propValue: unknown, file: TFile): Promise<void> {
+        // Refuse reserved object-machinery keys before any work: assigning
+        // `frontmatter["__proto__"] = value` below is silently dropped (or
+        // pollutes the prototype) while reporting success. Fail closed up front,
+        // identically to the bulk path's write boundary.
+        this.assertWritableKey(propName);
+
         const settings = this.plugin.settings;
 
         // A new `tags`/`tag` property is stored as a canonical, `#`-free list.
@@ -471,6 +477,13 @@ export default class MetaController {
     public async updatePropertyInFile(property: Partial<Property>, newValue: unknown, file: TFile): Promise<void> {
         if (!property.key) return;
 
+        // Guard the direct frontmatter key before opening the file. Deeper path
+        // segments (a nested `parent.__proto__` write) are refused by
+        // `setYamlPath` itself; this catches the top-level `frontmatter[key] = `
+        // sink. A reserved `tags`/`tag` key is impossible, so this is harmless
+        // for the tags branch.
+        if (property.type === MetaType.YAML) this.assertWritableKey(property.key);
+
         await this.enqueueFileWrite(file, async () => {
             if (property.type === MetaType.YAML) {
                 await this.processFrontMatter(file, (frontmatter) => {
@@ -546,6 +559,20 @@ export default class MetaController {
         return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
     }
 
+    /**
+     * Throw if `key` is a reserved object-machinery name that can never be written
+     * as a frontmatter property (see {@link isReservedFrontmatterKey}). Centralizes
+     * the refusal so every dynamic `frontmatter[key] = value` sink in the controller
+     * - `addYamlProp`, `updatePropertyInFile`, `updateMultipleInFile` - fails closed
+     * identically to the bulk editor's write boundary, instead of silently dropping
+     * the change (or polluting the prototype) while reporting success.
+     */
+    private assertWritableKey(key: string): void {
+        if (isReservedFrontmatterKey(key)) {
+            throw new Error(`"${key}" is a reserved property name and cannot be written to frontmatter.`);
+        }
+    }
+
     private lineMatch(property: Partial<Property>, line: string): boolean {
         if (!property.key) return false;
 
@@ -585,6 +612,24 @@ export default class MetaController {
     }
 
     private async updateMultipleInFile(properties: Property[], file: TFile): Promise<void> {
+        // Refuse a batch with ANY reserved YAML key BEFORE the write starts. This
+        // method splices body tags before writing frontmatter, so validating up
+        // front keeps the batch atomic: a reserved key never lets the tag/text
+        // edits land while the frontmatter write is the part that fails. A nested
+        // property carries its key in `path`, so every string segment is checked -
+        // not just `prop.key` - otherwise `setYamlPath` would only throw later,
+        // inside `processFrontMatter`, after the tag splice already wrote.
+        for (const prop of properties) {
+            if (prop.type !== MetaType.YAML) continue;
+            if (prop.path && prop.path.length > 0) {
+                for (const segment of prop.path) {
+                    if (typeof segment === "string") this.assertWritableKey(segment);
+                }
+            } else {
+                this.assertWritableKey(prop.key);
+            }
+        }
+
         await this.enqueueFileWrite(file, async () => {
             const yamlProperties = properties.filter(prop => prop.type === MetaType.YAML && !prop.path);
             const yamlPathProperties = properties.filter(prop => prop.type === MetaType.YAML && prop.path);
@@ -715,6 +760,11 @@ export default class MetaController {
      * another write to the same file (e.g. call back into a queued controller
      * method), because that inner write would chain behind this one's still-pending
      * promise and deadlock.
+     *
+     * Because the callback assigns frontmatter keys directly, it does NOT pass
+     * through `assertWritableKey`: the caller owns key validation. The only caller,
+     * the bulk editor, already refuses reserved keys at its own boundaries
+     * (`isReservedFrontmatterKey`); any new caller must do the same.
      */
     public async enqueueFrontmatterWrite(file: TFile, update: (frontmatter: Record<string, unknown>) => void): Promise<void> {
         await this.enqueueFileWrite(file, () => this.processFrontMatter(file, update));

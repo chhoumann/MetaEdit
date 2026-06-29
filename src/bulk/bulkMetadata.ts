@@ -12,29 +12,12 @@
 /** How to treat notes that already define the target property. */
 export type ConflictPolicy = "skip" | "overwrite" | "merge";
 
-/**
- * Property names that alias JavaScript object machinery when assigned through a
- * dynamic `frontmatter[key] = value`, so they can never be written as ordinary
- * frontmatter keys:
- *
- *  - `__proto__` is an accessor inherited from `Object.prototype`. Assigning a
- *    string (`frontmatter["__proto__"] = "x"`) is silently dropped - no own key
- *    is created - while assigning an array/object (the `wrapInArray`/`merge`
- *    cases that produce `[rawValue]`) mutates the object's prototype instead.
- *    Either way the note is left unchanged, yet `hasOwnProperty` reports the key
- *    absent up front, so the bulk summary would claim it was "added": the report
- *    disagrees with what was written. This is the concrete bug being fixed.
- *  - `constructor`/`prototype` do create a real own enumerable property today,
- *    but it shadows the inherited slot. They are refused alongside `__proto__`
- *    so a bulk write never produces object-machinery-aliasing keys - the
- *    standard reserved-key set, applied uniformly.
- *
- * Matching is exact: a padded literal such as `" __proto__ "` is an ordinary key
- * (it aliases nothing) and is intentionally left alone.
- */
-export function isReservedFrontmatterKey(key: string): boolean {
-	return key === "__proto__" || key === "constructor" || key === "prototype";
-}
+// Re-exported from the lowest-level dynamic-key sink (`yamlPath.setYamlPath`),
+// which now owns the reserved-key predicate so the controller, the path writer,
+// and the bulk editor all refuse the same object-machinery keys
+// (`__proto__`/`constructor`/`prototype`). Kept here so existing bulk imports
+// stay stable.
+export { isReservedFrontmatterKey } from "../yamlPath";
 
 /** What happened to a single note during a bulk apply. */
 export type BulkOutcome =

@@ -12,6 +12,9 @@ import MetaController from "./metaController";
 import AutoPropertyValueModal from "./Modals/AutoPropertyValueModal/AutoPropertyValueModal";
 import {SettingsWriter} from "./settingsWrites";
 import type {AutoProperty} from "./Types/autoProperty";
+import {EditMode} from "./Types/editMode";
+import {MetaType} from "./Types/metaType";
+import type {Property} from "./parser";
 
 const setup = (initial: string) => {
     const store = {content: initial};
@@ -210,5 +213,138 @@ describe("MetaController.persistAutoPropertyChoices", () => {
 
         expect(ctx.liveChoices()).toEqual(["todo"]);
         expect(ctx.diskChoices()).toEqual(["todo"]);
+    });
+});
+
+// Reserved object-machinery keys (__proto__/constructor/prototype) must be
+// refused at EVERY controller frontmatter sink, mirroring the bulk path
+// (deepsec slug other-prototype-pollution). A reserved key is dropped silently
+// (or pollutes the prototype) by a dynamic `frontmatter[key] = value`, so the
+// guard must fail closed - throw, never report a phantom success.
+describe("MetaController reserved-key guard", () => {
+    const RESERVED = ["__proto__", "constructor", "prototype"] as const;
+
+    const setupFrontmatter = (initial: Record<string, unknown> = {}) => {
+        const fm: Record<string, unknown> = {...initial};
+        // Mirror Obsidian: the callback mutates the frontmatter object in place;
+        // if it throws, the error propagates and the note is left unchanged.
+        const processFrontMatter = vi.fn(async (_file: unknown, fn: (f: Record<string, unknown>) => void) => {
+            fn(fm);
+        });
+        const vaultModify = vi.fn(async () => {});
+        const app = {
+            plugins: {plugins: {}},
+            vault: {read: vi.fn(async () => ""), modify: vaultModify},
+            fileManager: {processFrontMatter},
+        };
+        const plugin = {
+            settings: {
+                EditMode: {mode: EditMode.AllSingle, properties: [] as string[]},
+                AutoProperties: {enabled: false, properties: []},
+            },
+        };
+        const controller = new MetaController(app as never, plugin as never);
+        return {controller, file: new TFile("note.md"), fm, processFrontMatter, vaultModify};
+    };
+
+    const callUpdateMultiple = (controller: MetaController, props: Property[], file: TFile) =>
+        (controller as unknown as {updateMultipleInFile(p: Property[], f: TFile): Promise<void>})
+            .updateMultipleInFile(props, file);
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it("addYamlProp refuses reserved keys before opening the file, and writes ordinary keys", async () => {
+        const ctx = setupFrontmatter();
+
+        for (const key of RESERVED) {
+            await expect(ctx.controller.addYamlProp(key, "x", ctx.file)).rejects.toThrow(/reserved property name/);
+        }
+        expect(ctx.processFrontMatter).not.toHaveBeenCalled();
+        expect(ctx.fm).toEqual({});
+
+        await ctx.controller.addYamlProp("status", "draft", ctx.file);
+        expect(ctx.fm).toEqual({status: "draft"});
+    });
+
+    it("updatePropertyInFile refuses a reserved YAML key before opening the file, and updates ordinary keys", async () => {
+        const ctx = setupFrontmatter({status: "draft"});
+
+        for (const key of RESERVED) {
+            await expect(
+                ctx.controller.updatePropertyInFile({key, type: MetaType.YAML}, "x", ctx.file),
+            ).rejects.toThrow(/reserved property name/);
+        }
+        expect(ctx.processFrontMatter).not.toHaveBeenCalled();
+        expect(ctx.fm).toEqual({status: "draft"});
+
+        await ctx.controller.updatePropertyInFile({key: "status", type: MetaType.YAML}, "done", ctx.file);
+        expect(ctx.fm).toEqual({status: "done"});
+    });
+
+    it("updateMultipleInFile refuses a batch with any reserved YAML key, atomically", async () => {
+        const ctx = setupFrontmatter({status: "draft"});
+        const batch: Property[] = [
+            {key: "status", type: MetaType.YAML, content: "done"},
+            {key: "__proto__", type: MetaType.YAML, content: "x"},
+        ];
+
+        await expect(callUpdateMultiple(ctx.controller, batch, ctx.file)).rejects.toThrow(/reserved property name/);
+        expect(ctx.processFrontMatter).not.toHaveBeenCalled();
+        expect(ctx.fm).toEqual({status: "draft"});
+    });
+
+    it("updateMultipleInFile leaves body (tag) edits unwritten when a reserved YAML key is in the batch", async () => {
+        const ctx = setupFrontmatter({status: "draft"});
+        // A tag splice runs BEFORE the frontmatter write today, so the up-front
+        // guard must abort the whole batch before any body edit lands.
+        const batch: Property[] = [
+            {key: "#todo", type: MetaType.Tag, content: "#done", position: {start: 0, end: 5, line: 0} as never},
+            {key: "constructor", type: MetaType.YAML, content: "x"},
+        ];
+
+        await expect(callUpdateMultiple(ctx.controller, batch, ctx.file)).rejects.toThrow(/reserved property name/);
+        expect(ctx.vaultModify).not.toHaveBeenCalled();
+        expect(ctx.processFrontMatter).not.toHaveBeenCalled();
+        expect(ctx.fm).toEqual({status: "draft"});
+    });
+
+    it("updateMultipleInFile refuses a reserved NESTED path segment before the tag splice (atomic)", async () => {
+        const ctx = setupFrontmatter({safe: {ok: 1}});
+        // A nested property carries its key in `path`; `prop.key` is the dotted
+        // label, which is NOT a reserved literal. The guard must inspect the path
+        // segments, or the tag splice lands before setYamlPath throws later.
+        const batch: Property[] = [
+            {key: "#todo", type: MetaType.Tag, content: "#done", position: {start: 0, end: 5, line: 0} as never},
+            {key: "safe.__proto__", type: MetaType.YAML, content: "x", path: ["safe", "__proto__"]},
+        ];
+
+        await expect(callUpdateMultiple(ctx.controller, batch, ctx.file)).rejects.toThrow(/reserved property name/);
+        expect(ctx.vaultModify).not.toHaveBeenCalled();
+        expect(ctx.processFrontMatter).not.toHaveBeenCalled();
+        expect(ctx.fm).toEqual({safe: {ok: 1}});
+    });
+
+    it("updateMultipleInFile writes ordinary YAML keys", async () => {
+        const ctx = setupFrontmatter({status: "draft"});
+
+        await callUpdateMultiple(ctx.controller, [{key: "status", type: MetaType.YAML, content: "done"}], ctx.file);
+
+        expect(ctx.fm).toEqual({status: "done"});
+    });
+
+    it("updateYamlPath/addOrUpdateYamlPath refuse a reserved path segment (the throw inside processFrontMatter leaves the note unchanged)", async () => {
+        const ctx = setupFrontmatter({safe: {ok: 1}});
+
+        await expect(ctx.controller.updateYamlPath(["safe", "__proto__"], "x", ctx.file))
+            .rejects.toThrow(/reserved property name/);
+        await expect(ctx.controller.addOrUpdateYamlPath(["__proto__", "x"], "y", ctx.file))
+            .rejects.toThrow(/reserved property name/);
+
+        expect(ctx.fm).toEqual({safe: {ok: 1}});
+
+        await ctx.controller.updateYamlPath(["safe", "ok"], 2, ctx.file);
+        expect(ctx.fm).toEqual({safe: {ok: 2}});
     });
 });
