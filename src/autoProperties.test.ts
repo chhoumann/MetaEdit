@@ -160,6 +160,11 @@ describe("toValueArray", () => {
         expect(toValueArray("[a, b]")).toEqual(["a", "b"]);
     });
 
+    it("keeps empty bracketed lists empty", () => {
+        expect(toValueArray("[]")).toEqual([]);
+        expect(toValueArray("[ ]")).toEqual([]);
+    });
+
     it("preserves a single inline wikilink", () => {
         expect(toValueArray("[[Note]]")).toEqual(["[[Note]]"]);
     });

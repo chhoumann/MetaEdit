@@ -158,7 +158,10 @@ function shouldUnwrapBracketedList(value: string): boolean {
     if (value.startsWith("[[")) return false;
     if (matchingOuterBracketIndex(value) !== value.length - 1) return false;
 
-    return splitCommaSeparatedValues(value.slice(1, -1)).length > 1;
+    const innerValue = value.slice(1, -1);
+    if (innerValue.trim() === "") return true;
+
+    return splitCommaSeparatedValues(innerValue).length > 1;
 }
 
 /** Coerce a stored property value (string, CSV, YAML array, or list) into values. */
