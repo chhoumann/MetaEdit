@@ -194,6 +194,24 @@ describe("KanbanHelper link resolution", () => {
     expect(resolved).toBe(targetFile);
   });
 
+  it("does not fallback to basename when several notes share that name (ambiguous)", () => {
+    const app = createApp();
+    const plugin = createPlugin(app);
+    const helper = new KanbanHelper(plugin as any);
+
+    const noteA = new TFile("Areas/Note.md");
+    const noteB = new TFile("Archive/Note.md");
+    app.metadataCache.getFirstLinkpathDest.mockReturnValue(null);
+    app.vault.getAbstractFileByPath.mockReturnValue(null);
+    app.vault.getMarkdownFiles.mockReturnValue([noteA, noteB]);
+
+    const link = {link: "Note", original: "[[Note]]"};
+    const resolved = (helper as any).resolveLinkFile(link, "Board.md");
+
+    // Two notes named "Note" -> cannot know which the card meant -> bail.
+    expect(resolved).toBeNull();
+  });
+
   it("does not fallback to basename when link includes a folder", () => {
     const app = createApp();
     const plugin = createPlugin(app);
@@ -456,6 +474,56 @@ describe("KanbanHelper updates linked file properties", () => {
     await helper.onFileModify(boardFile);
 
     expect(plugin.controller.updatePropertyInFile).not.toHaveBeenCalled();
+  });
+
+  it("does not write to any note when the card's basename is ambiguous (only the basename fallback resolves)", async () => {
+    // Cache + direct-path resolution both miss, so resolution would fall through to
+    // the basename fallback. Two notes share the basename "Task", so the helper must
+    // write to neither rather than corrupt an arbitrarily-chosen same-named note.
+    const app = createApp();
+    const plugin = createPlugin(app, [{boardName: "Board", property: "status"}]);
+    const helper = new KanbanHelper(plugin as any);
+    const boardFile = new TFile("Board.md");
+    const noteA = new TFile("Areas/Task.md");
+    const noteB = new TFile("Archive/Task.md");
+
+    const board = "## Doing\n\n- [ ] [[Task]]\n";
+    app.metadataCache.getFileCache.mockReturnValue(buildBoardCache(board));
+    app.vault.cachedRead.mockResolvedValue(board);
+    app.metadataCache.getFirstLinkpathDest.mockReturnValue(null);
+    app.vault.getAbstractFileByPath.mockReturnValue(null);
+    app.vault.getMarkdownFiles.mockReturnValue([noteA, noteB]);
+    plugin.controller.getPropertiesInFile.mockResolvedValue([{key: "status", content: "Backlog", type: "YAML"}]);
+
+    await helper.onFileModify(boardFile);
+
+    expect(plugin.controller.getPropertiesInFile).not.toHaveBeenCalled();
+    expect(plugin.controller.updatePropertyInFile).not.toHaveBeenCalled();
+  });
+
+  it("still resolves and writes when exactly one note carries the basename (unique fallback)", async () => {
+    // The same fallback path, but only one note named "Task" exists -> safe to write.
+    const app = createApp();
+    const plugin = createPlugin(app, [{boardName: "Board", property: "status"}]);
+    const helper = new KanbanHelper(plugin as any);
+    const boardFile = new TFile("Board.md");
+    const note = new TFile("Areas/Task.md");
+
+    const board = "## Doing\n\n- [ ] [[Task]]\n";
+    app.metadataCache.getFileCache.mockReturnValue(buildBoardCache(board));
+    app.vault.cachedRead.mockResolvedValue(board);
+    app.metadataCache.getFirstLinkpathDest.mockReturnValue(null);
+    app.vault.getAbstractFileByPath.mockReturnValue(null);
+    app.vault.getMarkdownFiles.mockReturnValue([note]);
+    plugin.controller.getPropertiesInFile.mockResolvedValue([{key: "status", content: "Backlog", type: "YAML"}]);
+
+    await helper.onFileModify(boardFile);
+
+    expect(plugin.controller.updatePropertyInFile).toHaveBeenCalledWith(
+      expect.objectContaining({key: "status"}),
+      "Doing",
+      note
+    );
   });
 
   it("processes multiple lanes and only the leading card link in each", async () => {
