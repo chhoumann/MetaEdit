@@ -310,6 +310,22 @@ describe("MetaController reserved-key guard", () => {
         expect(ctx.fm).toEqual({status: "draft"});
     });
 
+    it("updateMultipleInFile refuses a reserved NESTED path segment before the tag splice (atomic)", async () => {
+        const ctx = setupFrontmatter({safe: {ok: 1}});
+        // A nested property carries its key in `path`; `prop.key` is the dotted
+        // label, which is NOT a reserved literal. The guard must inspect the path
+        // segments, or the tag splice lands before setYamlPath throws later.
+        const batch: Property[] = [
+            {key: "#todo", type: MetaType.Tag, content: "#done", position: {start: 0, end: 5, line: 0} as never},
+            {key: "safe.__proto__", type: MetaType.YAML, content: "x", path: ["safe", "__proto__"]},
+        ];
+
+        await expect(callUpdateMultiple(ctx.controller, batch, ctx.file)).rejects.toThrow(/reserved property name/);
+        expect(ctx.vaultModify).not.toHaveBeenCalled();
+        expect(ctx.processFrontMatter).not.toHaveBeenCalled();
+        expect(ctx.fm).toEqual({safe: {ok: 1}});
+    });
+
     it("updateMultipleInFile writes ordinary YAML keys", async () => {
         const ctx = setupFrontmatter({status: "draft"});
 

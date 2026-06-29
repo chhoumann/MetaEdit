@@ -613,10 +613,19 @@ export default class MetaController {
         // Refuse a batch with ANY reserved YAML key BEFORE the write starts. This
         // method splices body tags before writing frontmatter, so validating up
         // front keeps the batch atomic: a reserved key never lets the tag/text
-        // edits land while the frontmatter write is the part that fails. Deeper
-        // path segments are also refused by `setYamlPath`.
+        // edits land while the frontmatter write is the part that fails. A nested
+        // property carries its key in `path`, so every string segment is checked -
+        // not just `prop.key` - otherwise `setYamlPath` would only throw later,
+        // inside `processFrontMatter`, after the tag splice already wrote.
         for (const prop of properties) {
-            if (prop.type === MetaType.YAML) this.assertWritableKey(prop.key);
+            if (prop.type !== MetaType.YAML) continue;
+            if (prop.path && prop.path.length > 0) {
+                for (const segment of prop.path) {
+                    if (typeof segment === "string") this.assertWritableKey(segment);
+                }
+            } else {
+                this.assertWritableKey(prop.key);
+            }
         }
 
         await this.enqueueFileWrite(file, async () => {
