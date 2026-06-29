@@ -31,6 +31,10 @@ const setup = (initial: string) => {
     return {controller, file: new TFile("note.md"), store, app};
 };
 
+const callUpdateMultiple = (controller: MetaController, props: Property[], file: TFile) =>
+    (controller as unknown as {updateMultipleInFile(p: Property[], f: TFile): Promise<void>})
+        .updateMultipleInFile(props, file);
+
 describe("MetaController.appendDataviewField", () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -97,6 +101,95 @@ describe("MetaController.appendDataviewField", () => {
         ]);
 
         expect(store.content).toBe(["body", "watch:: 1", "watch:: 2"].join("\n"));
+    });
+});
+
+describe("MetaController inline Dataview writes", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it("updatePropertyInFile rewrites real inline fields but leaves frontmatter and fenced examples untouched", async () => {
+        const {controller, file, store} = setup(
+            [
+                "---",
+                "summary: \"[status:: yaml example]\"",
+                "---",
+                "",
+                "status:: Backlog",
+                "",
+                "```dataview",
+                "status:: fenced example",
+                "```",
+                "",
+                "tail",
+            ].join("\n"),
+        );
+
+        await controller.updatePropertyInFile({key: "status", content: "Backlog", type: MetaType.Dataview}, "Done", file);
+
+        expect(store.content).toBe(
+            [
+                "---",
+                "summary: \"[status:: yaml example]\"",
+                "---",
+                "",
+                "status:: Done",
+                "",
+                "```dataview",
+                "status:: fenced example",
+                "```",
+                "",
+                "tail",
+            ].join("\n"),
+        );
+    });
+
+    it("updateMultipleInFile rewrites multiple real inline fields but leaves fenced examples untouched", async () => {
+        const {controller, file, store} = setup(
+            [
+                "status:: Backlog",
+                "priority:: Low",
+                "",
+                "```",
+                "status:: fenced status",
+                "priority:: fenced priority",
+                "```",
+            ].join("\n"),
+        );
+
+        await callUpdateMultiple(
+            controller,
+            [
+                {key: "status", content: "Done", type: MetaType.Dataview},
+                {key: "priority", content: "High", type: MetaType.Dataview},
+            ],
+            file,
+        );
+
+        expect(store.content).toBe(
+            [
+                "status:: Done",
+                "priority:: High",
+                "",
+                "```",
+                "status:: fenced status",
+                "priority:: fenced priority",
+                "```",
+            ].join("\n"),
+        );
+    });
+
+    it("preserves mixed line endings while updating inline fields outside fences", async () => {
+        const {controller, file, store} = setup(
+            "status:: Backlog\r\nbody\n```dataview\r\nstatus:: fenced example\r\n```\n",
+        );
+
+        await controller.updatePropertyInFile({key: "status", content: "Backlog", type: MetaType.Dataview}, "Done", file);
+
+        expect(store.content).toBe(
+            "status:: Done\r\nbody\n```dataview\r\nstatus:: fenced example\r\n```\n",
+        );
     });
 });
 
@@ -246,10 +339,6 @@ describe("MetaController reserved-key guard", () => {
         const controller = new MetaController(app as never, plugin as never);
         return {controller, file: new TFile("note.md"), fm, processFrontMatter, vaultModify};
     };
-
-    const callUpdateMultiple = (controller: MetaController, props: Property[], file: TFile) =>
-        (controller as unknown as {updateMultipleInFile(p: Property[], f: TFile): Promise<void>})
-            .updateMultipleInFile(props, file);
 
     beforeEach(() => {
         vi.clearAllMocks();

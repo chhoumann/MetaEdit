@@ -26,7 +26,14 @@ export type InlineFieldInsertLocation = "afterLastMatch" | "end";
 // for a bracketed field, or end-of-line for a full-line field). The latter two
 // let the value be rewritten in place without disturbing the key or wrapper.
 type InlineField = {key: string, value: string, start: number, end: number, sepEnd: number, valueEnd: number};
+type InlineFieldReplacement = {key: string, value: string};
 type ContentLine = {text: string, start: number, end: number, nextStart: number};
+type InlineContentLine = ContentLine & {
+    index: number,
+    inFrontmatter: boolean,
+    fenceBoundary: "open" | "close" | null,
+    readable: boolean,
+};
 type LegacyFrontmatterPosition = {
     start: {line: number, col: number, offset: number},
     end: {line: number, col: number, offset: number},
@@ -218,26 +225,12 @@ export default class MetaEditParser {
      */
     public parseInlineContent(content: string): Property[] {
         const properties: Property[] = [];
-        const lines = this.splitContentLines(content);
-        const frontmatterInfo = this.getFrontmatterInfo(content);
-        let openFence: OpenFence | null = null;
 
-        for (const {text: line, start} of lines) {
+        for (const line of this.walkInlineContentLines(content)) {
+            if (!line.readable) continue;
+            if (!line.text.includes("::")) continue;
 
-            // Skip a leading YAML frontmatter block - it is handled by parseFrontmatter.
-            if (frontmatterInfo?.exists && start < frontmatterInfo.contentStart) {
-                continue;
-            }
-
-            // Skip fenced code blocks so example fields are not treated as metadata.
-            const {open, boundary} = nextFenceState(openFence, line);
-            openFence = open;
-            if (boundary) continue;       // an opening or closing fence marker line
-            if (openFence !== null) continue; // inside a fenced code block
-
-            if (!line.includes("::")) continue;
-
-            for (const field of this.parseLineFields(line)) {
+            for (const field of this.parseLineFields(line.text)) {
                 properties.push({key: field.key, content: field.value, type: MetaType.Dataview});
             }
         }
@@ -312,6 +305,33 @@ export default class MetaEditParser {
         }
 
         return lines;
+    }
+
+    private *walkInlineContentLines(content: string): IterableIterator<InlineContentLine> {
+        const lines = this.splitContentLines(content);
+        const frontmatterInfo = this.getFrontmatterInfo(content);
+        let openFence: OpenFence | null = null;
+
+        for (let index = 0; index < lines.length; index++) {
+            const line = lines[index];
+            const inFrontmatter = frontmatterInfo?.exists === true && line.start < frontmatterInfo.contentStart;
+
+            if (inFrontmatter) {
+                yield {...line, index, inFrontmatter, fenceBoundary: null, readable: false};
+                continue;
+            }
+
+            const {open, boundary} = nextFenceState(openFence, line.text);
+            openFence = open;
+
+            yield {
+                ...line,
+                index,
+                inFrontmatter: false,
+                fenceBoundary: boundary,
+                readable: boundary === null && openFence === null,
+            };
+        }
     }
 
     private parseLineFields(line: string): InlineField[] {
@@ -436,6 +456,39 @@ export default class MetaEditParser {
     }
 
     /**
+     * Rewrite inline field values in raw note content using the same readable-line
+     * boundary as {@link parseInlineContent}. Only the changed line spans are
+     * replaced; all untouched bytes, including mixed CRLF/LF line endings, are
+     * preserved exactly.
+     */
+    public replaceInlineFieldValuesInContent(content: string, replacements: ReadonlyArray<InlineFieldReplacement>): string {
+        const activeReplacements = replacements.filter(({key}) => key.length > 0);
+        if (activeReplacements.length === 0) return content;
+
+        let result = "";
+        let cursor = 0;
+
+        for (const line of this.walkInlineContentLines(content)) {
+            if (!line.readable) continue;
+            if (!line.text.includes("::")) continue;
+
+            let updatedLine = line.text;
+            for (const {key, value} of activeReplacements) {
+                updatedLine = this.replaceInlineFieldValue(updatedLine, key, value);
+            }
+
+            if (updatedLine === line.text) continue;
+
+            result += content.slice(cursor, line.start) + updatedLine;
+            cursor = line.end;
+        }
+
+        if (cursor === 0) return content;
+
+        return result + content.slice(cursor);
+    }
+
+    /**
      * Compute the line index at which to splice a new `name:: value` inline field.
      *
      * This is the write-placement counterpart to {@link parseInlineContent}: it walks
@@ -452,41 +505,36 @@ export default class MetaEditParser {
      * at the start of the body, or at the very end when the whole file is frontmatter.
      */
     public computeInlineInsertIndex(content: string, name: string, location: InlineFieldInsertLocation = "afterLastMatch"): number {
-        const lines = this.splitContentLines(content);
-        const frontmatterInfo = this.getFrontmatterInfo(content);
-
-        let openFence: OpenFence | null = null;
         let lastMatchIdx = -1;   // last body line that declares `name`
         let lastAnchorIdx = -1;  // last line we may insert AFTER (body content or a closing fence)
         let firstBodyIdx = -1;   // first line at/after the frontmatter block
+        let lineCount = 0;
 
-        for (let i = 0; i < lines.length; i++) {
-            const {text: line, start} = lines[i];
+        for (const line of this.walkInlineContentLines(content)) {
+            lineCount = line.index + 1;
 
             // Inside the YAML frontmatter block - never a valid target (mirrors parseInlineContent).
-            if (frontmatterInfo?.exists && start < frontmatterInfo.contentStart) continue;
-            if (firstBodyIdx === -1) firstBodyIdx = i;
+            if (line.inFrontmatter) continue;
+            if (firstBodyIdx === -1) firstBodyIdx = line.index;
 
-            const {open, boundary} = nextFenceState(openFence, line);
-            openFence = open;
             // An opening marker is not a valid anchor (inserting after it lands inside the fence);
             // a closing marker is (inserting after it is outside the fence).
-            if (boundary === "open") continue;
-            if (boundary === "close") {
-                lastAnchorIdx = i;
+            if (line.fenceBoundary === "open") continue;
+            if (line.fenceBoundary === "close") {
+                lastAnchorIdx = line.index;
                 continue;
             }
-            if (openFence !== null) continue; // fence interior - never a target
+            if (!line.readable) continue; // fence interior - never a target
 
-            if (line.trim() !== "") lastAnchorIdx = i;
-            if (line.includes("::") && this.parseLineFields(line).some(field => field.key === name)) {
-                lastMatchIdx = i;
+            if (line.text.trim() !== "") lastAnchorIdx = line.index;
+            if (line.text.includes("::") && this.parseLineFields(line.text).some(field => field.key === name)) {
+                lastMatchIdx = line.index;
             }
         }
 
         if (location === "afterLastMatch" && lastMatchIdx !== -1) return lastMatchIdx + 1;
         if (lastAnchorIdx !== -1) return lastAnchorIdx + 1;
-        return firstBodyIdx !== -1 ? firstBodyIdx : lines.length;
+        return firstBodyIdx !== -1 ? firstBodyIdx : lineCount;
     }
 
 }
