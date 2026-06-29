@@ -36,7 +36,7 @@
     "eslint": "^9.39.1",
     "eslint-plugin-obsidianmd": "^0.3.0",
     "eslint-plugin-svelte": "^3.20.0",
-    "globals": "^16.5.0",
+    "globals": "^17.7.0",
     "obsidian": "1.13.1",
     "obsidian-e2e": "0.6.0",
     "semantic-release": "^25.0.5",
