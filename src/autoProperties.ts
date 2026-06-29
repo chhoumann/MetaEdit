@@ -108,17 +108,73 @@ export function withChoicesPasted(choices: string[], index: number, tokens: stri
     return [...before, ...inserted, ...after];
 }
 
+// Historical string values are loose comma lists, not parsed YAML/JSON. Keep the
+// coercion narrow: only commas outside Obsidian wikilinks divide elements.
+function splitCommaSeparatedValues(value: string): string[] {
+    const parts: string[] = [];
+    let start = 0;
+    let wikilinkDepth = 0;
+
+    for (let i = 0; i < value.length; i++) {
+        if (value.startsWith("[[", i)) {
+            wikilinkDepth++;
+            i++;
+            continue;
+        }
+        if (wikilinkDepth > 0 && value.startsWith("]]", i)) {
+            wikilinkDepth--;
+            i++;
+            continue;
+        }
+        if (value[i] === "," && wikilinkDepth === 0) {
+            parts.push(value.slice(start, i));
+            start = i + 1;
+        }
+    }
+
+    parts.push(value.slice(start));
+    return parts;
+}
+
+function matchingOuterBracketIndex(value: string): number | null {
+    let depth = 0;
+
+    for (let i = 0; i < value.length; i++) {
+        const char = value[i];
+        if (char === "[") {
+            depth++;
+        } else if (char === "]") {
+            depth--;
+            if (depth === 0) return i;
+            if (depth < 0) return null;
+        }
+    }
+
+    return null;
+}
+
+function shouldUnwrapBracketedList(value: string): boolean {
+    if (!value.startsWith("[") || !value.endsWith("]")) return false;
+    if (value.startsWith("[[")) return false;
+    if (matchingOuterBracketIndex(value) !== value.length - 1) return false;
+
+    const innerValue = value.slice(1, -1);
+    if (innerValue.trim() === "") return true;
+
+    return splitCommaSeparatedValues(innerValue).length > 1;
+}
+
 /** Coerce a stored property value (string, CSV, YAML array, or list) into values. */
 export function toValueArray(content: unknown): string[] {
     if (content === null || content === undefined) return [];
     if (Array.isArray(content)) {
         return content.map((v) => (v ?? "").toString().trim()).filter(Boolean);
     }
-    return content
-        .toString()
-        .replace(/^\s*\[/, "")
-        .replace(/\]\s*$/, "")
-        .split(",")
+
+    const value = content.toString().trim();
+    const splitValue = shouldUnwrapBracketedList(value) ? value.slice(1, -1) : value;
+
+    return splitCommaSeparatedValues(splitValue)
         .map((s) => s.trim())
         .filter(Boolean);
 }
