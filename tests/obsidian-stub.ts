@@ -65,6 +65,17 @@ export function getLinkpath(linktext: string): string {
   return cutIndex === -1 ? linktext : linktext.slice(0, cutIndex);
 }
 
+export function setIcon(parent: HTMLElement, iconId: string): void {
+  parent.textContent = "";
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("data-icon", iconId);
+  parent.appendChild(svg);
+}
+
+export function setTooltip(el: HTMLElement, tooltip: string): void {
+  el.setAttribute("aria-label", tooltip);
+}
+
 export function parseYaml(yaml: string): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   const lines = yaml.split(/\r?\n/);

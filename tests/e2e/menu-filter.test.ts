@@ -50,7 +50,7 @@ async function captureMenuKeys(
 				await sleep(120);
 				const keys = Array.from(document.querySelectorAll(".suggestion-item")).map((el) => {
 					const t = el.querySelector(".suggestion-item-text") || el;
-					return (t.textContent || "").replace(/[❌🔃]/g, "").trim();
+					return (t.textContent || "").trim();
 				});
 				// Close the suggester and wait until it is gone, so the next capture
 				// reads a fresh menu rather than a stacked one.

@@ -114,11 +114,13 @@ describe("MetaEdit Edit Meta suggester flows", () => {
 				await sleep(300);
 
 				await plugin.runMetaEditForFile(f);
-				// Data rows carry the action buttons, so textContent is "deleteMe❌🔃";
-				// match the key as a prefix.
+				// Data rows carry native icon buttons, so match the key as a prefix.
 				const row = await waitFor(".suggestion-item", (i) => itemText(i).startsWith("deleteMe"));
-				const delBtn = Array.from(row.querySelectorAll("button")).find((b) => b.textContent === "❌");
+				const delBtn = row.querySelector('button.metaedit-suggester-action-button[aria-label="Delete property"]');
 				if (!delBtn) throw new Error("delete button not found");
+				if (!delBtn.classList.contains("clickable-icon")) throw new Error("delete button missing clickable-icon");
+				if (!delBtn.querySelector("svg")) throw new Error("delete button did not render an icon");
+				if ((delBtn.textContent || "").trim() !== "") throw new Error("delete button still has text content");
 				delBtn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 				await waitFor("body", () => !("deleteMe" in (app.metadataCache.getFileCache(f)?.frontmatter ?? {})));
 				await sleep(200);
@@ -153,8 +155,11 @@ describe("MetaEdit Edit Meta suggester flows", () => {
 
 				await plugin.runMetaEditForFile(f);
 				const row = await waitFor(".suggestion-item", (i) => itemText(i).startsWith("mover"));
-				const xform = Array.from(row.querySelectorAll("button")).find((b) => b.textContent === "🔃");
+				const xform = row.querySelector('button.metaedit-suggester-action-button[aria-label="Transform to YAML ⇄ Dataview"]');
 				if (!xform) throw new Error("transform button not found");
+				if (!xform.classList.contains("clickable-icon")) throw new Error("transform button missing clickable-icon");
+				if (!xform.querySelector("svg")) throw new Error("transform button did not render an icon");
+				if ((xform.textContent || "").trim() !== "") throw new Error("transform button still has text content");
 				xform.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 				// Transform deletes the YAML key, then appends the inline field.
 				await waitFor("body", () => !("mover" in (app.metadataCache.getFileCache(f)?.frontmatter ?? {})));
