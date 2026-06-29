@@ -70,14 +70,14 @@ describe("MetaEdit multi-value editing", () => {
 			"---\nauthors:\n  - Smith, John\n  - Doe, Jane\n---\nbody\n",
 		);
 
-		const result = await driveListEdit(obsidian, notePath, {
-			mode: "All Single",
+		const result = await driveTypedListEdit(obsidian, notePath, {
 			key: "authors",
-			selectText: "Doe, Jane",
-			enterValue: "Roe, Jane",
+			actions: [{ kind: "set", index: 1, value: "Roe, Jane" }],
 		});
 
 		expect(result.readBack).toEqual(["Smith, John", "Roe, Jane"]);
+		expect(result.dom.hasPillEditor).toBe(true);
+		expect(result.dom.hasGenericPromptInput).toBe(false);
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
@@ -92,11 +92,9 @@ describe("MetaEdit multi-value editing", () => {
 			"---\nscripts:\n  - cmd:build\n  - test\n---\nbody\n",
 		);
 
-		const result = await driveListEdit(obsidian, notePath, {
-			mode: "All Single",
+		const result = await driveTypedListEdit(obsidian, notePath, {
 			key: "scripts",
-			selectText: "cmd:build",
-			enterValue: "cmd:rebuild",
+			actions: [{ kind: "set", index: 0, value: "cmd:rebuild" }],
 		});
 
 		expect(result.readBack).toEqual(["cmd:rebuild", "test"]);
@@ -211,18 +209,262 @@ describe("MetaEdit multi-value editing", () => {
 			"---\nscripts:\n  - cmd:addfirst\n  - keep\n---\nbody\n",
 		);
 
-		const result = await driveListEdit(obsidian, notePath, {
-			mode: "All Single",
+		const result = await driveTypedListEdit(obsidian, notePath, {
 			key: "scripts",
-			selectText: "cmd:addfirst",
-			enterValue: "changed",
+			actions: [{ kind: "set", index: 0, value: "changed" }],
 		});
 
 		expect(result.content).toBe("---\nscripts:\n  - changed\n  - keep\n---\nbody\n");
 		expect(result.readBack).toEqual(["changed", "keep"]);
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
+
+	test("keeps aliases on the legacy array editor and preserves commas", async () => {
+		const { obsidian, sandbox } = getContext();
+		const notePath = sandbox.path("aliases-list.md");
+		await writeLiveFile(
+			obsidian,
+			notePath,
+			"---\naliases:\n  - Alias, One\n  - Alias Two\n---\nbody\n",
+		);
+
+		const result = await driveListEdit(obsidian, notePath, {
+			mode: "All Single",
+			key: "aliases",
+			selectText: "Alias, One",
+			enterValue: "Alias, Changed",
+		});
+
+		expect(result.readBack).toEqual(["Alias, Changed", "Alias Two"]);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("adds a wikilink-with-comma as one typed-list item", async () => {
+		const { obsidian, sandbox } = getContext();
+		const notePath = sandbox.path("typed-list-add-wikilink.md");
+		await writeLiveFile(obsidian, notePath, "---\ntopics:\n  - alpha\n---\nbody\n");
+
+		const result = await driveTypedListEdit(obsidian, notePath, {
+			key: "topics",
+			actions: [{ kind: "typeAdd", value: "[[A, B]]" }],
+		});
+
+		expect(result.readBack).toEqual(["alpha", "[[A, B]]"]);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("preserves duplicate typed-list values and order", async () => {
+		const { obsidian, sandbox } = getContext();
+		const notePath = sandbox.path("typed-list-duplicates.md");
+		await writeLiveFile(obsidian, notePath, "---\nitems:\n  - dup\n  - dup\n---\nbody\n");
+
+		const result = await driveTypedListEdit(obsidian, notePath, {
+			key: "items",
+			actions: [{ kind: "add", value: "dup" }],
+		});
+
+		expect(result.readBack).toEqual(["dup", "dup", "dup"]);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("preserves untouched mixed typed-list values", async () => {
+		const { obsidian, sandbox } = getContext();
+		const notePath = sandbox.path("typed-list-mixed.md");
+		await writeLiveFile(
+			obsidian,
+			notePath,
+			"---\nmixed:\n  - 1\n  - true\n  - null\n  - old\n---\nbody\n",
+		);
+
+		const result = await driveTypedListEdit(obsidian, notePath, {
+			key: "mixed",
+			actions: [{ kind: "set", index: 3, value: "new" }],
+		});
+
+		expect(result.readBack).toEqual([1, true, null, "new"]);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("saves a typed list containing an untouched YAML date", async () => {
+		const { obsidian, sandbox } = getContext();
+		const notePath = sandbox.path("typed-list-date.md");
+		await writeLiveFile(
+			obsidian,
+			notePath,
+			"---\ndates:\n  - 2026-01-02\n  - old\n---\nbody\n",
+		);
+
+		const result = await driveTypedListEdit(obsidian, notePath, {
+			key: "dates",
+			actions: [{ kind: "set", index: 1, value: "new" }],
+		});
+
+		expect(result.content).toContain("new");
+		expect(result.readBack).toEqual(["2026-01-02", "new"]);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("writes an empty ordinary typed list as an empty YAML array", async () => {
+		const { obsidian, sandbox } = getContext();
+		const notePath = sandbox.path("typed-list-empty.md");
+		await writeLiveFile(obsidian, notePath, "---\nitems:\n  - alpha\n  - beta\n---\nbody\n");
+
+		const result = await driveTypedListEdit(obsidian, notePath, {
+			key: "items",
+			actions: [
+				{ kind: "remove", index: 1 },
+				{ kind: "remove", index: 0 },
+			],
+		});
+
+		expect(result.content).toBe("---\nitems: []\n---\nbody\n");
+		expect(result.readBack).toEqual([]);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("refuses a stale typed-list write when frontmatter changes while the modal is open", async () => {
+		const { obsidian, sandbox } = getContext();
+		const notePath = sandbox.path("typed-list-stale.md");
+		await writeLiveFile(obsidian, notePath, "---\nitems:\n  - base\n---\nbody\n");
+
+		const result = await evalJsonAsync<{ content: string; readBack: unknown; notices: string[] }>(
+			obsidian,
+			`
+			(async () => {
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const file = app.vault.getAbstractFileByPath(${JSON.stringify(notePath)});
+				const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+				const waitFor = async (selector, predicate = () => true) => {
+					const start = Date.now();
+					while (Date.now() - start < 5000) {
+						const el = Array.from(document.querySelectorAll(selector)).find(predicate);
+						if (el) return el;
+						await sleep(80);
+					}
+					throw new Error("Timed out waiting for " + selector);
+				};
+
+				const props = await plugin.controller.getPropertiesInFile(file);
+				const property = props.find((p) => p.key === "items");
+				const editPromise = plugin.controller.editMetaElement(property, props, file);
+				const addInput = await waitFor(".metaedit-typed-list-add-input");
+				addInput.value = "local";
+				addInput.dispatchEvent(new Event("input", { bubbles: true }));
+				addInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+
+				await app.fileManager.processFrontMatter(file, (frontmatter) => {
+					frontmatter.items = ["external"];
+				});
+				await sleep(300);
+
+				const save = await waitFor(".metaedit-typed-list-save");
+				save.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+				await editPromise;
+				await sleep(300);
+
+				return {
+					content: await app.vault.read(file),
+					readBack: await plugin.api.getPropertyValue("items", file),
+					notices: Array.from(document.querySelectorAll(".notice")).map((notice) => notice.textContent?.trim() ?? ""),
+				};
+			})()
+		`,
+		);
+
+		expect(result.content).toBe("---\nitems:\n  - external\n---\nbody\n");
+		expect(result.readBack).toEqual(["external"]);
+		expect(result.notices.some(text => text.includes("current value changed before update"))).toBe(true);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
 });
+
+type TypedListAction =
+	| { kind: "add"; value: string }
+	| { kind: "remove"; index: number }
+	| { kind: "set"; index: number; value: string }
+	| { kind: "typeAdd"; value: string };
+
+async function driveTypedListEdit(
+	obsidian: Parameters<typeof evalJsonAsync>[0],
+	notePath: string,
+	opts: { key: string; actions: TypedListAction[] },
+): Promise<{
+	content: string;
+	dom: { hasGenericPromptInput: boolean; hasPillEditor: boolean; pillValues: string[] };
+	readBack: unknown;
+}> {
+	return await evalJsonAsync(
+		obsidian,
+		`
+		(async () => {
+			const plugin = app.plugins.plugins.${PLUGIN_ID};
+			const file = app.vault.getAbstractFileByPath(${JSON.stringify(notePath)});
+			const actions = ${JSON.stringify(opts.actions)};
+			const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+			const waitFor = async (selector, predicate = () => true) => {
+				const start = Date.now();
+				while (Date.now() - start < 5000) {
+					const el = Array.from(document.querySelectorAll(selector)).find(predicate);
+					if (el) return el;
+					await sleep(80);
+				}
+				throw new Error("Timed out waiting for " + selector);
+			};
+			const setInputValue = (input, value) => {
+				input.value = value;
+				input.dispatchEvent(new Event("input", { bubbles: true }));
+			};
+
+			const props = await plugin.controller.getPropertiesInFile(file);
+			const property = props.find((p) => p.key === ${JSON.stringify(opts.key)});
+			if (!property) throw new Error("Property not parsed: " + ${JSON.stringify(opts.key)});
+			const editPromise = plugin.controller.editMetaElement(property, props, file);
+			await waitFor(".metaedit-typed-list-modal .multi-select-container");
+			const dom = {
+				hasGenericPromptInput: Boolean(document.querySelector(".metaEditPromptInput")),
+				hasPillEditor: Boolean(document.querySelector(".metaedit-typed-list-modal .multi-select-container")),
+				pillValues: Array.from(document.querySelectorAll(".metaedit-typed-list-pill-input")).map((input) => input.value),
+			};
+
+			for (const action of actions) {
+				if (action.kind === "set") {
+					const input = document.querySelectorAll(".metaedit-typed-list-pill-input")[action.index];
+					if (!input) throw new Error("Missing pill input at " + action.index);
+					setInputValue(input, action.value);
+				}
+				if (action.kind === "add") {
+					const input = await waitFor(".metaedit-typed-list-add-input");
+					setInputValue(input, action.value);
+					input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+					await sleep(100);
+				}
+				if (action.kind === "typeAdd") {
+					const input = await waitFor(".metaedit-typed-list-add-input");
+					setInputValue(input, action.value);
+					await sleep(100);
+				}
+				if (action.kind === "remove") {
+					const button = document.querySelectorAll(".metaedit-typed-list-remove")[action.index];
+					if (!button) throw new Error("Missing remove button at " + action.index);
+					button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+					await sleep(100);
+				}
+			}
+
+			const save = await waitFor(".metaedit-typed-list-save");
+			save.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+			await editPromise;
+			await sleep(300);
+
+			return {
+				content: await app.vault.read(file),
+				dom,
+				readBack: await plugin.api.getPropertyValue(${JSON.stringify(opts.key)}, file),
+			};
+		})()
+	`,
+	);
+}
 
 // Drive the command edit flow for a list property: open editMetaElement, click a
 // suggestion by its text, then type a value into the prompt and submit.

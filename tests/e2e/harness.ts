@@ -192,7 +192,7 @@ export async function evalJsonAsync<T>(
 	obsidian: ObsidianClient,
 	code: string,
 ): Promise<T> {
-	const envelope = await obsidian.dev.eval<AsyncEvalEnvelope<T>>(`
+	let envelope = await obsidian.dev.eval<AsyncEvalEnvelope<T> | string>(`
 		(async () => {
 			const code = ${JSON.stringify(code)};
 			try {
@@ -209,6 +209,23 @@ export async function evalJsonAsync<T>(
 			}
 		})()
 	`);
+
+	if (typeof envelope === "string") {
+		// Obsidian CLI eval can prefix console output before the JSON payload
+		// (`MetaEdit: ...\n=> {...}`) when a behavior intentionally logs, such as
+		// the stale-write refusal path. Recover the final payload without hiding
+		// malformed envelopes below.
+		const marker = "\n=> ";
+		const payloadStart = envelope.lastIndexOf(marker);
+		const payload = payloadStart === -1
+			? envelope.trim()
+			: envelope.slice(payloadStart + marker.length).trim();
+		envelope = JSON.parse(payload) as AsyncEvalEnvelope<T>;
+	}
+
+	if (typeof envelope !== "object" || envelope === null || !("ok" in envelope)) {
+		throw new Error(`Failed to evaluate async Obsidian code: Unexpected eval envelope: ${JSON.stringify(envelope)}`);
+	}
 
 	if (!envelope.ok) {
 		throw new Error(
