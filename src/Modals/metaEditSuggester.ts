@@ -1,4 +1,4 @@
-import {type App, type FuzzyMatch, FuzzySuggestModal, Notice, type TFile} from "obsidian";
+import {type App, type FuzzyMatch, FuzzySuggestModal, Notice, setIcon, setTooltip, type TFile} from "obsidian";
 import type MetaEdit from "../main";
 import type MetaController from "../metaController";
 import type {Property} from "../parser";
@@ -9,6 +9,11 @@ import {getKnownPropertyNames} from "./GenericPrompt/valueSuggest";
 import {setPendingValueContext} from "./GenericPrompt/promptValueContext";
 import {canStructureEditProperty, filterMenuItems} from "./menuFilter";
 import {isReservedFrontmatterKey, isYamlParentContainerValue} from "../yamlPath";
+
+const DELETE_PROPERTY_ICON = "trash-2";
+const TRANSFORM_PROPERTY_ICON = "replace";
+const DELETE_PROPERTY_TOOLTIP = "Delete property";
+const TRANSFORM_PROPERTY_TOOLTIP = "Transform to YAML ⇄ Dataview";
 
 export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
     public app: App;
@@ -41,9 +46,7 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
         this.setSuggestValues();
 
         this.setInstructions([
-            {command: "❌", purpose: "Delete property"},
-            {command: "🔃", purpose: "Transform to YAML/Dataview"},
-            {command: "#tag", purpose: "Select to rename here · vault-wide rename: Obsidian Tag pane"},
+            {command: "#tag", purpose: "rename in this note · vault-wide: Tag pane"},
         ])
     }
 
@@ -54,8 +57,8 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
             el.classList.add("metaedit-suggester-command");
         } else {
             if (MetaEditSuggester.canStructureEdit(item.item)) {
-                this.createButton(el,"❌", this.deleteItem(item));
-                this.createButton(el, "🔃", this.transformProperty(item))
+                this.createButton(el, DELETE_PROPERTY_ICON, DELETE_PROPERTY_TOOLTIP, this.deleteItem(item));
+                this.createButton(el, TRANSFORM_PROPERTY_ICON, TRANSFORM_PROPERTY_TOOLTIP, this.transformProperty(item))
             }
         }
     }
@@ -182,10 +185,13 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
         await this.controller.appendDataviewField(property.key, property.content, this.file);
     }
 
-    private createButton(el: HTMLElement, content: string, callback: (evt: MouseEvent) => void) {
+    private createButton(el: HTMLElement, iconName: string, tooltip: string, callback: (evt: MouseEvent) => void) {
         const itemButton = el.createEl("button");
-        itemButton.textContent = content;
-        itemButton.classList.add("not-a-button", "metaedit-suggester-action-button");
+        itemButton.type = "button";
+        itemButton.classList.add("clickable-icon", "metaedit-suggester-action-button");
+        itemButton.setAttribute("aria-label", tooltip);
+        setIcon(itemButton, iconName);
+        setTooltip(itemButton, tooltip);
         itemButton.addEventListener("click", callback);
     }
 
