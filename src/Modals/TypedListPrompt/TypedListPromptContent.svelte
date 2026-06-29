@@ -2,8 +2,11 @@
 	import {tick, untrack} from "svelte";
 	import {setIcon, setTooltip} from "obsidian";
 	import {
+		appendTypedListItem,
 		createAddedTypedListItem,
 		displayTypedListValue,
+		moveTypedListItem,
+		prependTypedListItem,
 		reconstructTypedList,
 		type TypedListItem,
 	} from "../../typedList";
@@ -29,13 +32,14 @@
 	let nextId = stableInitialItems.length;
 	const addInputId = `metaedit-typed-list-add-${stablePropertyKey.replace(/[^A-Za-z0-9_-]/g, "-")}`;
 
-	function removeIcon(node: HTMLElement, label: string) {
-		setIcon(node, "x");
-		setTooltip(node, label);
+	function iconButton(node: HTMLElement, params: {icon: string; label: string}) {
+		setIcon(node, params.icon);
+		setTooltip(node, params.label);
 
 		return {
-			update(nextLabel: string) {
-				setTooltip(node, nextLabel);
+			update(nextParams: {icon: string; label: string}) {
+				setIcon(node, nextParams.icon);
+				setTooltip(node, nextParams.label);
 			},
 		};
 	}
@@ -53,10 +57,24 @@
 		addInputEl?.focus();
 	}
 
-	function addItem() {
-		if (addValue.length === 0) return;
-		items = [...items, createAddedTypedListItem(`item-${nextId++}`, addValue)];
+	function consumeAddedItem(): TypedListItem | null {
+		if (addValue.length === 0) return null;
+		const item = createAddedTypedListItem(`item-${nextId++}`, addValue);
 		addValue = "";
+		return item;
+	}
+
+	function addItemToEnd() {
+		const item = consumeAddedItem();
+		if (!item) return;
+		items = appendTypedListItem(items, item);
+		void focusAddInput();
+	}
+
+	function addItemToBeginning() {
+		const item = consumeAddedItem();
+		if (!item) return;
+		items = prependTypedListItem(items, item);
 		void focusAddInput();
 	}
 
@@ -73,9 +91,13 @@
 		updateItemText(item.id, displayTypedListValue(item.originalValue));
 	}
 
+	function moveItem(index: number, direction: "down" | "up") {
+		items = moveTypedListItem(items, index, direction);
+	}
+
 	function submit() {
 		const submittedItems = addValue.length > 0
-			? [...items, createAddedTypedListItem(`item-${nextId}`, addValue)]
+			? appendTypedListItem(items, createAddedTypedListItem(`item-${nextId}`, addValue))
 			: items;
 		onSubmit(reconstructTypedList(submittedItems));
 	}
@@ -83,7 +105,7 @@
 	function handleAddKeydown(event: KeyboardEvent) {
 		if (event.key === "Enter") {
 			event.preventDefault();
-			if (addValue.length > 0) addItem();
+			if (addValue.length > 0) addItemToEnd();
 			else submit();
 			return;
 		}
@@ -128,6 +150,20 @@
 	<div class="multi-select-container metaedit-typed-list-editor" aria-label={`${stablePropertyKey} values`}>
 		{#each items as item, index (item.id)}
 			<span class="multi-select-pill metaedit-typed-list-pill">
+				<button
+					aria-label={`Move item ${index + 1} up`}
+					class="clickable-icon metaedit-typed-list-move metaedit-typed-list-move-up"
+					disabled={index === 0}
+					onclick={() => moveItem(index, "up")}
+					type="button"
+					use:iconButton={{icon: "arrow-up", label: `Move item ${index + 1} up`}}></button>
+				<button
+					aria-label={`Move item ${index + 1} down`}
+					class="clickable-icon metaedit-typed-list-move metaedit-typed-list-move-down"
+					disabled={index === items.length - 1}
+					onclick={() => moveItem(index, "down")}
+					type="button"
+					use:iconButton={{icon: "arrow-down", label: `Move item ${index + 1} down`}}></button>
 				<input
 					aria-label={`Edit item ${index + 1}`}
 					class="metadata-input metadata-input-text metaedit-typed-list-pill-input"
@@ -140,7 +176,7 @@
 					class="clickable-icon metaedit-typed-list-remove"
 					onclick={() => removeItem(item.id)}
 					type="button"
-					use:removeIcon={`Remove item ${index + 1}`}></button>
+					use:iconButton={{icon: "x", label: `Remove item ${index + 1}`}}></button>
 			</span>
 		{/each}
 		<input
@@ -154,7 +190,8 @@
 	</div>
 
 	<div class="metaedit-typed-list-actions">
-		<button onclick={addItem} type="button">Add item</button>
+		<button class="metaedit-typed-list-add-beginning" onclick={addItemToBeginning} type="button">Add to beginning</button>
+		<button class="metaedit-typed-list-add-end" onclick={addItemToEnd} type="button">Add to end</button>
 		<button onclick={onCancel} type="button">Cancel</button>
 		<button class="mod-cta metaedit-typed-list-save" onclick={submit} type="button">Save</button>
 	</div>

@@ -43,6 +43,29 @@ export function createAddedTypedListItem(id: string, text: string): TypedListIte
 	return {id, kind: "added", text};
 }
 
+export function appendTypedListItem(items: readonly TypedListItem[], item: TypedListItem): TypedListItem[] {
+	return [...items, item];
+}
+
+export function prependTypedListItem(items: readonly TypedListItem[], item: TypedListItem): TypedListItem[] {
+	return [item, ...items];
+}
+
+export function moveTypedListItem(
+	items: readonly TypedListItem[],
+	index: number,
+	direction: "down" | "up",
+): TypedListItem[] {
+	const targetIndex = direction === "up" ? index - 1 : index + 1;
+	if (index < 0 || index >= items.length || targetIndex < 0 || targetIndex >= items.length) {
+		return [...items];
+	}
+
+	const next = [...items];
+	[next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+	return next;
+}
+
 export function displayTypedListValue(value: unknown): string {
 	if (value instanceof Date) {
 		if (Number.isNaN(value.getTime())) return "";

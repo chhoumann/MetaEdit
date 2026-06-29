@@ -126,6 +126,10 @@
     flex: 0 0 auto;
 }
 
+.metaedit-typed-list-move {
+    flex: 0 0 auto;
+}
+
 .metaedit-typed-list-add-input {
     flex: 1 1 160px;
     min-width: 120px;

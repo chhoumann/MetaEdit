@@ -1,8 +1,11 @@
 import {describe, expect, it} from "vitest";
 import {
+	appendTypedListItem,
 	createAddedTypedListItem,
 	createTypedListItems,
 	displayTypedListValue,
+	moveTypedListItem,
+	prependTypedListItem,
 	reconstructTypedList,
 	shouldUseTypedListEditor,
 } from "./typedList";
@@ -44,9 +47,20 @@ describe("reconstructTypedList", () => {
 
 	it("preserves order and duplicates", () => {
 		const items = createTypedListItems(["dup", "dup", "tail"]);
-		items.splice(2, 0, createAddedTypedListItem("item-3", "dup"));
+		const nextItems = appendTypedListItem(items, createAddedTypedListItem("item-3", "dup"));
 
-		expect(reconstructTypedList(items)).toEqual(["dup", "dup", "dup", "tail"]);
+		expect(reconstructTypedList(nextItems)).toEqual(["dup", "dup", "tail", "dup"]);
+	});
+
+	it("prepends and reorders whole mixed-list items without stringifying typed values", () => {
+		let items = createTypedListItems([1, true, null, "x"]);
+
+		items = prependTypedListItem(items, createAddedTypedListItem("item-4", "first"));
+		items = moveTypedListItem(items, 4, "up");
+		items = moveTypedListItem(items, 3, "up");
+		items = moveTypedListItem(items, 2, "up");
+
+		expect(reconstructTypedList(items)).toEqual(["first", "x", 1, true, null]);
 	});
 
 	it("preserves wikilinks with commas as one item", () => {

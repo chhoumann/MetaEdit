@@ -285,6 +285,29 @@ describe("MetaEdit multi-value editing", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
+	test("prepends and reorders mixed typed-list items without stringifying untouched values", async () => {
+		const { obsidian, sandbox } = getContext();
+		const notePath = sandbox.path("typed-list-reorder-mixed.md");
+		await writeLiveFile(
+			obsidian,
+			notePath,
+			"---\nmixed:\n  - 1\n  - true\n  - null\n  - x\n---\nbody\n",
+		);
+
+		const result = await driveTypedListEdit(obsidian, notePath, {
+			key: "mixed",
+			actions: [
+				{ kind: "prepend", value: "first" },
+				{ direction: "up", index: 4, kind: "move" },
+				{ direction: "up", index: 3, kind: "move" },
+				{ direction: "up", index: 2, kind: "move" },
+			],
+		});
+
+		expect(result.readBack).toEqual(["first", "x", 1, true, null]);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
 	test("saves a typed list containing an untouched YAML date", async () => {
 		const { obsidian, sandbox } = getContext();
 		const notePath = sandbox.path("typed-list-date.md");
@@ -382,7 +405,9 @@ type TypedListAction =
 	| { kind: "add"; value: string }
 	| { kind: "remove"; index: number }
 	| { kind: "set"; index: number; value: string }
-	| { kind: "typeAdd"; value: string };
+	| { kind: "typeAdd"; value: string }
+	| { kind: "prepend"; value: string }
+	| { direction: "down" | "up"; index: number; kind: "move" };
 
 async function driveTypedListEdit(
 	obsidian: Parameters<typeof evalJsonAsync>[0],
@@ -438,9 +463,25 @@ async function driveTypedListEdit(
 					input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
 					await sleep(100);
 				}
+				if (action.kind === "prepend") {
+					const input = await waitFor(".metaedit-typed-list-add-input");
+					setInputValue(input, action.value);
+					const button = await waitFor(".metaedit-typed-list-add-beginning");
+					button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+					await sleep(100);
+				}
 				if (action.kind === "typeAdd") {
 					const input = await waitFor(".metaedit-typed-list-add-input");
 					setInputValue(input, action.value);
+					await sleep(100);
+				}
+				if (action.kind === "move") {
+					const selector = action.direction === "up"
+						? ".metaedit-typed-list-move-up"
+						: ".metaedit-typed-list-move-down";
+					const button = document.querySelectorAll(selector)[action.index];
+					if (!button) throw new Error("Missing move button at " + action.index);
+					button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 					await sleep(100);
 				}
 				if (action.kind === "remove") {
