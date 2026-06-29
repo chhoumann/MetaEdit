@@ -30,9 +30,21 @@
     font-weight: var(--font-semibold);
 }
 
+/* Lay the row out as flex so the action icons sit flush-right and stay
+   vertically centered against the property label (float:right aligned to the
+   line box, not the row center, which left them looking off). */
+.suggestion-item:has(.metaedit-suggester-action-button) {
+    display: flex;
+    align-items: center;
+}
+
 .metaedit-suggester-action-button {
-    float: right;
     margin-left: 4px;
+}
+
+/* First action button pushes the whole icon group to the right edge. */
+.metaedit-suggester-action-button:first-of-type {
+    margin-left: auto;
 }
 
 .metaedit-dataview-empty-header {
