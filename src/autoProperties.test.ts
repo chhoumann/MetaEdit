@@ -156,8 +156,29 @@ describe("toValueArray", () => {
         expect(toValueArray("a, b ,c")).toEqual(["a", "b", "c"]);
     });
 
-    it("strips YAML inline-array brackets", () => {
+    it("unwraps bracketed comma lists", () => {
         expect(toValueArray("[a, b]")).toEqual(["a", "b"]);
+    });
+
+    it("preserves a single inline wikilink", () => {
+        expect(toValueArray("[[Note]]")).toEqual(["[[Note]]"]);
+    });
+
+    it("splits wikilink lists without stripping wikilink brackets", () => {
+        expect(toValueArray("[[A]], [[B]]")).toEqual(["[[A]]", "[[B]]"]);
+    });
+
+    it("does not split commas inside wikilinks", () => {
+        expect(toValueArray("[[A, B]]")).toEqual(["[[A, B]]"]);
+        expect(toValueArray("[[A|B, C]]")).toEqual(["[[A|B, C]]"]);
+    });
+
+    it("unwraps bracketed comma lists without splitting wikilink commas", () => {
+        expect(toValueArray("[a, [[B, C]]]")).toEqual(["a", "[[B, C]]"]);
+    });
+
+    it("preserves non-list bracketed values", () => {
+        expect(toValueArray("[bracketed]")).toEqual(["[bracketed]"]);
     });
 
     it("passes through arrays", () => {
