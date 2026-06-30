@@ -16,6 +16,8 @@ import {applyMultiValueEdit, isMultiValueYamlProperty, shouldUseMultiValueEditor
 import {getYamlPath, isReservedFrontmatterKey, isYamlParentContainerValue, parseYamlPath, setYamlPath, YamlPathError, type SetYamlPathOptions, type YamlPathSegment} from "./yamlPath";
 import {computeTagRewrite, isNestedTag, isTagsKey, isValidTagToken, normalizeTagToken, splitFrontmatterTags, spliceTag, stripHash, tagLeaf, tagParent, canonicalizeFrontmatterTag, type TagEditMode} from "./tagEditing";
 import {setPendingValueContext} from "./Modals/GenericPrompt/promptValueContext";
+import NativePropertyPrompt from "./Modals/NativePropertyPrompt/NativePropertyPrompt";
+import {frontmatterValuesEqual, isNativeEditableYamlProperty} from "./typedProperties/nativePropertyTypes";
 
 const fileWriteQueues: Map<string, Promise<unknown>> = new Map();
 const ADD_FIRST_SELECTION = "metaedit:multi-value:add-first";
@@ -135,6 +137,8 @@ export default class MetaController {
             await this.editAutoProperty(property, file);
             return;
         }
+
+        if (await this.nativeYamlMode(property, file)) return;
 
         // A real YAML list is inherently multi-value, so it always uses the
         // element-aware list editor - editing it as a single text line (the
@@ -321,6 +325,17 @@ export default class MetaController {
         if (newValue) {
             await this.updatePropertyFromUi(property, newValue, file);
         }
+    }
+
+    private async nativeYamlMode(property: Property, file: TFile): Promise<boolean> {
+        if (!isNativeEditableYamlProperty(property)) return false;
+
+        const result = await NativePropertyPrompt.Prompt(this.app, file, property);
+        if (result.kind === "cancel") return true;
+        if (!result.changed) return true;
+
+        await this.updateNativeYamlPropertyFromUi(property, result.value, file);
+        return true;
     }
 
     private async multiValueMode(property: Property, file: TFile): Promise<boolean> {
@@ -645,6 +660,34 @@ export default class MetaController {
     private async updatePropertyFromUi(property: Property, newValue: unknown, file: TFile): Promise<boolean> {
         try {
             await this.updatePropertyInFile(property, newValue, file);
+            return true;
+        } catch (error) {
+            const reason = error instanceof Error ? error.message : String(error);
+            new Notice(`MetaEdit could not update '${property.key}': ${reason}`);
+            log.logMessage(`MetaEdit could not update '${property.key}': ${reason}`);
+            return false;
+        }
+    }
+
+    private async updateNativeYamlPropertyFromUi(property: Property, newValue: unknown, file: TFile): Promise<boolean> {
+        try {
+            if (property.type !== MetaType.YAML || property.path) {
+                throw new Error("native Properties editing only supports top-level YAML frontmatter.");
+            }
+
+            this.assertWritableKey(property.key);
+            await this.enqueueFileWrite(file, async () => {
+                await this.processFrontMatter(file, (frontmatter) => {
+                    if (!Object.prototype.hasOwnProperty.call(frontmatter, property.key)) {
+                        throw new Error("current value changed before update.");
+                    }
+                    if (!frontmatterValuesEqual(frontmatter[property.key], property.content)) {
+                        throw new Error("current value changed before update.");
+                    }
+
+                    frontmatter[property.key] = newValue;
+                });
+            });
             return true;
         } catch (error) {
             const reason = error instanceof Error ? error.message : String(error);

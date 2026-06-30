@@ -31,6 +31,99 @@ export class Notice {
   }
 }
 
+class StubElement {
+  textContent = "";
+  classList = {
+    add: () => undefined,
+    contains: () => false,
+  };
+
+  addClass(): void {}
+  createDiv(): StubElement {
+    return new StubElement();
+  }
+  createEl(): StubElement {
+    return new StubElement();
+  }
+  empty(): void {}
+  querySelector(): null {
+    return null;
+  }
+  remove(): void {}
+}
+
+export class Modal {
+  app: unknown;
+  contentEl: StubElement;
+
+  constructor(app: unknown) {
+    this.app = app;
+    this.contentEl = new StubElement();
+  }
+
+  open(): void {
+    this.onOpen();
+  }
+
+  close(): void {
+    this.onClose();
+  }
+
+  onOpen(): void {}
+  onClose(): void {}
+}
+
+export class ButtonComponent {
+  setButtonText(): this {
+    return this;
+  }
+
+  setCta(): this {
+    return this;
+  }
+
+  setDisabled(): this {
+    return this;
+  }
+
+  onClick(): this {
+    return this;
+  }
+}
+
+export class Setting {
+  constructor(_containerEl?: unknown) {}
+
+  setHeading(): this {
+    return this;
+  }
+
+  setName(): this {
+    return this;
+  }
+
+  addButton(callback: (button: ButtonComponent) => void): this {
+    callback(new ButtonComponent());
+    return this;
+  }
+}
+
+export class AbstractInputSuggest<T> {
+  app: unknown;
+  inputEl: unknown;
+
+  constructor(app: unknown, inputEl: unknown) {
+    this.app = app;
+    this.inputEl = inputEl;
+  }
+
+  onSelect(_callback: (value: T) => void): void {}
+
+  close(): void {}
+
+  setValue(_value: T): void {}
+}
+
 export function normalizePath(path: string): string {
   const normalized = path.replace(/\\/g, "/");
   const parts = normalized.split("/");
