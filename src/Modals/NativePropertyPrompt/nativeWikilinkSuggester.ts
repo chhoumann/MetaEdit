@@ -8,6 +8,24 @@ type LinkSuggestion = {
 
 const WIKILINK_QUERY = /\[\[([^\]]*)$/;
 
+// The query the user is typing after the most recent unclosed `[[`, or null if
+// the text does not end with an open `[[`.
+export function extractWikilinkQuery(text: string): string | null {
+	const match = text.match(WIKILINK_QUERY);
+	if (!match) return null;
+	return match[1] ?? "";
+}
+
+// Replace the trailing `[[query` with the generated link, preserving any text
+// typed before the `[[`. The query regex is end-anchored, so the link is
+// appended to that prefix. A link containing a comma (e.g. `[[A, B]]`) is
+// inserted verbatim and is never split into multiple values.
+export function buildWikilinkInsertion(text: string, link: string): string {
+	const match = text.match(WIKILINK_QUERY);
+	const prefix = match && match.index !== undefined ? text.slice(0, match.index) : text;
+	return prefix + link;
+}
+
 export class NativeWikilinkSuggester extends AbstractInputSuggest<LinkSuggestion> {
 	private readonly mirrorEl: HTMLInputElement;
 	private readonly onInput = () => this.refreshFromContent();
@@ -72,10 +90,8 @@ export class NativeWikilinkSuggester extends AbstractInputSuggest<LinkSuggestion
 	}
 
 	private currentQuery(): {query: string} | null {
-		const text = this.inputEl.textContent ?? "";
-		const match = text.match(WIKILINK_QUERY);
-		if (!match) return null;
-		return {query: match[1] ?? ""};
+		const query = extractWikilinkQuery(this.inputEl.textContent ?? "");
+		return query === null ? null : {query};
 	}
 
 	private acceptSuggestion(suggestion: LinkSuggestion): void {
@@ -86,8 +102,9 @@ export class NativeWikilinkSuggester extends AbstractInputSuggest<LinkSuggestion
 			"",
 			suggestion.alias,
 		);
-		this.inputEl.textContent = link;
+		this.inputEl.textContent = buildWikilinkInsertion(this.inputEl.textContent ?? "", link);
 		this.inputEl.focus();
+		placeCaretAtEnd(this.inputEl);
 		this.inputEl.trigger("input");
 		this.close();
 	}
@@ -99,4 +116,14 @@ export class NativeWikilinkSuggester extends AbstractInputSuggest<LinkSuggestion
 		const suggestions = metadataCache.getLinkSuggestions?.() ?? [];
 		return suggestions.filter(suggestion => suggestion.file);
 	}
+}
+
+function placeCaretAtEnd(el: HTMLElement): void {
+	const selection = el.ownerDocument.defaultView?.getSelection();
+	if (!selection) return;
+	const range = el.ownerDocument.createRange();
+	range.selectNodeContents(el);
+	range.collapse(false);
+	selection.removeAllRanges();
+	selection.addRange(range);
 }

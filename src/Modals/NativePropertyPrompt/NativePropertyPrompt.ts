@@ -129,7 +129,7 @@ export default class NativePropertyPrompt extends Modal {
 				},
 				blur: () => undefined,
 			});
-			this.installAliasesWikilinkFallback();
+			this.installWikilinkSuggester();
 		} catch (error) {
 			const reason = error instanceof Error ? error.message : String(error);
 			this.renderFailed = true;
@@ -143,14 +143,27 @@ export default class NativePropertyPrompt extends Modal {
 		}
 	}
 
-	private installAliasesWikilinkFallback(): void {
-		if (this.type !== "aliases") return;
+	private installWikilinkSuggester(): void {
+		// text, list, and aliases values can hold [[wikilinks]]. Install our own
+		// suggester so typing `[[` always offers vault files - Obsidian's native
+		// autocomplete in these mounted widgets only triggers once the property
+		// is already inferred to contain links, leaving fresh properties without
+		// suggestions. tags/cssclasses are not link-bearing, so they're excluded.
+		if (this.type !== "text" && this.type !== "multitext" && this.type !== "aliases") return;
 
-		const inputEl = this.hostEl.querySelector<HTMLElement>(".multi-select-input[contenteditable='true']");
+		const inputEl = this.wikilinkInputEl();
 		if (!inputEl) return;
 
 		const suggester = new NativeWikilinkSuggester(this.app, inputEl, this.file.path);
 		this.cleanupCallbacks.push(() => suggester.destroy());
+	}
+
+	private wikilinkInputEl(): HTMLElement | null {
+		if (this.type === "multitext" || this.type === "aliases") {
+			return this.hostEl.querySelector<HTMLElement>(".multi-select-input[contenteditable='true']");
+		}
+		// The native text widget renders a contenteditable longtext div.
+		return this.hostEl.querySelector<HTMLElement>("[contenteditable='true']");
 	}
 
 	private mountFallbackInput(reason: string): void {
