@@ -7,9 +7,12 @@ import {TFile} from "obsidian";
 vi.mock("./Modals/GenericPrompt/GenericPrompt", () => ({default: {Prompt: vi.fn()}}));
 vi.mock("./Modals/GenericSuggester/GenericSuggester", () => ({default: {Suggest: vi.fn()}}));
 vi.mock("./Modals/AutoPropertyValueModal/AutoPropertyValueModal", () => ({default: {Show: vi.fn()}}));
+vi.mock("./Modals/NativePropertyPrompt/NativePropertyPrompt", () => ({default: {Prompt: vi.fn()}}));
 
 import MetaController from "./metaController";
 import AutoPropertyValueModal from "./Modals/AutoPropertyValueModal/AutoPropertyValueModal";
+import NativePropertyPrompt from "./Modals/NativePropertyPrompt/NativePropertyPrompt";
+import GenericPrompt from "./Modals/GenericPrompt/GenericPrompt";
 import {SettingsWriter} from "./settingsWrites";
 import type {AutoProperty} from "./Types/autoProperty";
 import {EditMode} from "./Types/editMode";
@@ -306,6 +309,109 @@ describe("MetaController.persistAutoPropertyChoices", () => {
 
         expect(ctx.liveChoices()).toEqual(["todo"]);
         expect(ctx.diskChoices()).toEqual(["todo"]);
+    });
+});
+
+describe("MetaController native YAML property editing", () => {
+    const setupFrontmatter = (initial: Record<string, unknown> = {}) => {
+        const fm: Record<string, unknown> = {...initial};
+        const processFrontMatter = vi.fn(async (_file: unknown, fn: (f: Record<string, unknown>) => void) => {
+            fn(fm);
+        });
+        const app = {
+            plugins: {plugins: {}},
+            vault: {read: vi.fn(async () => ""), modify: vi.fn(async () => {})},
+            fileManager: {processFrontMatter},
+        };
+        const plugin = {
+            settings: {
+                EditMode: {mode: EditMode.AllSingle, properties: [] as string[]},
+                AutoProperties: {enabled: false, properties: []},
+            },
+        };
+        const controller = new MetaController(app as never, plugin as never);
+        return {controller, file: new TFile("note.md"), fm, processFrontMatter};
+    };
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        (NativePropertyPrompt.Prompt as ReturnType<typeof vi.fn>).mockReset();
+    });
+
+    it.each([
+        ["empty string", ""],
+        ["zero", 0],
+        ["false", false],
+        ["null", null],
+    ])("writes a submitted %s value instead of using truthiness", async (_label, submitted) => {
+        const ctx = setupFrontmatter({status: "old"});
+        (NativePropertyPrompt.Prompt as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            kind: "submit",
+            changed: true,
+            type: "text",
+            value: submitted,
+            valueSource: "native",
+        });
+
+        await ctx.controller.editMetaElement(
+            {key: "status", content: "old", type: MetaType.YAML},
+            [],
+            ctx.file,
+        );
+
+        expect(ctx.fm.status).toBe(submitted);
+    });
+
+    it("does not write when the native modal reports no value change", async () => {
+        const ctx = setupFrontmatter({status: "old"});
+        (NativePropertyPrompt.Prompt as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            kind: "submit",
+            changed: false,
+            type: "text",
+            value: "old",
+            valueSource: "native",
+        });
+
+        await ctx.controller.editMetaElement(
+            {key: "status", content: "old", type: MetaType.YAML},
+            [],
+            ctx.file,
+        );
+
+        expect(ctx.processFrontMatter).not.toHaveBeenCalled();
+        expect(ctx.fm.status).toBe("old");
+    });
+
+    it("refuses a stale top-level YAML write inside the processFrontMatter callback", async () => {
+        const ctx = setupFrontmatter({status: "changed elsewhere"});
+        (NativePropertyPrompt.Prompt as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            kind: "submit",
+            changed: true,
+            type: "text",
+            value: "new",
+            valueSource: "native",
+        });
+
+        await ctx.controller.editMetaElement(
+            {key: "status", content: "old", type: MetaType.YAML},
+            [],
+            ctx.file,
+        );
+
+        expect(ctx.fm.status).toBe("changed elsewhere");
+        expect(GenericPrompt.Prompt).not.toHaveBeenCalled();
+    });
+
+    it("keeps inline Dataview fields on the legacy editor path", async () => {
+        const ctx = setupFrontmatter({status: "old"});
+
+        await ctx.controller.editMetaElement(
+            {key: "status", content: "old", type: MetaType.Dataview},
+            [],
+            ctx.file,
+        );
+
+        expect(NativePropertyPrompt.Prompt).not.toHaveBeenCalled();
     });
 });
 

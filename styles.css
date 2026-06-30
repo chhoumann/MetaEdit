@@ -84,3 +84,39 @@
     color: var(--text-muted);
     font-size: var(--font-ui-smaller);
 }
+
+.metaedit-native-property-prompt {
+    min-width: min(520px, 88vw);
+}
+
+.metaedit-native-property-row {
+    display: block;
+    margin: 12px 0;
+}
+
+.metaedit-native-property-host {
+    width: 100%;
+}
+
+.metaedit-native-property-host > * {
+    width: 100%;
+}
+
+.metaedit-native-property-error,
+.metaedit-native-property-fallback-note {
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+    margin-bottom: 8px;
+}
+
+.metaedit-native-property-fallback-input {
+    width: 100%;
+}
+
+.metaedit-native-wikilink-suggest-mirror {
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    width: 1px;
+}
