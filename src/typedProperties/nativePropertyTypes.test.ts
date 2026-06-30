@@ -63,6 +63,16 @@ describe("native property type resolution", () => {
 			.toMatchObject({kind: "native", type: "number"});
 	});
 
+	it("infers a UTC-midnight Date as date regardless of the runner's timezone", () => {
+		const app = appWithManager({});
+
+		// parseYaml represents a date-only YAML value (2026-08-03) as UTC midnight.
+		expect(resolveNativeProperty(app as never, {key: "due", content: new Date("2026-08-03T00:00:00.000Z"), type: MetaType.YAML}))
+			.toMatchObject({kind: "native", type: "date"});
+		expect(resolveNativeProperty(app as never, {key: "stamp", content: new Date("2026-08-03T09:30:00.000Z"), type: MetaType.YAML}))
+			.toMatchObject({kind: "native", type: "datetime"});
+	});
+
 	it("uses the text fallback only when the native registry or selected widget is absent", () => {
 		expect(resolveNativeProperty({} as never, {key: "status", content: "open", type: MetaType.YAML}))
 			.toMatchObject({kind: "fallback", type: "text"});

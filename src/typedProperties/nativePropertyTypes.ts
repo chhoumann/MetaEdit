@@ -219,10 +219,14 @@ function inferTypeFromValue(value: unknown): StandardNativePropertyType {
 }
 
 function hasDateTime(value: Date): boolean {
-	return value.getHours() !== 0 ||
-		value.getMinutes() !== 0 ||
-		value.getSeconds() !== 0 ||
-		value.getMilliseconds() !== 0;
+	// parseYaml gives a date-only YAML value (e.g. 2026-08-03) as a Date at UTC
+	// midnight. Read UTC fields so a date-only value isn't misclassified as
+	// datetime in non-UTC locales (consistent with this module's UTC-based date
+	// handling elsewhere).
+	return value.getUTCHours() !== 0 ||
+		value.getUTCMinutes() !== 0 ||
+		value.getUTCSeconds() !== 0 ||
+		value.getUTCMilliseconds() !== 0;
 }
 
 function invalidType(type: StandardNativePropertyType, expected: string): NormalizedWidgetValue {
