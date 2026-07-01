@@ -81,6 +81,66 @@ describe("MetaEdit fluid property creation", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
+	test("layout: the row never overflows horizontally and the key dropdown stays above the buttons", async () => {
+		const {obsidian, sandbox} = getContext();
+		const notePath = sandbox.path("fluid-create-layout.md");
+		await writeLiveFile(obsidian, notePath, "---\n---\nbody\n");
+
+		const result = await evalJsonAsync<{
+			modalOverflowX: boolean;
+			rowOverflowX: boolean;
+			hostRightWithinModal: boolean;
+			dropdownItems: number;
+			dropdownBottom: number;
+			addBtnTop: number;
+			modalBottom: number;
+		}>(
+			obsidian,
+			`
+			(async () => {
+				${FLUID_HELPERS}
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const file = app.vault.getAbstractFileByPath(${JSON.stringify(notePath)});
+				const names = Array.from({length: 30}, (_, i) => "layoutProbeKey" + i);
+				const promise = plugin.controller.createNewYamlPropertyFluid(file, names, new Set());
+				const modal = await waitFor(".metaedit-fluid-create");
+				const row = modal.querySelector(".metaedit-fluid-create-row");
+				const host = modal.querySelector(".metaedit-fluid-create-value");
+				const modalBox = modal.closest(".modal");
+				const out = {
+					modalOverflowX: modal.scrollWidth > modal.clientWidth,
+					rowOverflowX: row.scrollWidth > row.clientWidth,
+					hostRightWithinModal: Math.round(host.getBoundingClientRect().right) <= Math.round(modalBox.getBoundingClientRect().right),
+					modalBottom: Math.round(modalBox.getBoundingClientRect().bottom),
+				};
+				// Open the key dropdown with an input event only (no keyboard-to-selection).
+				const key = modal.querySelector(".metaedit-fluid-create-key");
+				key.focus();
+				key.value = "layoutProbeKey";
+				key.dispatchEvent(new Event("input", {bubbles: true}));
+				await sleep(350);
+				const dd = document.querySelector(".suggestion-container.metaedit-fluid-create-suggest");
+				const add = Array.from(modal.querySelectorAll("button")).find(b => b.textContent.trim() === "Add");
+				out.dropdownItems = dd ? dd.querySelectorAll(".suggestion-item").length : 0;
+				out.dropdownBottom = dd ? Math.round(dd.getBoundingClientRect().bottom) : 0;
+				out.addBtnTop = Math.round(add.getBoundingClientRect().top);
+				cancel(modal);
+				await promise;
+				document.querySelectorAll(".suggestion-container").forEach(e => e.remove());
+				return out;
+			})()
+			`,
+		);
+
+		expect(result.modalOverflowX).toBe(false);
+		expect(result.rowOverflowX).toBe(false);
+		expect(result.hostRightWithinModal).toBe(true);
+		expect(result.dropdownItems).toBeGreaterThan(0); // dropdown actually opened
+		expect(result.dropdownBottom).toBeLessThanOrEqual(result.addBtnTop); // never covers the buttons
+		expect(result.dropdownBottom).toBeLessThanOrEqual(result.modalBottom); // never spills below the modal
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
 	test("the write path: chosen native type wins over EditMode, tags stay as-is, create-guard holds", async () => {
 		const {obsidian, sandbox} = getContext();
 		const notePath = sandbox.path("fluid-create-writepath.md");

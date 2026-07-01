@@ -121,14 +121,31 @@
     width: 1px;
 }
 
+/* Widen the modal BOX itself (not the content past the box padding, which caused
+   the horizontal scrollbar) and give it vertical room so the key-name dropdown
+   has space above the action buttons. */
+.metaedit-fluid-create-modal {
+    width: min(620px, 92vw);
+    max-width: 92vw;
+}
+
 .metaedit-fluid-create {
-    min-width: min(560px, 90vw);
+    display: flex;
+    flex-direction: column;
+    min-height: 320px;
+}
+
+/* Pin the action-button row to the bottom so the dropdown opens in the space
+   above it rather than over it. */
+.metaedit-fluid-create > .setting-item:last-child {
+    margin-top: auto;
 }
 
 .metaedit-fluid-create-row {
     display: flex;
     align-items: flex-start;
     gap: 8px;
+    flex-wrap: nowrap;
     margin: 16px 0 6px;
 }
 
@@ -167,13 +184,21 @@
 }
 
 .metaedit-fluid-create-key {
-    flex: 0 0 34%;
+    flex: 2 1 0;
     min-width: 0;
 }
 
 .metaedit-fluid-create-value {
-    flex: 1 1 auto;
+    flex: 3 1 0;
     min-width: 0;
+}
+
+/* Cap the key-name suggestion dropdown (~6-7 rows + internal scroll). Sized to fit
+   above the action buttons within the reserved modal height, so it never spills
+   below the modal or covers the buttons. */
+.metaedit-fluid-create-suggest {
+    max-height: 190px;
+    overflow-y: auto;
 }
 
 .metaedit-fluid-create-autoprop {

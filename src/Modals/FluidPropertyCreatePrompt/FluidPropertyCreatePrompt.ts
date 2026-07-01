@@ -97,6 +97,7 @@ export default class FluidPropertyCreatePrompt extends Modal {
 			this.resolvePromise = resolve;
 		});
 
+		this.modalEl.addClass("metaedit-fluid-create-modal");
 		this.contentEl.addClass("metaedit-fluid-create");
 		new Setting(this.contentEl).setHeading().setName("New property");
 
@@ -174,7 +175,7 @@ export default class FluidPropertyCreatePrompt extends Modal {
 
 	private registerKeyInput(): void {
 		if (this.opts.suggestValues.length > 0) {
-			this.keySuggester = new GenericTextSuggester(this.app, this.keyInputEl, this.opts.suggestValues);
+			this.keySuggester = new FluidKeyNameSuggester(this.app, this.keyInputEl, this.opts.suggestValues);
 		}
 		this.keyInputEl.addEventListener("input", () => this.updateValidity());
 		this.keyInputEl.addEventListener("blur", () => this.settleKey());
@@ -439,5 +440,18 @@ export default class FluidPropertyCreatePrompt extends Modal {
 
 	private capitalize(text: string): string {
 		return text.length === 0 ? text : text[0].toUpperCase() + text.slice(1);
+	}
+}
+
+/**
+ * The key-name suggester for the create modal. It tags its dropdown so the scoped
+ * CSS cap applies (a fixed max-height + scroll, sized to sit above the action
+ * buttons within the reserved modal height), so the list never spills below the
+ * modal or covers the buttons.
+ */
+class FluidKeyNameSuggester extends GenericTextSuggester {
+	renderSuggestion(value: string, el: HTMLElement): void {
+		super.renderSuggestion(value, el);
+		el.closest(".suggestion-container")?.addClass("metaedit-fluid-create-suggest");
 	}
 }
