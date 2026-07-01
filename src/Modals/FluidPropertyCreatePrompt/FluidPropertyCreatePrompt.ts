@@ -106,7 +106,7 @@ export default class FluidPropertyCreatePrompt extends Modal {
 		this.typePillEl.type = "button";
 		this.typePillIconEl = this.typePillEl.createSpan({cls: "metaedit-fluid-create-type-icon"});
 		this.typePillLabelEl = this.typePillEl.createSpan({cls: "metaedit-fluid-create-type-label"});
-		this.typePillEl.addEventListener("click", (evt) => this.openTypeMenu(evt));
+		this.typePillEl.addEventListener("click", () => this.openTypeMenu());
 
 		this.keyInputEl = rowEl.createEl("input", {
 			cls: "metadata-property-key-input metaedit-fluid-create-key",
@@ -282,7 +282,7 @@ export default class FluidPropertyCreatePrompt extends Modal {
 		this.host.focus();
 	}
 
-	private openTypeMenu(evt?: MouseEvent): void {
+	private openTypeMenu(): void {
 		if (this.autoPropertyKey || LOCKED_TYPES.has(this.host.type)) return;
 
 		const menu = new Menu();
@@ -294,12 +294,10 @@ export default class FluidPropertyCreatePrompt extends Modal {
 				item.onClick(() => this.pickType(choice.type));
 			});
 		}
-		if (evt instanceof MouseEvent) {
-			menu.showAtMouseEvent(evt);
-		} else {
-			const rect = this.typePillEl.getBoundingClientRect();
-			menu.showAtPosition({x: rect.left, y: rect.bottom});
-		}
+		// Anchor the menu under the pill like a dropdown (deterministic position,
+		// independent of the pointer), so click and Cmd/Ctrl+Y open it the same way.
+		const rect = this.typePillEl.getBoundingClientRect();
+		menu.showAtPosition({x: rect.left, y: rect.bottom + 4});
 	}
 
 	private updateTypePill(): void {
