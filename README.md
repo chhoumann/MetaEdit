@@ -1,6 +1,6 @@
 # MetaEdit for Obsidian
 
-![v554FnTthq](https://user-images.githubusercontent.com/29108628/118363633-9933de80-b595-11eb-9603-31a3be0e0ccc.gif)
+![Creating a typed property with MetaEdit's New property modal - the key autocompletes and the value widget switches to the property's type as you type](docs/assets/releases/1.9.0/fluid-property-create.gif)
 
 ## Features
 - Add or update Yaml properties and Dataview fields easily
