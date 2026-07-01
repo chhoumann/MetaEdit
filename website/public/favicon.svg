@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+	<style>
+		.key { fill: #6d3fd4; }
+		.value { fill: #0d9488; }
+		@media (prefers-color-scheme: dark) {
+			.key { fill: #a78bfa; }
+			.value { fill: #2fd6c3; }
+		}
+	</style>
+	<circle class="key" cx="7" cy="7.5" r="3.4" />
+	<circle class="key" cx="7" cy="16.5" r="3.4" />
+	<circle class="value" cx="17" cy="7.5" r="3.4" />
+	<circle class="value" cx="17" cy="16.5" r="3.4" />
+</svg>

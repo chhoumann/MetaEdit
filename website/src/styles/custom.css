@@ -1,0 +1,266 @@
+/*
+ * MetaEdit docs theme.
+ *
+ * Identity: the two halves of a metadata field. Keys are violet (Obsidian
+ * kinship), values are teal - the same pairing a YAML syntax highlighter
+ * gives you. The `::` logo mark, the two-tone wordmark, and the hero
+ * "properties card" all derive from it.
+ *
+ * Type: IBM Plex Sans (body) + IBM Plex Mono (display accents and code).
+ */
+
+:root {
+	--sl-font: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+	--sl-font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+	/* Dark mode (default): deep ink with a violet cast, never pure black. */
+	--me-key: #a78bfa;
+	--me-value: #2fd6c3;
+	--me-value-dim: rgba(47, 214, 195, 0.14);
+	--me-key-dim: rgba(167, 139, 250, 0.14);
+
+	--sl-color-accent-low: #2b2151;
+	--sl-color-accent: #8b74e8;
+	--sl-color-accent-high: #cabffb;
+	--sl-color-white: #ffffff;
+	--sl-color-gray-1: #ececf5;
+	--sl-color-gray-2: #c3c2cf;
+	--sl-color-gray-3: #8f8da2;
+	--sl-color-gray-4: #5b5970;
+	--sl-color-gray-5: #3b3a4d;
+	--sl-color-gray-6: #232231;
+	--sl-color-black: #15141d;
+}
+
+:root[data-theme='light'] {
+	--me-key: #6d3fd4;
+	--me-value: #0d9488;
+	--me-value-dim: rgba(13, 148, 136, 0.1);
+	--me-key-dim: rgba(109, 63, 212, 0.1);
+
+	--sl-color-accent-low: #ded5f7;
+	--sl-color-accent: #6d3fd4;
+	--sl-color-accent-high: #3a2a71;
+	--sl-color-white: #17161e;
+	--sl-color-gray-1: #24222e;
+	--sl-color-gray-2: #3d3b4a;
+	--sl-color-gray-3: #57556a;
+	--sl-color-gray-4: #8886a0;
+	--sl-color-gray-5: #c9c7d6;
+	--sl-color-gray-6: #eeedf4;
+	--sl-color-gray-7: #f7f6fa;
+	--sl-color-black: #fdfdfe;
+}
+
+/* ------------------------------------------------------------------ */
+/* Wordmark: "MetaEdit" set in mono, Meta violet / Edit teal.          */
+/* Plex Mono is fixed-width and the split is 4/4 characters, so a      */
+/* hard-stop gradient at 50% lands exactly between the two words.      */
+/* ------------------------------------------------------------------ */
+
+.site-title span {
+	font-family: var(--sl-font-mono);
+	font-weight: 600;
+	letter-spacing: -0.02em;
+	background: linear-gradient(90deg, var(--me-key) 0 50%, var(--me-value) 50% 100%);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+}
+
+/* ------------------------------------------------------------------ */
+/* Hero                                                                */
+/* ------------------------------------------------------------------ */
+
+[data-has-hero] .hero h1 {
+	font-family: var(--sl-font-mono);
+	font-weight: 600;
+	letter-spacing: -0.035em;
+	line-height: 1.15;
+}
+
+[data-has-hero] .hero .tagline {
+	max-width: 34rem;
+}
+
+[data-has-hero] .hero .tagline code {
+	font-size: 0.9em;
+	background: var(--me-key-dim);
+	color: var(--me-key);
+	border-radius: 0.3rem;
+	padding: 0.1em 0.35em;
+}
+
+/* The signature element: a rendered frontmatter "properties card". */
+.me-hero-card {
+	inline-size: 100%;
+	max-inline-size: 24rem;
+	margin-inline: auto;
+	text-align: initial;
+	font-family: var(--sl-font-mono);
+	font-size: var(--sl-text-sm);
+	background: var(--sl-color-gray-6);
+	border: 1px solid var(--sl-color-gray-5);
+	border-radius: 0.75rem;
+	box-shadow: 0 1.5rem 3rem -1.5rem color-mix(in srgb, var(--me-key) 35%, transparent);
+	overflow: hidden;
+}
+
+.me-hero-card__bar {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 0.6rem 0.9rem;
+	border-bottom: 1px solid var(--sl-color-gray-5);
+}
+
+.me-hero-card__bar span {
+	inline-size: 0.55rem;
+	block-size: 0.55rem;
+	border-radius: 50%;
+	background: var(--sl-color-gray-4);
+	opacity: 0.55;
+}
+
+.me-hero-card__bar em {
+	margin-inline-start: 0.35rem;
+	font-style: normal;
+	font-size: 0.8em;
+	color: var(--sl-color-gray-3);
+}
+
+.me-hero-card__body {
+	padding: 0.9rem 1.1rem 1.1rem;
+}
+
+.me-hero-card__fence {
+	color: var(--sl-color-gray-4);
+	letter-spacing: 0.2em;
+	user-select: none;
+}
+
+.me-hero-card dl {
+	margin: 0.45rem 0;
+	display: grid;
+	gap: 0.5rem;
+}
+
+.me-hero-card .me-prop {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
+}
+
+.me-hero-card dt {
+	color: var(--me-key);
+	flex-shrink: 0;
+}
+
+.me-hero-card dt::after {
+	content: ':';
+	color: var(--sl-color-gray-4);
+}
+
+.me-hero-card dd {
+	margin: 0;
+	color: var(--me-value);
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem;
+}
+
+.me-hero-card .me-pill {
+	background: var(--me-value-dim);
+	border-radius: 999px;
+	padding: 0.05rem 0.6rem;
+}
+
+.me-hero-card .me-caret {
+	display: inline-block;
+	inline-size: 1px;
+	align-self: stretch;
+	background: var(--me-value);
+	animation: me-caret-blink 1.1s steps(1) infinite;
+}
+
+@keyframes me-caret-blink {
+	50% {
+		opacity: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.me-hero-card .me-caret {
+		animation: none;
+	}
+}
+
+/* ------------------------------------------------------------------ */
+/* Content niceties                                                    */
+/* ------------------------------------------------------------------ */
+
+/* Screenshots and GIFs sit in a quiet frame so captures from light and
+   dark vaults both look placed, not pasted. */
+.sl-markdown-content img {
+	border: 1px solid var(--sl-color-gray-5);
+	border-radius: 0.6rem;
+	box-shadow: 0 0.6rem 1.6rem -1rem color-mix(in srgb, var(--sl-color-black) 85%, transparent);
+}
+
+/* Thematic breaks as frontmatter fences. */
+.sl-markdown-content hr {
+	border: none;
+	margin-block: 2.5rem;
+}
+
+.sl-markdown-content hr::before {
+	content: '---';
+	display: block;
+	font-family: var(--sl-font-mono);
+	color: var(--sl-color-gray-4);
+	letter-spacing: 0.35em;
+}
+
+/* Inline code carries a whisper of the key tint. */
+.sl-markdown-content code:not(pre code) {
+	background: var(--me-key-dim);
+	border-radius: 0.3rem;
+}
+
+/* Feature cards on the landing page: accent the icon, lift on hover. */
+.card {
+	transition:
+		border-color 150ms ease,
+		transform 150ms ease;
+}
+
+.card:hover {
+	border-color: var(--sl-color-accent);
+	transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.card,
+	.card:hover {
+		transform: none;
+	}
+}
+
+.card .icon {
+	color: var(--me-key);
+}
+
+/* Landing page: card bodies end in a link; give it room to breathe. */
+.card .body a {
+	display: inline-block;
+	margin-block-start: 0.6rem;
+	font-weight: 500;
+}
+
+.me-landing-facts {
+	text-align: center;
+	color: var(--sl-color-gray-3);
+	font-family: var(--sl-font-mono);
+	font-size: var(--sl-text-sm);
+	margin-block-start: 3rem;
+}

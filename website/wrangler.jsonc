@@ -1,0 +1,15 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "metaedit-docs",
+	"compatibility_date": "2026-06-01",
+	"assets": {
+		"directory": "./dist",
+		"not_found_handling": "404-page"
+	},
+	"routes": [
+		{
+			"pattern": "metaedit.obsidian.guide",
+			"custom_domain": true
+		}
+	]
+}
