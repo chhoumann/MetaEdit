@@ -34,7 +34,13 @@ pnpm run deploy     # build + wrangler deploy (needs a Cloudflare-authenticated 
 
 ## Deploying
 
-`pnpm run deploy` builds and pushes in one step. Deploys are manual for now; if this
-gets tedious, create a Cloudflare API token scoped to Workers Scripts:Edit, add it to
-the repo as `CLOUDFLARE_API_TOKEN`, and wire a GitHub Actions workflow that runs
-`wrangler deploy` on pushes touching `website/`.
+Deploys are automatic via [Cloudflare Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/):
+the `metaedit-docs` Worker is connected to this repository (root directory `/website`,
+build watch paths scoped to `website/*`), so pushes to `master` that touch `website/`
+build with `pnpm run build` and deploy with `npx wrangler deploy`. Non-production
+branches upload preview versions (`npx wrangler versions upload`) without touching the
+custom domain. Build history lives in the Cloudflare dashboard under
+Workers & Pages → metaedit-docs → Deployments.
+
+For a manual deploy (or if Workers Builds is ever disconnected), `pnpm run deploy`
+builds and pushes in one step with a locally authenticated wrangler.
