@@ -81,7 +81,7 @@ describe("MetaEdit fluid property creation", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
-	test("layout: the row never overflows horizontally and the key dropdown stays above the buttons", async () => {
+	test("layout: no horizontal overflow, compact height, and the floating dropdown never covers the buttons", async () => {
 		const {obsidian, sandbox} = getContext();
 		const notePath = sandbox.path("fluid-create-layout.md");
 		await writeLiveFile(obsidian, notePath, "---\n---\nbody\n");
@@ -90,10 +90,11 @@ describe("MetaEdit fluid property creation", () => {
 			modalOverflowX: boolean;
 			rowOverflowX: boolean;
 			hostRightWithinModal: boolean;
+			gapRowToButtons: number;
 			dropdownItems: number;
-			dropdownBottom: number;
-			addBtnTop: number;
-			modalBottom: number;
+			dropdownHeight: number;
+			coversAdd: boolean;
+			coversCancel: boolean;
 		}>(
 			obsidian,
 			`
@@ -107,11 +108,15 @@ describe("MetaEdit fluid property creation", () => {
 				const row = modal.querySelector(".metaedit-fluid-create-row");
 				const host = modal.querySelector(".metaedit-fluid-create-value");
 				const modalBox = modal.closest(".modal");
+				const add = Array.from(modal.querySelectorAll("button")).find(b => b.textContent.trim() === "Add");
+				const cancelBtn = Array.from(modal.querySelectorAll("button")).find(b => b.textContent.trim() === "Cancel");
+				const intersects = (a, c) => a.left < c.right && a.right > c.left && a.top < c.bottom && a.bottom > c.top;
 				const out = {
 					modalOverflowX: modal.scrollWidth > modal.clientWidth,
 					rowOverflowX: row.scrollWidth > row.clientWidth,
 					hostRightWithinModal: Math.round(host.getBoundingClientRect().right) <= Math.round(modalBox.getBoundingClientRect().right),
-					modalBottom: Math.round(modalBox.getBoundingClientRect().bottom),
+					// Compact: only a little breathing room between the row and the buttons (no reserved dead space).
+					gapRowToButtons: Math.round(add.getBoundingClientRect().top - row.getBoundingClientRect().bottom),
 				};
 				// Open the key dropdown with an input event only (no keyboard-to-selection).
 				const key = modal.querySelector(".metaedit-fluid-create-key");
@@ -120,10 +125,11 @@ describe("MetaEdit fluid property creation", () => {
 				key.dispatchEvent(new Event("input", {bubbles: true}));
 				await sleep(350);
 				const dd = document.querySelector(".suggestion-container.metaedit-fluid-create-suggest");
-				const add = Array.from(modal.querySelectorAll("button")).find(b => b.textContent.trim() === "Add");
 				out.dropdownItems = dd ? dd.querySelectorAll(".suggestion-item").length : 0;
-				out.dropdownBottom = dd ? Math.round(dd.getBoundingClientRect().bottom) : 0;
-				out.addBtnTop = Math.round(add.getBoundingClientRect().top);
+				out.dropdownHeight = dd ? Math.round(dd.getBoundingClientRect().height) : 0;
+				// 2D intersection: the floating dropdown must not visually cover either button.
+				out.coversAdd = dd ? intersects(dd.getBoundingClientRect(), add.getBoundingClientRect()) : true;
+				out.coversCancel = dd ? intersects(dd.getBoundingClientRect(), cancelBtn.getBoundingClientRect()) : true;
 				cancel(modal);
 				await promise;
 				document.querySelectorAll(".suggestion-container").forEach(e => e.remove());
@@ -135,9 +141,11 @@ describe("MetaEdit fluid property creation", () => {
 		expect(result.modalOverflowX).toBe(false);
 		expect(result.rowOverflowX).toBe(false);
 		expect(result.hostRightWithinModal).toBe(true);
+		expect(result.gapRowToButtons).toBeLessThan(80); // compact: no big reserved gap
 		expect(result.dropdownItems).toBeGreaterThan(0); // dropdown actually opened
-		expect(result.dropdownBottom).toBeLessThanOrEqual(result.addBtnTop); // never covers the buttons
-		expect(result.dropdownBottom).toBeLessThanOrEqual(result.modalBottom); // never spills below the modal
+		expect(result.dropdownHeight).toBeLessThanOrEqual(200); // capped (~6-7 rows + scroll)
+		expect(result.coversAdd).toBe(false); // floating dropdown never covers the buttons
+		expect(result.coversCancel).toBe(false);
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
