@@ -8,6 +8,7 @@ vi.mock("./Modals/GenericPrompt/GenericPrompt", () => ({default: {Prompt: vi.fn(
 vi.mock("./Modals/GenericSuggester/GenericSuggester", () => ({default: {Suggest: vi.fn()}}));
 vi.mock("./Modals/AutoPropertyValueModal/AutoPropertyValueModal", () => ({default: {Show: vi.fn()}}));
 vi.mock("./Modals/NativePropertyPrompt/NativePropertyPrompt", () => ({default: {Prompt: vi.fn()}}));
+vi.mock("./Modals/FluidPropertyCreatePrompt/FluidPropertyCreatePrompt", () => ({default: {Open: vi.fn()}}));
 
 import MetaController from "./metaController";
 import AutoPropertyValueModal from "./Modals/AutoPropertyValueModal/AutoPropertyValueModal";
@@ -541,5 +542,65 @@ describe("MetaController reserved-key guard", () => {
 
         await ctx.controller.updateYamlPath(["safe", "ok"], 2, ctx.file);
         expect(ctx.fm).toEqual({safe: {ok: 2}});
+    });
+});
+
+describe("MetaController.createNativeYamlProperty (fluid creation write path)", () => {
+    const setupFm = (initial: Record<string, unknown> = {}, mode: EditMode = EditMode.AllSingle) => {
+        const fm: Record<string, unknown> = {...initial};
+        const processFrontMatter = vi.fn(async (_file: unknown, fn: (f: Record<string, unknown>) => void) => {
+            fn(fm);
+        });
+        const app = {
+            plugins: {plugins: {}},
+            vault: {read: vi.fn(async () => ""), modify: vi.fn(async () => {})},
+            fileManager: {processFrontMatter},
+        };
+        const plugin = {settings: {EditMode: {mode, properties: [] as string[]}, AutoProperties: {enabled: false, properties: []}}};
+        const controller = new MetaController(app as never, plugin as never);
+        return {controller, file: new TFile("note.md"), fm, processFrontMatter};
+    };
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it("refuses reserved keys before opening the file", async () => {
+        const ctx = setupFm();
+        for (const key of ["__proto__", "constructor", "prototype"]) {
+            await expect(ctx.controller.createNativeYamlProperty(key, "x", ctx.file)).rejects.toThrow(/reserved property name/);
+        }
+        expect(ctx.processFrontMatter).not.toHaveBeenCalled();
+        expect(ctx.fm).toEqual({});
+    });
+
+    it("writes the typed native value directly with NO EditMode multi-wrap, even under AllMulti (chosen type wins)", async () => {
+        const ctx = setupFm({}, EditMode.AllMulti);
+
+        await ctx.controller.createNativeYamlProperty("estimate", 5, ctx.file);
+        await ctx.controller.createNativeYamlProperty("status", "in-progress", ctx.file);
+        await ctx.controller.createNativeYamlProperty("done", false, ctx.file);
+        await ctx.controller.createNativeYamlProperty("blank", null, ctx.file);
+
+        // Falsy typed values commit (never truthiness-filtered), and none are wrapped into a list.
+        expect(ctx.fm).toEqual({estimate: 5, status: "in-progress", done: false, blank: null});
+    });
+
+    it("writes a list value as-is and does NOT canonicalize tags, so create round-trips like native edit", async () => {
+        const ctx = setupFm();
+
+        await ctx.controller.createNativeYamlProperty("related", ["alpha", "beta"], ctx.file);
+        await ctx.controller.createNativeYamlProperty("tags", ["#area/next", "area/test"], ctx.file);
+
+        expect(ctx.fm).toEqual({related: ["alpha", "beta"], tags: ["#area/next", "area/test"]});
+    });
+
+    it("create-guard: refuses to clobber a key that already exists (no overwrite)", async () => {
+        const ctx = setupFm({status: "existing"});
+
+        await ctx.controller.createNativeYamlProperty("status", "new", ctx.file);
+
+        expect(ctx.processFrontMatter).toHaveBeenCalledTimes(1);
+        expect(ctx.fm).toEqual({status: "existing"});
     });
 });
