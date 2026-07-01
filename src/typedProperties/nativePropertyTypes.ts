@@ -60,6 +60,7 @@ export type NativePropertyResolution =
 export interface NativePropertyWidget {
 	name?: unknown;
 	type?: unknown;
+	icon?: unknown;
 	validate?: (value: unknown) => boolean;
 	render?: (container: HTMLElement, value: unknown, ctx: NativePropertyWidgetContext) => unknown;
 	reservedKeys?: unknown;

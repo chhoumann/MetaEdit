@@ -86,21 +86,11 @@ export default class MetaEditSuggester extends FuzzySuggestModal<Property> {
 
     async onChooseItem(item: Property, _evt: MouseEvent | KeyboardEvent): Promise<void> {
         if (item.content === newYaml) {
-            const newProperty = await this.controller.createNewProperty(this.suggestValues);
-            if (!newProperty) return null;
-
-            const {propName, propValue} = newProperty;
-            // The add fails closed on a reserved object-machinery key
-            // (__proto__/constructor/prototype). Surface it as a Notice here so
-            // a typed reserved name does not become an uncaught rejection. The
-            // inline (Dataview) path below is line-based, not a frontmatter key,
-            // so it is intentionally NOT guarded.
-            try {
-                await this.controller.addYamlProp(propName, propValue, this.file);
-            } catch (error) {
-                const reason = error instanceof Error ? error.message : String(error);
-                new Notice(`MetaEdit could not add '${propName}': ${reason}`);
-            }
+            // Fluid, type-aware native creation: one keyboard-first modal that
+            // mounts Obsidian's own widget for the adopted/chosen type. The
+            // controller owns key/type/value resolution, the reserved-key guard,
+            // and the Auto Property handoff.
+            await this.controller.createNewYamlPropertyFluid(this.file, this.suggestValues, this.fileKeys);
             return;
         }
 

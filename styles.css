@@ -120,3 +120,81 @@
     position: absolute;
     width: 1px;
 }
+
+.metaedit-fluid-create {
+    min-width: min(560px, 90vw);
+}
+
+.metaedit-fluid-create-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 16px 0 6px;
+}
+
+.metaedit-fluid-create-type {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    height: var(--input-height);
+    padding: 0 10px;
+    border-radius: var(--radius-s);
+    background: var(--interactive-normal);
+    box-shadow: var(--input-shadow);
+    color: var(--text-normal);
+    font-size: var(--font-ui-small);
+    cursor: pointer;
+}
+
+.metaedit-fluid-create-type:hover {
+    background: var(--interactive-hover);
+}
+
+.metaedit-fluid-create-type.is-locked {
+    cursor: default;
+    opacity: 0.75;
+}
+
+.metaedit-fluid-create-type-icon {
+    display: inline-flex;
+    align-items: center;
+}
+
+.metaedit-fluid-create-type-icon .svg-icon {
+    width: var(--icon-s);
+    height: var(--icon-s);
+}
+
+.metaedit-fluid-create-key {
+    flex: 0 0 34%;
+    min-width: 0;
+}
+
+.metaedit-fluid-create-value {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.metaedit-fluid-create-autoprop {
+    flex: 1 1 auto;
+    align-self: center;
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+}
+
+.metaedit-fluid-create-hint {
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+    margin: 0 0 6px;
+}
+
+.metaedit-fluid-create-hint-accept {
+    cursor: pointer;
+}
+
+.metaedit-fluid-create-warning {
+    color: var(--text-error);
+    font-size: var(--font-ui-small);
+    margin: 0 0 6px;
+}
