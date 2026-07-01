@@ -17,6 +17,7 @@ import {getYamlPath, isReservedFrontmatterKey, isYamlParentContainerValue, parse
 import {computeTagRewrite, isNestedTag, isTagsKey, isValidTagToken, normalizeTagToken, splitFrontmatterTags, spliceTag, stripHash, tagLeaf, tagParent, canonicalizeFrontmatterTag, type TagEditMode} from "./tagEditing";
 import {setPendingValueContext} from "./Modals/GenericPrompt/promptValueContext";
 import NativePropertyPrompt from "./Modals/NativePropertyPrompt/NativePropertyPrompt";
+import FluidPropertyCreatePrompt from "./Modals/FluidPropertyCreatePrompt/FluidPropertyCreatePrompt";
 import {frontmatterValuesEqual, isNativeEditableYamlProperty} from "./typedProperties/nativePropertyTypes";
 
 const fileWriteQueues: Map<string, Promise<unknown>> = new Map();
@@ -254,6 +255,68 @@ export default class MetaController {
         }
 
         return {propName, propValue: typeof propValue === "string" ? propValue.trim() : propValue};
+    }
+
+    /**
+     * Create a new top-level YAML property through the fluid, type-aware native
+     * flow: a single keyboard-first modal that mounts Obsidian's own widget for
+     * the adopted/chosen type. A key with an active Auto Property hands off to the
+     * existing Auto Property value flow (preserving its single/multi behaviour);
+     * everything else writes the widget's typed value directly via
+     * {@link createNativeYamlProperty}. Cancels are silent.
+     */
+    public async createNewYamlPropertyFluid(file: TFile, suggestValues: string[], existingKeys: ReadonlySet<string>): Promise<void> {
+        const result = await FluidPropertyCreatePrompt.Open(this.app, {
+            sourcePath: file.path,
+            suggestValues,
+            existingKeys,
+            hasAutoProperty: (key) => !!this.getActiveAutoProperty(key),
+        });
+
+        if (result.kind === "cancel") return;
+
+        try {
+            if (result.kind === "autoProperty") {
+                const autoValue = await this.handleAutoProperties(result.key);
+                if (autoValue === null) return; // user cancelled the auto property prompt
+                await this.addYamlProp(result.key, autoValue, file);
+                return;
+            }
+
+            await this.createNativeYamlProperty(result.key, result.value, file);
+        } catch (error) {
+            const reason = error instanceof Error ? error.message : String(error);
+            new Notice(`MetaEdit could not add '${result.key}': ${reason}`);
+        }
+    }
+
+    /**
+     * Write a NEW top-level YAML property carrying the native widget's already
+     * type-normalized value. The chosen native type is authoritative, so - unlike
+     * {@link addYamlProp} - this does NOT apply the legacy EditMode single/multi
+     * wrap (List is the explicit array path) and does NOT canonicalize tags (the
+     * tags widget already yields canonical strings, so create round-trips exactly
+     * like native edit does). Reuses addYamlProp's guards and serialized queue,
+     * with a create-guard re-read inside processFrontMatter so a key added between
+     * modal-open and write is never clobbered.
+     */
+    public async createNativeYamlProperty(key: string, value: unknown, file: TFile): Promise<void> {
+        this.assertWritableKey(key);
+
+        let propertyExists = false;
+        await this.enqueueFileWrite(file, async () => {
+            await this.processFrontMatter(file, (frontmatter) => {
+                if (Object.prototype.hasOwnProperty.call(frontmatter, key)) {
+                    propertyExists = true;
+                    return;
+                }
+                frontmatter[key] = value;
+            });
+        });
+
+        if (propertyExists) {
+            new Notice(`Frontmatter in file '${file.name}' already has property '${key}'. Will not add.`);
+        }
     }
 
     public async deleteProperty(property: Property, file: TFile): Promise<void> {
