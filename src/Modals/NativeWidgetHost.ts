@@ -196,13 +196,19 @@ export class NativeWidgetHost {
 		return focusable instanceof HTMLSelectElement;
 	}
 
-	/** The current raw editor text (for carrying across a type switch). */
+	/**
+	 * The current value as raw text, for carrying across a type switch. Prefers a
+	 * live editor's in-progress text; otherwise falls back to the last reported
+	 * value stringified, so switching away from a checkbox/number/list still
+	 * carries its state (a checked box -> "true", a list -> its comma-joined items)
+	 * rather than dropping to empty.
+	 */
 	public readRawText(): string {
 		const input = this.hostEl.querySelector<HTMLInputElement>("input:not([type='checkbox']), textarea");
-		if (input) return input.value ?? "";
+		if (input && input.value) return input.value;
 		const editable = this.hostEl.querySelector<HTMLElement>("[contenteditable='true']");
-		if (editable) return editable.textContent ?? "";
-		return "";
+		if (editable && editable.textContent) return editable.textContent;
+		return stringifyForCarry(this.lastValueInternal);
 	}
 
 	public destroy(): void {
@@ -303,6 +309,14 @@ export class NativeWidgetHost {
 			el.remove();
 		}
 	}
+}
+
+function stringifyForCarry(value: unknown): string {
+	if (typeof value === "string") return value;
+	if (Array.isArray(value)) return value.map(item => String(item ?? "")).filter(Boolean).join(", ");
+	if (typeof value === "number" && Number.isFinite(value)) return String(value);
+	if (value === true) return "true";
+	return "";
 }
 
 function isEditingKey(evt: KeyboardEvent): boolean {

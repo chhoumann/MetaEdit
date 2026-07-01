@@ -243,8 +243,17 @@ export default class FluidPropertyCreatePrompt extends Modal {
 		}
 		if (this.autoPropertyKey) this.exitAutoPropertyState();
 
-		if (this.pinnedType) return;
 		const type = resolveCreationType(this.app, key);
+		// A reserved key (tags/aliases) forces its widget and overrides any pinned
+		// choice - you can never make `tags` a Number - so this check runs BEFORE the
+		// pinned short-circuit and clears the pin.
+		if (LOCKED_TYPES.has(type)) {
+			this.pinnedType = false;
+			if (type !== this.host.type) this.remountAs(type);
+			return;
+		}
+
+		if (this.pinnedType) return;
 		if (type !== this.host.type) this.remountAs(type);
 	}
 
@@ -270,6 +279,9 @@ export default class FluidPropertyCreatePrompt extends Modal {
 	}
 
 	private remountAs(type: StandardNativePropertyType): void {
+		// Close the key dropdown first so the host's portal teardown can't remove a
+		// live sibling suggestion popover during the re-mount.
+		this.keySuggester?.close();
 		const seed = seedFromRawText(this.host.readRawText(), type);
 		this.host.mountNative(type, seed);
 		this.updateTypePill();
@@ -283,6 +295,9 @@ export default class FluidPropertyCreatePrompt extends Modal {
 	}
 
 	private openTypeMenu(): void {
+		// Settle first so a reserved key locks its type before the menu opens (you
+		// can't pick a type for tags/aliases), and so the adopted type is checked.
+		this.settleKey();
 		if (this.autoPropertyKey || LOCKED_TYPES.has(this.host.type)) return;
 
 		const menu = new Menu();
@@ -364,6 +379,13 @@ export default class FluidPropertyCreatePrompt extends Modal {
 
 		if (this.autoPropertyKey) {
 			this.finish({kind: "autoProperty", key});
+			return;
+		}
+
+		// Fail closed if the native editor never rendered (no editor to take a value
+		// from), matching the edit prompt - never write the bare seed in that case.
+		if (this.host.renderFailed) {
+			new Notice(`MetaEdit could not render an editor for '${key}'. Nothing was written.`);
 			return;
 		}
 

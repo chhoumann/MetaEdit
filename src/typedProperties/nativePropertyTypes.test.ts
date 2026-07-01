@@ -189,6 +189,18 @@ describe("value-text inference (suggest, promotion-only)", () => {
 		expect(inferCreationTypeFromText("hello", "text")).toBeNull();
 	});
 
+	it("rejects shape-valid but calendar-invalid dates/times (never infers a bogus date)", () => {
+		expect(inferCreationTypeFromText("2026-99-99", "text")).toBeNull();
+		expect(inferCreationTypeFromText("2026-13-01", "text")).toBeNull();
+		expect(inferCreationTypeFromText("2026-02-30", "text")).toBeNull();
+		expect(inferCreationTypeFromText("2026-07-01T25:00", "text")).toBeNull();
+		expect(inferCreationTypeFromText("2026-07-01T12:60", "text")).toBeNull();
+		// Real dates/times still infer.
+		expect(inferCreationTypeFromText("2026-02-28", "text")).toBe("date");
+		expect(inferCreationTypeFromText("2024-02-29", "text")).toBe("date"); // leap year
+		expect(inferCreationTypeFromText("2026-07-01T23:59:59", "text")).toBe("datetime");
+	});
+
 	it("never fires once the user is already on a non-text type (no trap, no flip-flop)", () => {
 		expect(inferCreationTypeFromText("3", "number")).toBeNull();
 		expect(inferCreationTypeFromText("plain text", "date")).toBeNull();
@@ -212,6 +224,10 @@ describe("seedFromRawText across a type switch", () => {
 		expect(seedFromRawText("not-a-date", "date")).toBe("");
 		expect(seedFromRawText("noon", "datetime")).toBe("");
 		expect(seedFromRawText("maybe", "checkbox")).toBe(false);
+		// Calendar-invalid dates are not seeded as dates (would write a bogus value).
+		expect(seedFromRawText("2026-99-99", "date")).toBe("");
+		expect(seedFromRawText("2026-02-30", "date")).toBe("");
+		expect(seedFromRawText("2026-07-01T25:00", "datetime")).toBe("");
 	});
 
 	it("INVARIANT: every seed is a value normalizeWidgetValue accepts for the target type", () => {

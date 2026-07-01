@@ -274,9 +274,9 @@ export function seedFromRawText(rawText: string, nextType: StandardNativePropert
 		case "checkbox":
 			return trimmed === "true" ? true : false;
 		case "date":
-			return DATE_RE.test(trimmed) ? trimmed : "";
+			return isValidIsoDate(trimmed) ? trimmed : "";
 		case "datetime":
-			return DATETIME_RE.test(trimmed) ? trimmed : "";
+			return isValidIsoDatetime(trimmed) ? trimmed : "";
 	}
 }
 
@@ -371,10 +371,31 @@ function isFiniteNumericString(text: string): boolean {
 	return Number.isFinite(Number(text));
 }
 
+// Shape AND calendar validity: `2026-99-99` / `...T99:99` match the regex but are
+// not real dates, so inference and seeding must reject them (they would otherwise
+// be written as a bogus "date" value).
+function isValidIsoDate(value: string): boolean {
+	if (!DATE_RE.test(value)) return false;
+	const year = Number(value.slice(0, 4));
+	const month = Number(value.slice(5, 7));
+	const day = Number(value.slice(8, 10));
+	const date = new Date(Date.UTC(year, month - 1, day));
+	return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+function isValidIsoDatetime(value: string): boolean {
+	if (!DATETIME_RE.test(value)) return false;
+	if (!isValidIsoDate(value.slice(0, 10))) return false;
+	const hour = Number(value.slice(11, 13));
+	const minute = Number(value.slice(14, 16));
+	const second = value.length > 16 ? Number(value.slice(17, 19)) : 0;
+	return hour <= 23 && minute <= 59 && second <= 59;
+}
+
 function inferTypeFromText(text: string): StandardNativePropertyType | null {
 	if (text === "") return null;
-	if (DATETIME_RE.test(text)) return "datetime";
-	if (DATE_RE.test(text)) return "date";
+	if (isValidIsoDatetime(text)) return "datetime";
+	if (isValidIsoDate(text)) return "date";
 	if (text === "true" || text === "false") return "checkbox";
 	// A leading-zero run (007, 0042) is almost always a meaningful string; never
 	// suggest number and silently strip the zeros. "0" and "0.5" still infer.
