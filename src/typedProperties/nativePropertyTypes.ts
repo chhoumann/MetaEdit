@@ -116,6 +116,16 @@ export function resolveNativeProperty(app: App, property: Property): NativePrope
 	return {kind: "native", type, widget};
 }
 
+/**
+ * Obsidian's registered native widget for an explicit type, or null when the
+ * registry or that widget is unavailable. Centralizes the internal-API access so
+ * both the edit prompt and the create modal resolve widgets one way.
+ */
+export function getNativeWidgetForType(app: App, type: StandardNativePropertyType): NativePropertyWidget | null {
+	const widget = getMetadataTypeManager(app)?.registeredTypeWidgets?.[type];
+	return widget && typeof widget.render === "function" ? widget : null;
+}
+
 export function normalizeWidgetValue(
 	type: StandardNativePropertyType,
 	value: unknown,
