@@ -1,10 +1,16 @@
 import {describe, expect, it} from "vitest";
 import {MetaType} from "../Types/metaType";
 import {
+	CREATION_TYPE_CHOICES,
+	emptyValueForType,
 	frontmatterValuesEqual,
+	inferCreationTypeFromText,
 	isNativeEditableYamlProperty,
 	normalizeWidgetValue,
+	resolveCreationType,
 	resolveNativeProperty,
+	seedFromRawText,
+	type StandardNativePropertyType,
 } from "./nativePropertyTypes";
 
 const widget = () => ({
@@ -116,6 +122,108 @@ describe("native widget value normalization", () => {
 	it("keeps the minimal fallback as a text value", () => {
 		expect(normalizeWidgetValue("number", 42, "fallback")).toEqual({ok: true, value: "42"});
 		expect(normalizeWidgetValue("text", null, "fallback")).toEqual({ok: true, value: ""});
+	});
+});
+
+describe("creation type resolution (no value-shape inference)", () => {
+	it("locks reserved key names to their native widget", () => {
+		const app = appWithManager({});
+		expect(resolveCreationType(app as never, "tags")).toBe("tags");
+		expect(resolveCreationType(app as never, "Tags")).toBe("tags");
+		expect(resolveCreationType(app as never, "aliases")).toBe("aliases");
+	});
+
+	it("adopts an assigned, then property-info, then Obsidian-expected type before defaulting", () => {
+		const assigned = appWithManager({getAssignedWidget: () => "number"});
+		expect(resolveCreationType(assigned as never, "rating")).toBe("number");
+
+		const propertyInfo = appWithManager({getAllProperties: () => ({priority: {widget: "number"}})});
+		expect(resolveCreationType(propertyInfo as never, "priority")).toBe("number");
+
+		const expected = appWithManager({getTypeInfo: () => ({expected: {type: "date"}})});
+		expect(resolveCreationType(expected as never, "due")).toBe("date");
+	});
+
+	it("defaults a brand-new key to text, and degrades to text without a type manager", () => {
+		expect(resolveCreationType(appWithManager({}) as never, "totallyNew")).toBe("text");
+		expect(resolveCreationType({} as never, "anything")).toBe("text");
+	});
+});
+
+describe("empty seed per type", () => {
+	it("maps each type to a value normalizeWidgetValue accepts as an empty native value", () => {
+		const cases: Array<[StandardNativePropertyType, unknown]> = [
+			["text", ""],
+			["multitext", []],
+			["tags", []],
+			["aliases", []],
+			["cssclasses", []],
+			["number", null],
+			["checkbox", false],
+			["date", ""],
+			["datetime", ""],
+		];
+		for (const [type, expectedEmpty] of cases) {
+			expect(emptyValueForType(type)).toEqual(expectedEmpty);
+			expect(normalizeWidgetValue(type, emptyValueForType(type), "native").ok).toBe(true);
+		}
+	});
+});
+
+describe("value-text inference (suggest, promotion-only)", () => {
+	it("promotes the text default to a richer scalar type when the text is unambiguous", () => {
+		expect(inferCreationTypeFromText("2026-07-01", "text")).toBe("date");
+		expect(inferCreationTypeFromText("2026-07-01T09:30", "text")).toBe("datetime");
+		expect(inferCreationTypeFromText("true", "text")).toBe("checkbox");
+		expect(inferCreationTypeFromText("false", "text")).toBe("checkbox");
+		expect(inferCreationTypeFromText("3", "text")).toBe("number");
+		expect(inferCreationTypeFromText("-2.5", "text")).toBe("number");
+	});
+
+	it("stays quiet on ambiguous text, partial values, and leading-zero strings", () => {
+		expect(inferCreationTypeFromText("3 apples", "text")).toBeNull();
+		expect(inferCreationTypeFromText("2026-07-0", "text")).toBeNull();
+		expect(inferCreationTypeFromText("007", "text")).toBeNull();
+		expect(inferCreationTypeFromText("", "text")).toBeNull();
+		expect(inferCreationTypeFromText("   ", "text")).toBeNull();
+		expect(inferCreationTypeFromText("hello", "text")).toBeNull();
+	});
+
+	it("never fires once the user is already on a non-text type (no trap, no flip-flop)", () => {
+		expect(inferCreationTypeFromText("3", "number")).toBeNull();
+		expect(inferCreationTypeFromText("plain text", "date")).toBeNull();
+		expect(inferCreationTypeFromText("2026-07-01", "multitext")).toBeNull();
+	});
+});
+
+describe("seedFromRawText across a type switch", () => {
+	it("carries in-progress text across losslessly where the target type can hold it", () => {
+		expect(seedFromRawText("hello", "text")).toBe("hello");
+		expect(seedFromRawText("in-progress", "multitext")).toEqual(["in-progress"]);
+		expect(seedFromRawText("", "multitext")).toEqual([]);
+		expect(seedFromRawText("42", "number")).toBe(42);
+		expect(seedFromRawText("2026-07-01", "date")).toBe("2026-07-01");
+		expect(seedFromRawText("2026-07-01T09:30", "datetime")).toBe("2026-07-01T09:30");
+		expect(seedFromRawText("true", "checkbox")).toBe(true);
+	});
+
+	it("falls back to the empty value when the target type can't represent the text", () => {
+		expect(seedFromRawText("3 apples", "number")).toBeNull();
+		expect(seedFromRawText("not-a-date", "date")).toBe("");
+		expect(seedFromRawText("noon", "datetime")).toBe("");
+		expect(seedFromRawText("maybe", "checkbox")).toBe(false);
+	});
+
+	it("INVARIANT: every seed is a value normalizeWidgetValue accepts for the target type", () => {
+		const rawSamples = ["", "hello", "3", "3.5", "-1", "007", "3 apples", "true", "false", "2026-07-01", "2026-07-01T09:30", "[[A]], [[B]]", "a, b, c"];
+		const types = CREATION_TYPE_CHOICES.map(choice => choice.type);
+		for (const type of types) {
+			for (const raw of rawSamples) {
+				const seed = seedFromRawText(raw, type);
+				const normalized = normalizeWidgetValue(type, seed, "native");
+				expect(normalized.ok, `seed ${JSON.stringify(seed)} for type ${type} from ${JSON.stringify(raw)}`).toBe(true);
+			}
+		}
 	});
 });
 

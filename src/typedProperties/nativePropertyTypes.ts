@@ -18,6 +18,19 @@ export const STANDARD_NATIVE_PROPERTY_TYPES = [
 export type StandardNativePropertyType = typeof STANDARD_NATIVE_PROPERTY_TYPES[number];
 export type NativeValueSource = "native" | "fallback";
 
+// The types a user can pick for a brand-new property, mirroring Obsidian's own
+// Set-type menu (Text, List, Number, Checkbox, Date, Date & time). Reserved keys
+// (tags/aliases/cssclasses) lock to their widget instead of offering this list.
+// Labels are user-facing; the `type` is the internal widget id.
+export const CREATION_TYPE_CHOICES: ReadonlyArray<{type: StandardNativePropertyType; label: string}> = [
+	{type: "text", label: "Text"},
+	{type: "multitext", label: "List"},
+	{type: "number", label: "Number"},
+	{type: "checkbox", label: "Checkbox"},
+	{type: "date", label: "Date"},
+	{type: "datetime", label: "Date & time"},
+];
+
 export type NativePropertyPromptResult =
 	| {
 		kind: "submit";
@@ -148,6 +161,114 @@ export function normalizeWidgetValue(
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Property creation (fluid, type-aware). Pure logic behind the create modal, so
+// the type/inference/seed behavior is unit-tested without a DOM. See
+// src/Modals/NativePropertyCreatePrompt.
+// ---------------------------------------------------------------------------
+
+/**
+ * The type to adopt for a brand-new property key, using Obsidian's vault-wide
+ * type memory - with ZERO value-shape inference, because at key-entry time there
+ * is no value yet. This is the {@link resolveNativeProperty} ladder minus the
+ * final `inferTypeFromValue` step: reserved key name -> assigned widget ->
+ * property-info widget -> `getTypeInfo(key).expected` (Obsidian's own vault
+ * inference, which returns `text` for an unknown key) -> `text`.
+ *
+ * So a key the vault already knows (e.g. `due` used as dates elsewhere) adopts
+ * that type with zero friction, while a brand-new key defaults to `text`.
+ */
+export function resolveCreationType(app: App, key: string): StandardNativePropertyType {
+	const manager = getMetadataTypeManager(app);
+	const widgets = manager?.registeredTypeWidgets;
+	if (!manager || !widgets) return "text";
+
+	const normalizedKey = key.toLowerCase();
+	if (normalizedKey === "tags") return "tags";
+	if (normalizedKey === "aliases") return "aliases";
+	if (normalizedKey === "cssclasses" && widgets.cssclasses) return "cssclasses";
+
+	const assigned = toStandardType(manager.getAssignedWidget?.(key), widgets);
+	if (assigned) return assigned;
+
+	const propertyInfoType = toStandardType(readPropertyInfoWidget(manager, key), widgets);
+	if (propertyInfoType) return propertyInfoType;
+
+	const expectedType = toStandardType(readTypeInfoExpected(manager, key, undefined), widgets);
+	if (expectedType) return expectedType;
+
+	return "text";
+}
+
+/**
+ * The empty seed value to mount a freshly-created widget against, per type. Every
+ * value here is one {@link normalizeWidgetValue} accepts for that type as a native
+ * source, so an untouched create-mode widget always commits a valid empty value
+ * (text `""`, number `null`, checkbox `false`, date/datetime `""`, list `[]`).
+ */
+export function emptyValueForType(type: StandardNativePropertyType): unknown {
+	switch (type) {
+		case "number":
+			return null;
+		case "checkbox":
+			return false;
+		case "multitext":
+		case "tags":
+		case "aliases":
+		case "cssclasses":
+			return [];
+		case "text":
+		case "date":
+		case "datetime":
+			return "";
+	}
+}
+
+/**
+ * A SUGGESTED richer type for the value the user is typing into the default text
+ * widget, or null. Promotion-only: it only ever suggests upgrading FROM `text` to
+ * a more specific scalar type, and never fires once the user is already on a
+ * non-text type (adopted or chosen). This means inference can never trap a value
+ * in the wrong type and there is no flip-flop - it is a hint the user opts into,
+ * never a silent morph. Lists are intentionally never inferred (a text value can
+ * legitimately contain commas); the user picks List explicitly.
+ */
+export function inferCreationTypeFromText(rawText: string, currentType: StandardNativePropertyType): StandardNativePropertyType | null {
+	if (currentType !== "text") return null;
+	const inferred = inferTypeFromText(rawText.trim());
+	return inferred && inferred !== currentType ? inferred : null;
+}
+
+/**
+ * The seed value to mount `nextType`'s widget against when the user switches type
+ * mid-creation, carrying the in-progress text across losslessly where the target
+ * type can represent it, and falling back to that type's empty value otherwise.
+ * This is deliberately NOT an invented coercion table: every branch returns a
+ * value {@link normalizeWidgetValue} accepts for `nextType` (proven by test), so
+ * the seed can never desync from validation, and switching never writes garbage.
+ * `text` keeps the raw input verbatim, so a richer->text switch is always lossless.
+ */
+export function seedFromRawText(rawText: string, nextType: StandardNativePropertyType): unknown {
+	const trimmed = rawText.trim();
+	switch (nextType) {
+		case "text":
+			return rawText;
+		case "multitext":
+		case "tags":
+		case "aliases":
+		case "cssclasses":
+			return trimmed === "" ? [] : [trimmed];
+		case "number":
+			return isFiniteNumericString(trimmed) ? Number(trimmed) : null;
+		case "checkbox":
+			return trimmed === "true" ? true : false;
+		case "date":
+			return DATE_RE.test(trimmed) ? trimmed : "";
+		case "datetime":
+			return DATETIME_RE.test(trimmed) ? trimmed : "";
+	}
+}
+
 export function frontmatterValuesEqual(left: unknown, right: unknown): boolean {
 	if (left instanceof Date && right instanceof Date) return left.getTime() === right.getTime();
 	if (left instanceof Date || right instanceof Date) return compareDateWithPrimitive(left, right);
@@ -227,6 +348,28 @@ function hasDateTime(value: Date): boolean {
 		value.getUTCMinutes() !== 0 ||
 		value.getUTCSeconds() !== 0 ||
 		value.getUTCMilliseconds() !== 0;
+}
+
+// A strict decimal literal: optional sign, digits with an optional fractional
+// part, or a bare fractional. Deliberately rejects scientific notation, hex, and
+// trailing text ("3 apples"), so value-text inference stays conservative.
+const NUMERIC_RE = /^-?(?:\d+\.?\d*|\.\d+)$/;
+
+function isFiniteNumericString(text: string): boolean {
+	if (!NUMERIC_RE.test(text)) return false;
+	return Number.isFinite(Number(text));
+}
+
+function inferTypeFromText(text: string): StandardNativePropertyType | null {
+	if (text === "") return null;
+	if (DATETIME_RE.test(text)) return "datetime";
+	if (DATE_RE.test(text)) return "date";
+	if (text === "true" || text === "false") return "checkbox";
+	// A leading-zero run (007, 0042) is almost always a meaningful string; never
+	// suggest number and silently strip the zeros. "0" and "0.5" still infer.
+	if (/^0\d/.test(text)) return null;
+	if (isFiniteNumericString(text)) return "number";
+	return null;
 }
 
 function invalidType(type: StandardNativePropertyType, expected: string): NormalizedWidgetValue {
