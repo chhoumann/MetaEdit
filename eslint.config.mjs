@@ -37,6 +37,9 @@ export default tseslint.config(
 			"esbuild.config.mjs",
 			"version-bump.mjs",
 			"scripts/*.mjs",
+			// The docs site (website/) is a standalone Astro project with its own
+			// tooling; it is not part of the plugin's lint surface.
+			"website/**",
 		],
 	},
 	...tseslint.configs.recommended,

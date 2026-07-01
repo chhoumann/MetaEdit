@@ -21,6 +21,11 @@ data.json
 .obsidian-e2e-instances
 .obsidian-e2e-artifacts
 
+# Docs site (website/) build artifacts
+website/dist
+website/.astro
+website/.wrangler
+
 # macOS
 .DS_Store
 

@@ -2,6 +2,8 @@
 
 ![Creating a typed property with MetaEdit's New property modal - the key autocompletes and the value widget switches to the property's type as you type](docs/assets/releases/1.9.0/fluid-property-create.gif)
 
+> **📖 Documentation: [metaedit.obsidian.guide](https://metaedit.obsidian.guide)** - guides for every feature, the full API reference, a cookbook of workflows, and troubleshooting.
+
 ## Features
 - Add or update Yaml properties and Dataview fields easily
 - Ignore properties to hide them from the menu

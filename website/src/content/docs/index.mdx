@@ -1,0 +1,79 @@
+---
+title: MetaEdit
+description: MetaEdit is an Obsidian plugin for editing note metadata - YAML properties, inline Dataview fields, and tags - from one menu, with Obsidian's native property widgets.
+template: splash
+hero:
+  title: One command. Every property.
+  tagline: "MetaEdit edits your notes' metadata - YAML properties, inline <code>key:: value</code> fields, and tags - from a single menu, using Obsidian's own property widgets. Automate the values you type most, edit whole folders at once, and build on it from your own scripts."
+  image:
+    html: |
+      <div class="me-hero-card" aria-hidden="true">
+        <div class="me-hero-card__bar"><span></span><span></span><span></span><em>Dune.md</em></div>
+        <div class="me-hero-card__body">
+          <div class="me-hero-card__fence">---</div>
+          <dl>
+            <div class="me-prop"><dt>status</dt><dd><span class="me-pill">reading</span></dd></div>
+            <div class="me-prop"><dt>rating</dt><dd>8<span class="me-caret"></span></dd></div>
+            <div class="me-prop"><dt>started</dt><dd>2026-06-14</dd></div>
+            <div class="me-prop"><dt>tags</dt><dd><span class="me-pill">sci-fi</span><span class="me-pill">book-club</span></dd></div>
+          </dl>
+          <div class="me-hero-card__fence">---</div>
+        </div>
+      </div>
+  actions:
+    - text: Get started
+      link: /getting-started/quick-start/
+      icon: right-arrow
+    - text: What's new in 1.9.0
+      link: /getting-started/whats-new/
+      variant: minimal
+      icon: rocket
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid stagger>
+	<Card title="Native property widgets" icon="pencil">
+		Pick a property and get the exact widget Obsidian's Properties panel would
+		give you: a date picker for dates, a checkbox for booleans, chips for
+		lists. Types are respected end to end.
+		[Edit properties](/guides/edit-properties/)
+	</Card>
+	<Card title="Auto Properties" icon="list-format">
+		Define the values you use over and over - like a `status` list - and set
+		them from a prompt instead of typing. Single or multi-select, with
+		descriptions and learn-as-you-go values.
+		[Set up Auto Properties](/guides/auto-properties/)
+	</Card>
+	<Card title="Bulk edit" icon="open-book">
+		Right-click a folder or a selection of notes and set a property across all
+		of them, with explicit skip, merge, or overwrite handling for notes that
+		already have it.
+		[Bulk edit metadata](/guides/bulk-edit/)
+	</Card>
+	<Card title="Automation" icon="rocket">
+		Progress Properties keep task counts up to date on their own, and the
+		Kanban helper updates linked notes when their card changes lane.
+		[Automate task counts](/guides/progress-properties/)
+	</Card>
+	<Card title="Tags, edited where they live" icon="approve-check">
+		Rename a body `#tag` in place or edit a frontmatter `tags:` list as a real
+		list - MetaEdit handles both homes correctly.
+		[Edit tags](/guides/edit-tags/)
+	</Card>
+	<Card title="A developer API" icon="setting">
+		Update, create, and read metadata from Templater templates, Dataview
+		buttons, and other plugins - including nested YAML paths and a
+		metadata-change subscription.
+		[Explore the API](/api/overview/)
+	</Card>
+</CardGrid>
+
+## See it in motion
+
+Creating a typed property in 1.9.0: the key autocompletes from your vault, and the
+value widget switches to the right type on its own.
+
+![Creating a rating property: the key autocompletes, and the widget switches to Number automatically](../../assets/media/fluid-property-create.gif)
+
+<p class="me-landing-facts">Requires Obsidian 1.12.7 or newer · Desktop and mobile · Free and open source</p>
