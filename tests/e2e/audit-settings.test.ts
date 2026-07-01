@@ -269,11 +269,12 @@ describe("MetaEdit settings tab", () => {
 				const prevIgnored = JSON.parse(JSON.stringify(plugin.settings.IgnoredProperties));
 				plugin.settings.IgnoredProperties.enabled = true;
 				plugin.settings.IgnoredProperties.properties = ["secretKey"];
-				// Spy on createNewProperty to capture the suggestValues the suggester
-				// computed, then cancel (return null) so nothing is written.
-				const orig = plugin.controller.createNewProperty.bind(plugin.controller);
+				// Spy on the fluid YAML-creation entry point to capture the suggestValues
+				// the suggester computed (its 2nd arg), then return without opening the
+				// modal so nothing is written.
+				const orig = plugin.controller.createNewYamlPropertyFluid.bind(plugin.controller);
 				let captured = null;
-				plugin.controller.createNewProperty = async (sv) => { captured = sv ? [...sv] : []; return null; };
+				plugin.controller.createNewYamlPropertyFluid = async (_file, sv) => { captured = sv ? [...sv] : []; };
 				try {
 					await plugin.runMetaEditForFile(f);
 					const waitForItem = async () => {
@@ -294,7 +295,7 @@ describe("MetaEdit settings tab", () => {
 					for (const el of Array.from(document.querySelectorAll(".suggestion-container, .suggestion-item, .prompt"))) el.remove();
 					return { suggestValues: captured ?? [], captured: captured !== null };
 				} finally {
-					plugin.controller.createNewProperty = orig;
+					plugin.controller.createNewYamlPropertyFluid = orig;
 					plugin.settings.IgnoredProperties = prevIgnored;
 				}
 			})()

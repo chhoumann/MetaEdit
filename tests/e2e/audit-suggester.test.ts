@@ -56,8 +56,21 @@ describe("MetaEdit Edit Meta suggester flows", () => {
 				await plugin.runMetaEditForFile(f);
 				const option = await waitFor(".suggestion-item", (i) => itemText(i) === "New YAML property");
 				clickItem(option);
-				await typePrompt("freshKey");   // property name prompt
-				await typePrompt("freshValue"); // property value prompt
+				// The fluid create modal opens. A brand-new key defaults to the text
+				// widget, so drive it wedge-safe (no synthetic keyboard/popover): set the
+				// key via an input event, type the value into the contenteditable, and
+				// click Add.
+				const modal = await waitFor(".metaedit-fluid-create");
+				const keyEl = modal.querySelector(".metaedit-fluid-create-key");
+				keyEl.value = "freshKey";
+				keyEl.dispatchEvent(new Event("input", { bubbles: true }));
+				const valueEl = modal.querySelector(".metaedit-fluid-create-value [contenteditable='true']");
+				valueEl.focus();
+				document.execCommand("insertText", false, "freshValue");
+				valueEl.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: "freshValue" }));
+				valueEl.dispatchEvent(new Event("blur", { bubbles: true }));
+				await sleep(150);
+				Array.from(modal.querySelectorAll("button")).find((b) => b.textContent.trim() === "Add").click();
 				await waitFor("body", () => (app.metadataCache.getFileCache(f)?.frontmatter ?? {}).freshKey === "freshValue");
 				closeModals();
 				await sleep(100);
