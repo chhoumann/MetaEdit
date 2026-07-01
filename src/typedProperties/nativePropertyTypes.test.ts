@@ -133,6 +133,14 @@ describe("creation type resolution (no value-shape inference)", () => {
 		expect(resolveCreationType(app as never, "aliases")).toBe("aliases");
 	});
 
+	it("routes the singular 'tag' key to the tags widget too (consistent with isTagsKey)", () => {
+		const app = appWithManager({});
+		// Without this, a new `tag` key would fall through to the text default and be
+		// written as a plain text scalar instead of tag metadata.
+		expect(resolveCreationType(app as never, "tag")).toBe("tags");
+		expect(resolveCreationType(app as never, "Tag")).toBe("tags");
+	});
+
 	it("adopts an assigned, then property-info, then Obsidian-expected type before defaulting", () => {
 		const assigned = appWithManager({getAssignedWidget: () => "number"});
 		expect(resolveCreationType(assigned as never, "rating")).toBe("number");

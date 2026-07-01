@@ -204,11 +204,20 @@ export class NativeWidgetHost {
 	 * rather than dropping to empty.
 	 */
 	public readRawText(): string {
+		return carryTextFromEditor(this.readEditorText(), this.lastValueInternal);
+	}
+
+	/**
+	 * The live text of the mounted editor, or null when there is no text editor at
+	 * all (e.g. a checkbox). An EXISTING but empty editor returns "" (not null), so a
+	 * cleared value is carried as empty rather than resurrecting the stale lastValue.
+	 */
+	private readEditorText(): string | null {
 		const input = this.hostEl.querySelector<HTMLInputElement>("input:not([type='checkbox']), textarea");
-		if (input && input.value) return input.value;
+		if (input) return input.value ?? "";
 		const editable = this.hostEl.querySelector<HTMLElement>("[contenteditable='true']");
-		if (editable && editable.textContent) return editable.textContent;
-		return stringifyForCarry(this.lastValueInternal);
+		if (editable) return editable.textContent ?? "";
+		return null;
 	}
 
 	public destroy(): void {
@@ -311,7 +320,17 @@ export class NativeWidgetHost {
 	}
 }
 
-function stringifyForCarry(value: unknown): string {
+/**
+ * Decide the text to carry across a type switch: the live editor text when a text
+ * editor exists (even when empty, so a cleared value stays cleared), otherwise the
+ * last reported value stringified (so a checkbox/number with no text editor still
+ * carries). `editorText === null` means "no text editor"; "" means "empty editor".
+ */
+export function carryTextFromEditor(editorText: string | null, lastValue: unknown): string {
+	return editorText === null ? stringifyForCarry(lastValue) : editorText;
+}
+
+export function stringifyForCarry(value: unknown): string {
 	if (typeof value === "string") return value;
 	if (Array.isArray(value)) return value.map(item => String(item ?? "")).filter(Boolean).join(", ");
 	if (typeof value === "number" && Number.isFinite(value)) return String(value);

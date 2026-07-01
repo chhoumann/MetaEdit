@@ -1,6 +1,7 @@
 import type {App} from "obsidian";
 import type {Property} from "../parser";
 import {MetaType} from "../Types/metaType";
+import {isTagsKey} from "../tagEditing";
 import {isPlainYamlObject, isYamlParentContainerValue} from "../yamlPath";
 
 export const STANDARD_NATIVE_PROPERTY_TYPES = [
@@ -195,7 +196,10 @@ export function resolveCreationType(app: App, key: string): StandardNativeProper
 	if (!manager || !widgets) return "text";
 
 	const normalizedKey = key.toLowerCase();
-	if (normalizedKey === "tags") return "tags";
+	// Both `tags` and the singular `tag` are Obsidian tag frontmatter (matching
+	// isTagsKey and the legacy addYamlProp path), so a new `tag` key adopts the
+	// tags widget and is written as tag metadata, not a plain text scalar.
+	if (isTagsKey(normalizedKey)) return "tags";
 	if (normalizedKey === "aliases") return "aliases";
 	if (normalizedKey === "cssclasses" && widgets.cssclasses) return "cssclasses";
 
