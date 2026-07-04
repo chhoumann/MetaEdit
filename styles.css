@@ -89,11 +89,16 @@
     min-width: min(520px, 88vw);
 }
 
+/* Obsidian's .metadata-property:focus-within ring wraps the whole row (pill +
+   value) with no inner padding of its own, so give the composite breathing room
+   - otherwise the pill's rounded background collides with the ring's corner and
+   wrapped chips sit flush against it. Same treatment as the create row. */
 .metaedit-native-property-row {
     display: flex;
     align-items: flex-start;
     gap: 8px;
     margin: 12px 0;
+    padding: 4px;
 }
 
 .metaedit-native-property-host {
@@ -139,6 +144,7 @@
     gap: 8px;
     flex-wrap: nowrap;
     margin: 16px 0 6px;
+    padding: 4px;
 }
 
 /* The type pill shared by the fluid create modal and the native edit prompt. */
