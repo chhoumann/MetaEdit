@@ -1,8 +1,8 @@
-import {Menu, Modal, Notice, Setting, setIcon, setTooltip, type App, type ButtonComponent} from "obsidian";
+import {Modal, Notice, Setting, type App, type ButtonComponent} from "obsidian";
 import {
-	CREATION_TYPE_CHOICES,
+	LOCKED_NATIVE_TYPES,
+	NATIVE_TYPE_CHOICES,
 	emptyValueForType,
-	getNativeWidgetForType,
 	inferCreationTypeFromText,
 	normalizeWidgetValue,
 	resolveCreationType,
@@ -12,6 +12,7 @@ import {
 } from "../../typedProperties/nativePropertyTypes";
 import {isReservedFrontmatterKey} from "../../yamlPath";
 import {NativeWidgetHost} from "../NativeWidgetHost";
+import {TypePill} from "../TypePill";
 import {GenericTextSuggester} from "../GenericPrompt/genericTextSuggester";
 
 export type FluidPropertyCreateResult =
@@ -32,22 +33,6 @@ export interface FluidPropertyCreateOptions {
 	hasAutoProperty: (key: string) => boolean;
 }
 
-// Reserved keys with a dedicated Obsidian widget lock the type picker (switching a
-// `tags`/`aliases` property to Number is nonsense). `cssclasses` maps to the List
-// widget and needs no lock.
-const LOCKED_TYPES: ReadonlySet<StandardNativePropertyType> = new Set(["tags", "aliases"]);
-const FALLBACK_ICONS: Record<StandardNativePropertyType, string> = {
-	text: "text",
-	multitext: "list",
-	number: "binary",
-	checkbox: "check-square",
-	date: "calendar",
-	datetime: "clock",
-	tags: "tags",
-	aliases: "text",
-	cssclasses: "list",
-};
-
 /**
  * A single keyboard-first modal for creating a new YAML frontmatter property,
  * cloning the FEEL of Obsidian's own add-property row: a type pill, a key input
@@ -64,9 +49,7 @@ export default class FluidPropertyCreatePrompt extends Modal {
 
 	private keyInputEl: HTMLInputElement;
 	private hostEl: HTMLElement;
-	private typePillEl: HTMLButtonElement;
-	private typePillIconEl: HTMLElement;
-	private typePillLabelEl: HTMLElement;
+	private typePill: TypePill;
 	private hintEl: HTMLElement;
 	private warningEl: HTMLElement;
 	private autoPropertyNoteEl: HTMLElement;
@@ -103,11 +86,18 @@ export default class FluidPropertyCreatePrompt extends Modal {
 
 		const rowEl = this.contentEl.createDiv({cls: "metadata-property metaedit-fluid-create-row"});
 
-		this.typePillEl = rowEl.createEl("button", {cls: "metaedit-fluid-create-type"});
-		this.typePillEl.type = "button";
-		this.typePillIconEl = this.typePillEl.createSpan({cls: "metaedit-fluid-create-type-icon"});
-		this.typePillLabelEl = this.typePillEl.createSpan({cls: "metaedit-fluid-create-type-label"});
-		this.typePillEl.addEventListener("click", () => this.openTypeMenu());
+		this.typePill = new TypePill({
+			app,
+			parentEl: rowEl,
+			tooltip: "Change type (⌘/Ctrl+Y)",
+			onPick: (type) => this.pickType(type),
+			// Settle first so a reserved key locks its type before the menu opens (you
+			// can't pick a type for tags/aliases), and so the adopted type is checked.
+			beforeOpen: () => {
+				this.settleKey();
+				return !this.autoPropertyKey;
+			},
+		});
 
 		this.keyInputEl = rowEl.createEl("input", {
 			cls: "metadata-property-key-input metaedit-fluid-create-key",
@@ -200,7 +190,7 @@ export default class FluidPropertyCreatePrompt extends Modal {
 			}
 			if ((evt.metaKey || evt.ctrlKey) && (evt.key === "y" || evt.key === "Y")) {
 				evt.preventDefault();
-				this.openTypeMenu();
+				this.typePill.openMenu();
 			}
 		}, true);
 
@@ -248,7 +238,7 @@ export default class FluidPropertyCreatePrompt extends Modal {
 		// A reserved key (tags/aliases) forces its widget and overrides any pinned
 		// choice - you can never make `tags` a Number - so this check runs BEFORE the
 		// pinned short-circuit and clears the pin.
-		if (LOCKED_TYPES.has(type)) {
+		if (LOCKED_NATIVE_TYPES.has(type)) {
 			this.pinnedType = false;
 			if (type !== this.host.type) this.remountAs(type);
 			return;
@@ -262,7 +252,7 @@ export default class FluidPropertyCreatePrompt extends Modal {
 		this.autoPropertyKey = true;
 		this.host.destroy();
 		this.hostEl.hide();
-		this.typePillEl.hide();
+		this.typePill.hide();
 		this.hideInferenceHint();
 		this.autoPropertyNoteEl.setText(`"${key}" uses an Auto Property – press ⌘/Ctrl+↵ to choose its value.`);
 		this.autoPropertyNoteEl.show();
@@ -273,7 +263,7 @@ export default class FluidPropertyCreatePrompt extends Modal {
 		this.autoPropertyKey = false;
 		this.autoPropertyNoteEl.hide();
 		this.hostEl.show();
-		this.typePillEl.show();
+		this.typePill.show();
 		this.host.mountNative("text", emptyValueForType("text"));
 		this.pinnedType = false;
 		this.updateTypePill();
@@ -295,36 +285,8 @@ export default class FluidPropertyCreatePrompt extends Modal {
 		this.host.focus();
 	}
 
-	private openTypeMenu(): void {
-		// Settle first so a reserved key locks its type before the menu opens (you
-		// can't pick a type for tags/aliases), and so the adopted type is checked.
-		this.settleKey();
-		if (this.autoPropertyKey || LOCKED_TYPES.has(this.host.type)) return;
-
-		const menu = new Menu();
-		for (const choice of CREATION_TYPE_CHOICES) {
-			menu.addItem(item => {
-				item.setTitle(choice.label);
-				item.setIcon(this.iconIdFor(choice.type));
-				item.setChecked(choice.type === this.host.type);
-				item.onClick(() => this.pickType(choice.type));
-			});
-		}
-		// Anchor the menu under the pill like a dropdown (deterministic position,
-		// independent of the pointer), so click and Cmd/Ctrl+Y open it the same way.
-		const rect = this.typePillEl.getBoundingClientRect();
-		menu.showAtPosition({x: rect.left, y: rect.bottom + 4});
-	}
-
 	private updateTypePill(): void {
-		const type = this.host.type;
-		const label = CREATION_TYPE_CHOICES.find(choice => choice.type === type)?.label ?? this.capitalize(type);
-		setIcon(this.typePillIconEl, this.iconIdFor(type));
-		this.typePillLabelEl.setText(label);
-		const locked = LOCKED_TYPES.has(type);
-		this.typePillEl.toggleClass("is-locked", locked);
-		this.typePillEl.disabled = locked;
-		setTooltip(this.typePillEl, locked ? `${label} (fixed for this property)` : "Change type (⌘/Ctrl+Y)");
+		this.typePill.setState(this.host.type, LOCKED_NATIVE_TYPES.has(this.host.type));
 	}
 
 	private updateInferenceHint(): void {
@@ -338,7 +300,7 @@ export default class FluidPropertyCreatePrompt extends Modal {
 			return;
 		}
 		this.inferredType = inferred;
-		const label = CREATION_TYPE_CHOICES.find(choice => choice.type === inferred)?.label ?? inferred;
+		const label = NATIVE_TYPE_CHOICES.find(choice => choice.type === inferred)?.label ?? inferred;
 		this.hintEl.empty();
 		this.hintEl.createSpan({text: `Looks like a ${label.toLowerCase()}. `});
 		const acceptEl = this.hintEl.createEl("a", {cls: "metaedit-fluid-create-hint-accept", text: `Change to ${label}`});
@@ -430,16 +392,6 @@ export default class FluidPropertyCreatePrompt extends Modal {
 
 	private isSuggestionOpen(): boolean {
 		return activeDocument.querySelector(".suggestion-container") !== null;
-	}
-
-	private iconIdFor(type: StandardNativePropertyType): string {
-		const raw = getNativeWidgetForType(this.app, type)?.icon;
-		const id = typeof raw === "string" ? raw.replace(/^lucide-/, "") : "";
-		return id || FALLBACK_ICONS[type];
-	}
-
-	private capitalize(text: string): string {
-		return text.length === 0 ? text : text[0].toUpperCase() + text.slice(1);
 	}
 }
 

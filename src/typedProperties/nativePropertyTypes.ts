@@ -19,11 +19,12 @@ export const STANDARD_NATIVE_PROPERTY_TYPES = [
 export type StandardNativePropertyType = typeof STANDARD_NATIVE_PROPERTY_TYPES[number];
 export type NativeValueSource = "native" | "fallback";
 
-// The types a user can pick for a brand-new property, mirroring Obsidian's own
-// Set-type menu (Text, List, Number, Checkbox, Date, Date & time). Reserved keys
-// (tags/aliases/cssclasses) lock to their widget instead of offering this list.
-// Labels are user-facing; the `type` is the internal widget id.
-export const CREATION_TYPE_CHOICES: ReadonlyArray<{type: StandardNativePropertyType; label: string}> = [
+// The types a user can pick for a property (creating a new one, or switching an
+// existing one), mirroring Obsidian's own Set-type menu (Text, List, Number,
+// Checkbox, Date, Date & time). Reserved keys (tags/aliases/cssclasses) lock to
+// their widget instead of offering this list. Labels are user-facing; the `type`
+// is the internal widget id.
+export const NATIVE_TYPE_CHOICES: ReadonlyArray<{type: StandardNativePropertyType; label: string}> = [
 	{type: "text", label: "Text"},
 	{type: "multitext", label: "List"},
 	{type: "number", label: "Number"},
@@ -32,10 +33,20 @@ export const CREATION_TYPE_CHOICES: ReadonlyArray<{type: StandardNativePropertyT
 	{type: "datetime", label: "Date & time"},
 ];
 
+// Reserved widget types lock the type picker (switching a `tags`/`aliases`
+// property to Number is nonsense). `cssclasses` only resolves as its own type
+// when Obsidian registers that widget; otherwise it maps to the List widget and
+// this lock never applies to it.
+export const LOCKED_NATIVE_TYPES: ReadonlySet<StandardNativePropertyType> = new Set(["tags", "aliases", "cssclasses"]);
+
 export type NativePropertyPromptResult =
 	| {
 		kind: "submit";
 		changed: boolean;
+		// The user switched the property's type in the edit prompt. The value is
+		// already reshaped for the new type; the caller still owns updating
+		// Obsidian's vault-wide type memory (assignVaultPropertyType).
+		typeChanged: boolean;
 		type: StandardNativePropertyType;
 		value: unknown;
 		valueSource: NativeValueSource;
@@ -80,6 +91,7 @@ type MetadataTypeManager = {
 	getAllProperties?: () => Record<string, {name?: unknown, widget?: unknown} | undefined>;
 	getAssignedWidget?: (key: string) => unknown;
 	getTypeInfo?: (key: string, value?: unknown) => {expected?: {type?: unknown}, inferred?: {type?: unknown}} | undefined;
+	setType?: (key: string, type: string) => unknown;
 };
 
 const STANDARD_TYPE_SET: ReadonlySet<string> = new Set(STANDARD_NATIVE_PROPERTY_TYPES);
@@ -116,6 +128,24 @@ export function resolveNativeProperty(app: App, property: Property): NativePrope
 	}
 
 	return {kind: "native", type, widget};
+}
+
+/**
+ * Persist `type` as `key`'s property type in Obsidian's VAULT-WIDE type memory
+ * (`.obsidian/types.json`), exactly like Obsidian's own "Property type" menu.
+ * Feature-detected internal API: returns false (writing nothing) when this
+ * Obsidian build does not expose `metadataTypeManager.setType`, or when the call
+ * throws; the caller decides how to surface that.
+ */
+export async function assignVaultPropertyType(app: App, key: string, type: StandardNativePropertyType): Promise<boolean> {
+	const manager = getMetadataTypeManager(app);
+	if (!manager || typeof manager.setType !== "function") return false;
+	try {
+		await manager.setType(key, type);
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 /**

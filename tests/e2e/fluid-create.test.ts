@@ -232,7 +232,7 @@ function valueHost(modal) {
 }
 
 function pillLabel(modal) {
-	return modal.querySelector(".metaedit-fluid-create-type-label")?.textContent ?? null;
+	return modal.querySelector(".metaedit-type-pill-label")?.textContent ?? null;
 }
 
 function addButton(modal) {

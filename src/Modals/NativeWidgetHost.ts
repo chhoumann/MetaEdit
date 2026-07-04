@@ -213,6 +213,11 @@ export class NativeWidgetHost {
 	 * cleared value is carried as empty rather than resurrecting the stale lastValue.
 	 */
 	private readEditorText(): string | null {
+		// A chip editor's contenteditable is only the in-progress ENTRY field; the
+		// committed chips live in lastValue. Report "no text editor" so the carry
+		// falls back to the chip list (comma-joined) instead of reading the usually
+		// empty entry field and dropping every chip on a type switch.
+		if (this.hostEl.querySelector(".multi-select-container")) return null;
 		const input = this.hostEl.querySelector<HTMLInputElement>("input:not([type='checkbox']), textarea");
 		if (input) return input.value ?? "";
 		const editable = this.hostEl.querySelector<HTMLElement>("[contenteditable='true']");

@@ -209,6 +209,69 @@ describe("MetaEdit native Obsidian property widgets", () => {
 		expect(result.modalCount).toBe(0);
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
+
+	// The pill's dropdown is an Obsidian Menu, which does not render in the
+	// headless e2e instance (document.hasFocus() is false), so the actual
+	// switch-and-save flow is verified manually in a live vault; this covers the
+	// construction: the pill mounts with the resolved type and reserved keys lock.
+	test("edit modal shows a type pill, locked for reserved keys", async () => {
+		const {obsidian, sandbox} = getContext();
+		const notePath = sandbox.path("native-type-pill.md");
+		await writeLiveFile(obsidian, notePath, "---\nsummary: old\ntags:\n  - area/test\n---\nbody\n");
+
+		const result = await evalJsonAsync<{
+			summaryPill: {present: boolean; label: string | null; disabled: boolean | null};
+			tagsPill: {present: boolean; label: string | null; disabled: boolean | null};
+			modalCount: number;
+			content: string;
+		}>(
+			obsidian,
+			`
+			(async () => {
+				${NATIVE_HELPERS}
+				const file = app.vault.getAbstractFileByPath(${JSON.stringify(notePath)});
+				app.metadataTypeManager.setType("summary", "text");
+				await sleep(200);
+
+				const readPill = () => {
+					const modal = document.querySelector(".metaedit-native-property-prompt");
+					const pill = modal?.querySelector(".metaedit-type-pill");
+					return {
+						present: !!pill,
+						label: pill?.querySelector(".metaedit-type-pill-label")?.textContent ?? null,
+						disabled: pill?.disabled ?? null,
+					};
+				};
+				const cancelOpenModal = async (promise) => {
+					Array.from(document.querySelectorAll("button")).find((button) => button.textContent?.trim() === "Cancel")?.click();
+					await promise;
+					await sleep(150);
+				};
+
+				const summaryOpen = await openNative(file, "summary");
+				const summaryPill = readPill();
+				await cancelOpenModal(summaryOpen.promise);
+
+				const tagsOpen = await openNative(file, "tags");
+				const tagsPill = readPill();
+				await cancelOpenModal(tagsOpen.promise);
+
+				return {
+					summaryPill,
+					tagsPill,
+					modalCount: document.querySelectorAll(".modal-container").length,
+					content: await app.vault.read(file),
+				};
+			})()
+			`,
+		);
+
+		expect(result.summaryPill).toEqual({present: true, label: "Text", disabled: false});
+		expect(result.tagsPill).toEqual({present: true, label: "Tags", disabled: true});
+		expect(result.modalCount).toBe(0);
+		expect(result.content).toContain("summary: old");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
 });
 
 const NATIVE_HELPERS = String.raw`

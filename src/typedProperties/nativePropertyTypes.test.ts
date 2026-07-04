@@ -1,7 +1,8 @@
 import {describe, expect, it} from "vitest";
 import {MetaType} from "../Types/metaType";
 import {
-	CREATION_TYPE_CHOICES,
+	NATIVE_TYPE_CHOICES,
+	assignVaultPropertyType,
 	emptyValueForType,
 	frontmatterValuesEqual,
 	inferCreationTypeFromText,
@@ -240,7 +241,7 @@ describe("seedFromRawText across a type switch", () => {
 
 	it("INVARIANT: every seed is a value normalizeWidgetValue accepts for the target type", () => {
 		const rawSamples = ["", "hello", "3", "3.5", "-1", "007", "3 apples", "true", "false", "2026-07-01", "2026-07-01T09:30", "[[A]], [[B]]", "a, b, c"];
-		const types = CREATION_TYPE_CHOICES.map(choice => choice.type);
+		const types = NATIVE_TYPE_CHOICES.map(choice => choice.type);
 		for (const type of types) {
 			for (const raw of rawSamples) {
 				const seed = seedFromRawText(raw, type);
@@ -248,6 +249,26 @@ describe("seedFromRawText across a type switch", () => {
 				expect(normalized.ok, `seed ${JSON.stringify(seed)} for type ${type} from ${JSON.stringify(raw)}`).toBe(true);
 			}
 		}
+	});
+});
+
+describe("assignVaultPropertyType (vault-wide type memory)", () => {
+	it("calls metadataTypeManager.setType with the key and widget id", async () => {
+		const calls: unknown[][] = [];
+		const app = appWithManager({setType: (...args: unknown[]) => void calls.push(args)});
+
+		await expect(assignVaultPropertyType(app as never, "status", "multitext")).resolves.toBe(true);
+		expect(calls).toEqual([["status", "multitext"]]);
+	});
+
+	it("returns false without throwing when setType is absent or the manager is missing", async () => {
+		await expect(assignVaultPropertyType(appWithManager({}) as never, "status", "date")).resolves.toBe(false);
+		await expect(assignVaultPropertyType({} as never, "status", "date")).resolves.toBe(false);
+	});
+
+	it("returns false when setType throws (internal API drift must not crash the edit)", async () => {
+		const app = appWithManager({setType: () => { throw new Error("boom"); }});
+		await expect(assignVaultPropertyType(app as never, "status", "number")).resolves.toBe(false);
 	});
 });
 

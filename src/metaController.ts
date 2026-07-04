@@ -18,7 +18,7 @@ import {computeTagRewrite, isNestedTag, isTagsKey, isValidTagToken, normalizeTag
 import {setPendingValueContext} from "./Modals/GenericPrompt/promptValueContext";
 import NativePropertyPrompt from "./Modals/NativePropertyPrompt/NativePropertyPrompt";
 import FluidPropertyCreatePrompt from "./Modals/FluidPropertyCreatePrompt/FluidPropertyCreatePrompt";
-import {frontmatterValuesEqual, isNativeEditableYamlProperty} from "./typedProperties/nativePropertyTypes";
+import {assignVaultPropertyType, frontmatterValuesEqual, isNativeEditableYamlProperty, type StandardNativePropertyType} from "./typedProperties/nativePropertyTypes";
 
 const fileWriteQueues: Map<string, Promise<unknown>> = new Map();
 const ADD_FIRST_SELECTION = "metaedit:multi-value:add-first";
@@ -395,10 +395,32 @@ export default class MetaController {
 
         const result = await NativePropertyPrompt.Prompt(this.app, file, property);
         if (result.kind === "cancel") return true;
-        if (!result.changed) return true;
+        if (!result.changed && !result.typeChanged) return true;
 
-        await this.updateNativeYamlPropertyFromUi(property, result.value, file);
+        // Write the (reshaped) value first; only a successful write may change the
+        // vault-wide type memory, so a refused stale write never leaves the vault
+        // typed for a value that was not written.
+        const wrote = result.changed
+            ? await this.updateNativeYamlPropertyFromUi(property, result.value, file)
+            : true;
+        if (wrote && result.typeChanged) {
+            await this.assignPropertyType(property.key, result.type);
+        }
         return true;
+    }
+
+    /**
+     * Persist a property's type in Obsidian's vault-wide type memory (what the
+     * edit prompt's type pill changed), matching Obsidian's own "Property type"
+     * menu. Failure is surfaced but non-fatal: the value write has already
+     * happened, and Obsidian will still infer a widget from the value's shape.
+     */
+    private async assignPropertyType(key: string, type: StandardNativePropertyType): Promise<void> {
+        const assigned = await assignVaultPropertyType(this.app, key, type);
+        if (!assigned) {
+            new Notice(`MetaEdit updated '${key}', but could not change its property type in this Obsidian version.`);
+            log.logMessage(`metadataTypeManager.setType unavailable or failed while setting '${key}' to '${type}'.`);
+        }
     }
 
     private async multiValueMode(property: Property, file: TFile): Promise<boolean> {
