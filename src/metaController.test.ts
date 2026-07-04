@@ -314,15 +314,18 @@ describe("MetaController.persistAutoPropertyChoices", () => {
 });
 
 describe("MetaController native YAML property editing", () => {
-    const setupFrontmatter = (initial: Record<string, unknown> = {}) => {
+    const setupFrontmatter = (initial: Record<string, unknown> = {}, options: {typeManager?: Record<string, unknown> | null} = {}) => {
         const fm: Record<string, unknown> = {...initial};
         const processFrontMatter = vi.fn(async (_file: unknown, fn: (f: Record<string, unknown>) => void) => {
             fn(fm);
         });
+        const setType = vi.fn();
         const app = {
             plugins: {plugins: {}},
             vault: {read: vi.fn(async () => ""), modify: vi.fn(async () => {})},
             fileManager: {processFrontMatter},
+            // `null` models an Obsidian build without the internal type manager.
+            metadataTypeManager: options.typeManager === null ? undefined : {setType, ...options.typeManager},
         };
         const plugin = {
             settings: {
@@ -331,7 +334,7 @@ describe("MetaController native YAML property editing", () => {
             },
         };
         const controller = new MetaController(app as never, plugin as never);
-        return {controller, file: new TFile("note.md"), fm, processFrontMatter};
+        return {controller, file: new TFile("note.md"), fm, processFrontMatter, setType};
     };
 
     beforeEach(() => {
@@ -349,6 +352,7 @@ describe("MetaController native YAML property editing", () => {
         (NativePropertyPrompt.Prompt as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
             kind: "submit",
             changed: true,
+            typeChanged: false,
             type: "text",
             value: submitted,
             valueSource: "native",
@@ -368,6 +372,7 @@ describe("MetaController native YAML property editing", () => {
         (NativePropertyPrompt.Prompt as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
             kind: "submit",
             changed: false,
+            typeChanged: false,
             type: "text",
             value: "old",
             valueSource: "native",
@@ -388,6 +393,7 @@ describe("MetaController native YAML property editing", () => {
         (NativePropertyPrompt.Prompt as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
             kind: "submit",
             changed: true,
+            typeChanged: false,
             type: "text",
             value: "new",
             valueSource: "native",
@@ -413,6 +419,90 @@ describe("MetaController native YAML property editing", () => {
         );
 
         expect(NativePropertyPrompt.Prompt).not.toHaveBeenCalled();
+    });
+
+    it("writes the reshaped value AND assigns the vault-wide type on a type-changing submit", async () => {
+        const ctx = setupFrontmatter({status: "old"});
+        (NativePropertyPrompt.Prompt as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            kind: "submit",
+            changed: true,
+            typeChanged: true,
+            type: "multitext",
+            value: ["old"],
+            valueSource: "native",
+        });
+
+        await ctx.controller.editMetaElement(
+            {key: "status", content: "old", type: MetaType.YAML},
+            [],
+            ctx.file,
+        );
+
+        expect(ctx.fm.status).toEqual(["old"]);
+        expect(ctx.setType).toHaveBeenCalledWith("status", "multitext");
+    });
+
+    it("still assigns the type when only the type changed and the value shape did not", async () => {
+        // e.g. text "2026-01-01" switched to Date: same scalar, new widget.
+        const ctx = setupFrontmatter({due: "2026-01-01"});
+        (NativePropertyPrompt.Prompt as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            kind: "submit",
+            changed: false,
+            typeChanged: true,
+            type: "date",
+            value: "2026-01-01",
+            valueSource: "native",
+        });
+
+        await ctx.controller.editMetaElement(
+            {key: "due", content: "2026-01-01", type: MetaType.YAML},
+            [],
+            ctx.file,
+        );
+
+        expect(ctx.processFrontMatter).not.toHaveBeenCalled();
+        expect(ctx.setType).toHaveBeenCalledWith("due", "date");
+    });
+
+    it("does NOT assign the type when the value write is refused as stale", async () => {
+        const ctx = setupFrontmatter({status: "changed elsewhere"});
+        (NativePropertyPrompt.Prompt as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            kind: "submit",
+            changed: true,
+            typeChanged: true,
+            type: "multitext",
+            value: ["old"],
+            valueSource: "native",
+        });
+
+        await ctx.controller.editMetaElement(
+            {key: "status", content: "old", type: MetaType.YAML},
+            [],
+            ctx.file,
+        );
+
+        expect(ctx.fm.status).toBe("changed elsewhere");
+        expect(ctx.setType).not.toHaveBeenCalled();
+    });
+
+    it("survives an Obsidian build without metadataTypeManager (value still written)", async () => {
+        const ctx = setupFrontmatter({status: "old"}, {typeManager: null});
+        (NativePropertyPrompt.Prompt as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            kind: "submit",
+            changed: true,
+            typeChanged: true,
+            type: "multitext",
+            value: ["old"],
+            valueSource: "native",
+        });
+
+        await expect(ctx.controller.editMetaElement(
+            {key: "status", content: "old", type: MetaType.YAML},
+            [],
+            ctx.file,
+        )).resolves.toBeUndefined();
+
+        expect(ctx.fm.status).toEqual(["old"]);
     });
 });
 

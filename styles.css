@@ -90,11 +90,15 @@
 }
 
 .metaedit-native-property-row {
-    display: block;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
     margin: 12px 0;
 }
 
 .metaedit-native-property-host {
+    flex: 1 1 auto;
+    min-width: 0;
     width: 100%;
 }
 
@@ -137,7 +141,8 @@
     margin: 16px 0 6px;
 }
 
-.metaedit-fluid-create-type {
+/* The type pill shared by the fluid create modal and the native edit prompt. */
+.metaedit-type-pill {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -152,21 +157,21 @@
     cursor: pointer;
 }
 
-.metaedit-fluid-create-type:hover {
+.metaedit-type-pill:hover {
     background: var(--interactive-hover);
 }
 
-.metaedit-fluid-create-type.is-locked {
+.metaedit-type-pill.is-locked {
     cursor: default;
     opacity: 0.75;
 }
 
-.metaedit-fluid-create-type-icon {
+.metaedit-type-pill-icon {
     display: inline-flex;
     align-items: center;
 }
 
-.metaedit-fluid-create-type-icon .svg-icon {
+.metaedit-type-pill-icon .svg-icon {
     width: var(--icon-s);
     height: var(--icon-s);
 }

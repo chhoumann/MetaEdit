@@ -46,7 +46,22 @@ Two buttons finish the edit:
 - "Save" writes the widget's value to frontmatter. Values keep their real types - a date stays a date, a number stays a number, a list stays a list. Nothing is retyped into a string.
 - "Cancel" (or closing the modal) writes nothing.
 
-If you never touch the widget, "Save" also writes nothing - an untouched editor never modifies the file.
+If you never touch the widget (and don't [change the type](#change-a-propertys-type)), "Save" also writes nothing - an untouched editor never modifies the file.
+
+## Change a property's type
+
+The pill on the left of the editor shows the property's current type. Click it - or press <kbd>Cmd/Ctrl</kbd>+<kbd>Y</kbd> - to switch the property to another type, from the same set Obsidian's own "Property type" menu offers: Text, List, Number, Checkbox, Date, and Date & time.
+
+![The "Edit status" modal with the type menu open under the Text pill: Text checked, then List, Number, Checkbox, Date, Date & time](../../../assets/media/native-edit-type-menu.png)
+
+Picking a type swaps in that type's widget and carries the current value across where the new type can represent it - a `Text` value of `2026-08-03` lands in the Date picker filled in, a list's items fold into one comma-separated text value, and a value the new type can't hold starts empty. Nothing is written until you press "Save"; "Cancel" leaves both the value and the type untouched.
+
+Saving after a type switch does two things:
+
+1. Writes the value in the new type's shape - switching `status: alpha` to List saves it as a proper YAML list.
+2. Assigns the type in Obsidian's vault-wide property types (the same setting Obsidian's Properties view changes), so every note showing that key now uses the new widget.
+
+Reserved keys (`tags`, `aliases`, `cssclasses`) have their types fixed by Obsidian, so their pill is shown locked.
 
 :::tip[Wikilinks in aliases]
 The aliases widget gets an extra: type `[[` followed by part of a note name inside a chip, and a dropdown suggests link targets from your vault. Picking one inserts a properly formed link relative to the current note.

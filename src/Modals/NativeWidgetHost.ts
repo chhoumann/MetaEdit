@@ -200,8 +200,8 @@ export class NativeWidgetHost {
 	 * The current value as raw text, for carrying across a type switch. Prefers a
 	 * live editor's in-progress text; otherwise falls back to the last reported
 	 * value stringified, so switching away from a checkbox/number/list still
-	 * carries its state (a checked box -> "true", a list -> its comma-joined items)
-	 * rather than dropping to empty.
+	 * carries its state (a checkbox -> "true"/"false", a list -> its comma-joined
+	 * items) rather than dropping to empty.
 	 */
 	public readRawText(): string {
 		return carryTextFromEditor(this.readEditorText(), this.lastValueInternal);
@@ -213,6 +213,11 @@ export class NativeWidgetHost {
 	 * cleared value is carried as empty rather than resurrecting the stale lastValue.
 	 */
 	private readEditorText(): string | null {
+		// A chip editor's contenteditable is only the in-progress ENTRY field; the
+		// committed chips live in lastValue. Report "no text editor" so the carry
+		// falls back to the chip list (comma-joined) instead of reading the usually
+		// empty entry field and dropping every chip on a type switch.
+		if (this.hostEl.querySelector(".multi-select-container")) return null;
 		const input = this.hostEl.querySelector<HTMLInputElement>("input:not([type='checkbox']), textarea");
 		if (input) return input.value ?? "";
 		const editable = this.hostEl.querySelector<HTMLElement>("[contenteditable='true']");
@@ -334,7 +339,10 @@ export function stringifyForCarry(value: unknown): string {
 	if (typeof value === "string") return value;
 	if (Array.isArray(value)) return value.map(item => String(item ?? "")).filter(Boolean).join(", ");
 	if (typeof value === "number" && Number.isFinite(value)) return String(value);
-	if (value === true) return "true";
+	// Both boolean values are real data (an existing `done: false` switched to
+	// Text must carry "false", not silently become empty); only null/undefined
+	// carry as empty.
+	if (typeof value === "boolean") return String(value);
 	return "";
 }
 
