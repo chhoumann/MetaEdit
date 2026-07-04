@@ -217,11 +217,12 @@ describe("MetaEdit native Obsidian property widgets", () => {
 	test("edit modal shows a type pill, locked for reserved keys", async () => {
 		const {obsidian, sandbox} = getContext();
 		const notePath = sandbox.path("native-type-pill.md");
-		await writeLiveFile(obsidian, notePath, "---\nsummary: old\ntags:\n  - area/test\n---\nbody\n");
+		await writeLiveFile(obsidian, notePath, "---\nsummary: old\ntags:\n  - area/test\ntag:\n  - legacy\n---\nbody\n");
 
 		const result = await evalJsonAsync<{
 			summaryPill: {present: boolean; label: string | null; disabled: boolean | null};
 			tagsPill: {present: boolean; label: string | null; disabled: boolean | null};
+			singularTagPill: {present: boolean; label: string | null; disabled: boolean | null};
 			modalCount: number;
 			content: string;
 		}>(
@@ -256,9 +257,17 @@ describe("MetaEdit native Obsidian property widgets", () => {
 				const tagsPill = readPill();
 				await cancelOpenModal(tagsOpen.promise);
 
+				// The singular "tag" key is tag metadata for the whole write path
+				// (isTagsKey), so its pill must lock too even though it resolves to
+				// the List widget by value shape.
+				const singularOpen = await openNative(file, "tag");
+				const singularTagPill = readPill();
+				await cancelOpenModal(singularOpen.promise);
+
 				return {
 					summaryPill,
 					tagsPill,
+					singularTagPill,
 					modalCount: document.querySelectorAll(".modal-container").length,
 					content: await app.vault.read(file),
 				};
@@ -268,6 +277,7 @@ describe("MetaEdit native Obsidian property widgets", () => {
 
 		expect(result.summaryPill).toEqual({present: true, label: "Text", disabled: false});
 		expect(result.tagsPill).toEqual({present: true, label: "Tags", disabled: true});
+		expect(result.singularTagPill).toEqual({present: true, label: "List", disabled: true});
 		expect(result.modalCount).toBe(0);
 		expect(result.content).toContain("summary: old");
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);

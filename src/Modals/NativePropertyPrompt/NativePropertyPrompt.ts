@@ -10,10 +10,17 @@ import {
 } from "../../typedProperties/nativePropertyTypes";
 import {NativeWidgetHost} from "../NativeWidgetHost";
 import {TypePill} from "../TypePill";
+import {isTagsKey} from "../../tagEditing";
 
 // Reserved frontmatter keys whose type Obsidian fixes vault-wide; the pill shows
 // the type but never offers a switch (matching Obsidian's own Properties view).
-const RESERVED_TYPE_KEYS = new Set(["tags", "aliases", "cssclasses"]);
+// Tag keys are checked via isTagsKey so the singular `tag` - which the whole
+// write path treats as tag metadata - locks exactly like `tags`.
+const RESERVED_TYPE_KEYS = new Set(["aliases", "cssclasses"]);
+
+function isReservedTypeKey(key: string): boolean {
+	return isTagsKey(key) || RESERVED_TYPE_KEYS.has(key.toLowerCase());
+}
 
 export default class NativePropertyPrompt extends Modal {
 	private readonly file: TFile;
@@ -137,7 +144,7 @@ export default class NativePropertyPrompt extends Modal {
 
 	private updateTypePill(): void {
 		const locked = LOCKED_NATIVE_TYPES.has(this.host.type) ||
-			RESERVED_TYPE_KEYS.has(this.property.key.toLowerCase());
+			isReservedTypeKey(this.property.key);
 		this.typePill?.setState(this.host.type, locked);
 	}
 
