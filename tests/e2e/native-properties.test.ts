@@ -258,8 +258,8 @@ describe("MetaEdit native Obsidian property widgets", () => {
 				await cancelOpenModal(tagsOpen.promise);
 
 				// The singular "tag" key is tag metadata for the whole write path
-				// (isTagsKey), so its pill must lock too even though it resolves to
-				// the List widget by value shape.
+				// (isTagsKey), so it resolves to the tags widget and its pill locks,
+				// exactly like "tags".
 				const singularOpen = await openNative(file, "tag");
 				const singularTagPill = readPill();
 				await cancelOpenModal(singularOpen.promise);
@@ -277,7 +277,7 @@ describe("MetaEdit native Obsidian property widgets", () => {
 
 		expect(result.summaryPill).toEqual({present: true, label: "Text", disabled: false});
 		expect(result.tagsPill).toEqual({present: true, label: "Tags", disabled: true});
-		expect(result.singularTagPill).toEqual({present: true, label: "List", disabled: true});
+		expect(result.singularTagPill).toEqual({present: true, label: "Tags", disabled: true});
 		expect(result.modalCount).toBe(0);
 		expect(result.content).toContain("summary: old");
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);

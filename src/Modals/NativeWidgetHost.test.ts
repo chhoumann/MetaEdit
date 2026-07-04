@@ -33,7 +33,8 @@ describe("carryTextFromEditor (type-switch carry decision)", () => {
 
 	it("falls back to the last reported value ONLY when there is no text editor (e.g. a checkbox)", () => {
 		expect(carryTextFromEditor(null, true)).toBe("true");
-		expect(carryTextFromEditor(null, false)).toBe("");
+		// An existing `done: false` is real data - it must carry, not empty out.
+		expect(carryTextFromEditor(null, false)).toBe("false");
 		expect(carryTextFromEditor(null, ["a", "b"])).toBe("a, b");
 		expect(carryTextFromEditor(null, 5)).toBe("5");
 		expect(carryTextFromEditor(null, undefined)).toBe("");
@@ -46,7 +47,7 @@ describe("stringifyForCarry", () => {
 		expect(stringifyForCarry(["x", "y"])).toBe("x, y");
 		expect(stringifyForCarry(42)).toBe("42");
 		expect(stringifyForCarry(true)).toBe("true");
-		expect(stringifyForCarry(false)).toBe("");
+		expect(stringifyForCarry(false)).toBe("false");
 		expect(stringifyForCarry(null)).toBe("");
 	});
 });

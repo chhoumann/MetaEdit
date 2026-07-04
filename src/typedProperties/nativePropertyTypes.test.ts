@@ -3,6 +3,7 @@ import {MetaType} from "../Types/metaType";
 import {
 	NATIVE_TYPE_CHOICES,
 	assignVaultPropertyType,
+	canAssignVaultPropertyType,
 	emptyValueForType,
 	frontmatterValuesEqual,
 	inferCreationTypeFromText,
@@ -43,6 +44,13 @@ describe("native property type resolution", () => {
 			.toMatchObject({kind: "native", type: "tags"});
 		expect(resolveNativeProperty(app as never, {key: "aliases", content: [], type: MetaType.YAML}))
 			.toMatchObject({kind: "native", type: "aliases"});
+	});
+
+	it("resolves the singular `tag` key to the tags widget, matching isTagsKey and creation", () => {
+		const app = appWithManager({});
+
+		expect(resolveNativeProperty(app as never, {key: "tag", content: ["legacy"], type: MetaType.YAML}))
+			.toMatchObject({kind: "native", type: "tags"});
 	});
 
 	it("prefers assigned and expected Obsidian widget types before value-shape inference", () => {
@@ -253,6 +261,12 @@ describe("seedFromRawText across a type switch", () => {
 });
 
 describe("assignVaultPropertyType (vault-wide type memory)", () => {
+	it("canAssignVaultPropertyType reflects whether setType exists", () => {
+		expect(canAssignVaultPropertyType(appWithManager({setType: () => undefined}) as never)).toBe(true);
+		expect(canAssignVaultPropertyType(appWithManager({}) as never)).toBe(false);
+		expect(canAssignVaultPropertyType({} as never)).toBe(false);
+	});
+
 	it("calls metadataTypeManager.setType with the key and widget id", async () => {
 		const calls: unknown[][] = [];
 		const app = appWithManager({setType: (...args: unknown[]) => void calls.push(args)});

@@ -2,6 +2,8 @@ import {Modal, Notice, Setting, type App, type ButtonComponent, type TFile} from
 import type {Property} from "../../parser";
 import {
 	LOCKED_NATIVE_TYPES,
+	canAssignVaultPropertyType,
+	frontmatterValuesEqual,
 	normalizeWidgetValue,
 	resolveNativeProperty,
 	seedFromRawText,
@@ -33,6 +35,11 @@ export default class NativePropertyPrompt extends Modal {
 	// native widgets are unavailable (fallback editor), which also disables the
 	// pill and therefore type switching.
 	private originalType: StandardNativePropertyType | null = null;
+	// True once the user switched the widget's type at least once, even back to
+	// the original. Every re-mount resets the host's didReceiveChange flag, so
+	// after any switch the untouched fast path is no longer trustworthy and the
+	// submit decision falls through to a value comparison instead.
+	private didSwitchType = false;
 	private result: NativePropertyPromptResult = {kind: "cancel"};
 	private didFinish = false;
 	private didResolve = false;
@@ -61,7 +68,12 @@ export default class NativePropertyPrompt extends Modal {
 		const rowEl = this.contentEl.createDiv({cls: "metadata-property metaedit-native-property-row"});
 
 		const resolution = resolveNativeProperty(app, property);
-		if (resolution.kind === "native") {
+		// The pill exists only when a switch can COMPLETE: native widgets resolve
+		// AND this Obsidian build can persist the vault-wide type. Otherwise
+		// offering the menu would guarantee a partial result (value reshaped,
+		// type memory unchanged).
+		const canSwitchType = resolution.kind === "native" && canAssignVaultPropertyType(app);
+		if (canSwitchType) {
 			this.typePill = new TypePill({
 				app,
 				parentEl: rowEl,
@@ -82,8 +94,10 @@ export default class NativePropertyPrompt extends Modal {
 		if (resolution.kind === "native") {
 			this.originalType = resolution.type;
 			this.host.mountNative(resolution.type, property.content);
-			this.updateTypePill();
-			this.registerTypeSwitchAccelerator();
+			if (canSwitchType) {
+				this.updateTypePill();
+				this.registerTypeSwitchAccelerator();
+			}
 		} else {
 			this.host.mountFallback(resolution.reason, property.content);
 		}
@@ -136,6 +150,7 @@ export default class NativePropertyPrompt extends Modal {
 		// Re-mount Obsidian's widget for the picked type, carrying the current
 		// value across the switch the same way the create modal does. Nothing is
 		// written (neither the value nor the vault-wide type) until Save.
+		this.didSwitchType = true;
 		this.host.mountNative(type, seedFromRawText(this.host.readRawText(), type));
 		this.updateTypePill();
 		this.saveButton?.setDisabled(this.host.renderFailed);
@@ -158,7 +173,10 @@ export default class NativePropertyPrompt extends Modal {
 
 		const typeChanged = this.originalType !== null && this.host.type !== this.originalType;
 
-		if (!this.host.didReceiveChange && !typeChanged) {
+		// The truly untouched case: never switched type, widget never reported a
+		// value. Skip normalization entirely - the raw stored value (e.g. a YAML
+		// Date object) need not fit the widget's value shape.
+		if (!this.host.didReceiveChange && !typeChanged && !this.didSwitchType) {
 			this.finish({
 				kind: "submit",
 				changed: false,
@@ -170,17 +188,24 @@ export default class NativePropertyPrompt extends Modal {
 			return;
 		}
 
-		// On a type switch with the widget left untouched, host.value is the seed
-		// carried across the switch, which is always a valid value for the type.
+		// After any type switch, host.value is the carried seed (always valid for
+		// the current type), so normalization cannot spuriously fail here.
 		const normalized = normalizeWidgetValue(this.host.type, this.host.value, this.host.valueSource);
 		if (normalized.ok === false) {
 			new Notice(`MetaEdit could not update '${this.property.key}': ${normalized.reason}`);
 			return;
 		}
 
+		// `changed` means "the VALUE differs" - decided by comparison, not by
+		// per-widget dirty flags, which every re-mount resets (an edit carried
+		// across a switch-away-and-back must still save). A pure type change with
+		// an equal value keeps changed=false: the controller then skips the file
+		// write and only assigns the vault-wide type, like Obsidian itself.
+		const changed = !frontmatterValuesEqual(normalized.value, this.property.content);
+
 		this.finish({
 			kind: "submit",
-			changed: true,
+			changed,
 			typeChanged,
 			type: this.host.type,
 			value: normalized.value,

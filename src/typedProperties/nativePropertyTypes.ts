@@ -137,6 +137,11 @@ export function resolveNativeProperty(app: App, property: Property): NativePrope
  * Obsidian build does not expose `metadataTypeManager.setType`, or when the call
  * throws; the caller decides how to surface that.
  */
+/** Whether this Obsidian build exposes the vault-wide type setter at all. */
+export function canAssignVaultPropertyType(app: App): boolean {
+	return typeof getMetadataTypeManager(app)?.setType === "function";
+}
+
 export async function assignVaultPropertyType(app: App, key: string, type: StandardNativePropertyType): Promise<boolean> {
 	const manager = getMetadataTypeManager(app);
 	if (!manager || typeof manager.setType !== "function") return false;
@@ -329,7 +334,10 @@ function resolveNativePropertyType(
 	value: unknown,
 ): StandardNativePropertyType {
 	const normalizedKey = key.toLowerCase();
-	if (normalizedKey === "tags") return "tags";
+	// Both `tags` and the singular `tag` are tag frontmatter (matching isTagsKey
+	// and the write path), so edit resolves them to the tags widget exactly like
+	// creation does.
+	if (isTagsKey(normalizedKey)) return "tags";
 	if (normalizedKey === "aliases") return "aliases";
 	if (normalizedKey === "cssclasses" && widgets.cssclasses) return "cssclasses";
 
