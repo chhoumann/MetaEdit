@@ -16,7 +16,10 @@ import {
 import { afterAll, afterEach, beforeAll, beforeEach } from "vitest";
 
 export const PLUGIN_ID = "metaedit";
-export const E2E_VAULT = process.env.METAEDIT_E2E_VAULT ?? "dev";
+// Canonical OBSIDIAN_E2E_* names are emitted by the shared obsidian-e2e runner;
+// the legacy METAEDIT_E2E_* aliases remain a fallback during the migration.
+export const E2E_VAULT =
+	process.env.OBSIDIAN_E2E_VAULT ?? process.env.METAEDIT_E2E_VAULT ?? "dev";
 export const E2E_BIN = process.env.OBSIDIAN_BIN ?? "obsidian";
 // styles.css is a hand-written release asset shipped alongside main.js, so the
 // provisioned vault symlinks all three artifacts.

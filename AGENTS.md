@@ -105,11 +105,16 @@ obsidian vault=dev dev:errors
 ### Isolated worktree vault (parallel worktrees)
 In a worktree, do **not** race the shared `dev` vault - multiple worktree agents
 would clobber each other on the plugin symlink, `data.json`, and
-`plugin:reload`. Use the isolated worktree wrapper instead. It provisions a
-worktree-local vault under `.obsidian-e2e-vaults/metaedit-<worktree>`
-(git-ignored), starts or reuses a private-`HOME` Obsidian instance bound to that
-vault, disables Restricted Mode, waits until MetaEdit is live, and then runs your
-command with the right `vault=<worktree vault>` and private `HOME` applied:
+`plugin:reload`. Use the isolated worktree wrapper instead. The four
+`provision:e2e-vault` / `start:e2e-obsidian` / `stop:e2e-obsidian` /
+`obsidian:e2e` scripts run on the shared `obsidian-e2e` instance-runner bin,
+configured by `obsidian-e2e.config.mjs` at the repo root (plugin id, the three
+symlinked artifacts, and the `DEFAULT_SETTINGS`-shaped `data.json` seed). The
+wrapper provisions a worktree-local vault under
+`.obsidian-e2e-vaults/metaedit-<worktree>` (git-ignored), starts or reuses a
+private-`HOME` Obsidian instance bound to that vault, disables Restricted Mode,
+waits until MetaEdit is live, and then runs your command with the right
+`vault=<worktree vault>` and private `HOME` applied:
 
 ```bash
 pnpm run build                              # produce root main.js + manifest.json + styles.css first
@@ -125,12 +130,14 @@ pnpm run obsidian:e2e -- dev:errors
   provision/launch steps individually; both accept `--help`.
 - To point the Vitest `tests/e2e` suite at the isolated instance, the `obsidian`
   CLI routes by `$HOME` (it talks to `$HOME/.obsidian-cli.sock`), so you must
-  remap `HOME` as well as the vault name:
+  remap `HOME` as well as the vault name. `--print-env` emits the canonical
+  `OBSIDIAN_E2E_*` names (the runner also emits legacy `METAEDIT_E2E_*` aliases
+  during the migration; the harness reads canonical first, then the alias):
 
   ```bash
-  pnpm run build                                # provisioning links main.js
+  pnpm run build                                 # provisioning links main.js
   eval "$(pnpm run --silent start:e2e-obsidian -- --print-env)"
-  export HOME="$METAEDIT_E2E_OBSIDIAN_HOME"     # re-point the CLI socket
+  export HOME="$OBSIDIAN_E2E_OBSIDIAN_HOME"      # re-point the CLI socket
   pnpm run test:e2e
   ```
 
