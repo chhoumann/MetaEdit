@@ -19,10 +19,10 @@
 #   --profile-root, stop it with the matching
 #   `pnpm run stop:e2e-obsidian -- --vault <name> [--profile-root <path>]` before
 #   removing the worktree.
-# - The hook needs `node` on the GUI app's PATH (Orca runs it via non-login
-#   /bin/bash). It is guarded with `command -v node` so a missing node degrades
-#   to a no-op (the reap-on-next-start safety net then handles cleanup) instead
-#   of erroring.
+# - The hook runs the teardown through `pnpm exec`, so it needs `pnpm` on the
+#   GUI app's PATH (Orca runs it via non-login /bin/bash). It is guarded with
+#   `command -v pnpm` so a missing pnpm degrades to a no-op (the
+#   reap-on-next-start safety net then handles cleanup) instead of erroring.
 scripts:
   archive: |
-    command -v node >/dev/null 2>&1 && pnpm exec obsidian-e2e stop --worktree "$ORCA_WORKTREE_PATH" || true
+    command -v pnpm >/dev/null 2>&1 && pnpm exec obsidian-e2e stop --worktree "$ORCA_WORKTREE_PATH" || true
