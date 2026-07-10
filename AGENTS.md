@@ -78,98 +78,40 @@ platform, vault setup, command or API call invoked, console/runtime errors, and
 plugin state before and after.
 
 ## Obsidian Runtime Workflow
+Agents with the `verify-in-obsidian` skill get the generic workflow there:
+vault-mode choice, the runner script quartet, the `--print-env` HOME remap,
+instance teardown, and the dev-tools loop. This section is the MetaEdit-specific
+brief that a skill-less agent still needs.
 
-### Shared dev vault (main checkout)
-For work in the canonical `/Users/christian/Developer/MetaEdit` checkout, use the
-shared `dev` vault and target it explicitly with the `obsidian` CLI:
-
-```bash
-pnpm run dev
-# reload MetaEdit in the dev vault after a rebuild:
-obsidian vault=dev plugin:reload id=metaedit
-# inspect plugin state / errors:
-obsidian vault=dev eval code='app.plugins.plugins.metaedit?.manifest?.version'
-obsidian vault=dev dev:errors
-```
-
-- Always pass the vault selector as a **prefix** argument
-  (`obsidian vault=dev <command> ...`), never as a suffix - suffix form can
-  resolve to the wrong vault due to CLI parsing.
-- Dev vault root: `/Users/christian/Developer/dev_vault/dev`.
-- MetaEdit plugin folder in the vault:
-  `/Users/christian/Developer/dev_vault/dev/.obsidian/plugins/metaedit`, whose
-  `main.js`/`manifest.json`/`styles.css` are symlinked to this checkout's
-  artifacts. Only one checkout can own those symlinks at a time, so the shared
-  `dev` vault is for the main checkout. Worktrees must use the isolated wrapper.
-
-### Isolated worktree vault (parallel worktrees)
-In a worktree, do **not** race the shared `dev` vault - multiple worktree agents
-would clobber each other on the plugin symlink, `data.json`, and
-`plugin:reload`. Use the isolated worktree wrapper instead. The four
-`provision:e2e-vault` / `start:e2e-obsidian` / `stop:e2e-obsidian` /
-`obsidian:e2e` scripts run on the shared `obsidian-e2e` instance-runner bin,
-configured by `obsidian-e2e.config.mjs` at the repo root (plugin id, the three
-symlinked artifacts, and the `DEFAULT_SETTINGS`-shaped `data.json` seed). The
-wrapper provisions a worktree-local vault under
-`.obsidian-e2e-vaults/metaedit-<worktree>` (git-ignored), starts or reuses a
-private-`HOME` Obsidian instance bound to that vault, disables Restricted Mode,
-waits until MetaEdit is live, and then runs your command with the right
-`vault=<worktree vault>` and private `HOME` applied:
+- Plugin id `metaedit`. Reload with `obsidian vault=<vault> plugin:reload
+  id=metaedit`; probe liveness with `Boolean(app.plugins.plugins.metaedit)`.
+  Command id for the main action: `metaedit:metaEditRun`.
+- The four runner scripts - `provision:e2e-vault`, `start:e2e-obsidian`,
+  `stop:e2e-obsidian`, `obsidian:e2e` - run the shared `obsidian-e2e` bin,
+  configured by `obsidian-e2e.config.mjs` at the repo root (plugin id, the three
+  symlinked artifacts `main.js`/`manifest.json`/`styles.css`, and the
+  `DEFAULT_SETTINGS`-shaped `data.json` seed).
+- Worktrees use the isolated vault (`.obsidian-e2e-vaults/metaedit-<worktree>`)
+  and must not race the shared `dev` vault. The canonical
+  `/Users/christian/Developer/MetaEdit` checkout uses the shared `dev` vault
+  (root `/Users/christian/Developer/dev_vault/dev`); only one checkout can own
+  its plugin symlinks at a time.
+- Always pass the `vault=` selector as a **prefix** argument, never a suffix -
+  suffix form can resolve to the wrong vault.
 
 ```bash
 pnpm run build                              # produce root main.js + manifest.json + styles.css first
-pnpm run obsidian:e2e -- eval code='app.vault.getName()'
 pnpm run obsidian:e2e -- eval code='Boolean(app.plugins.plugins.metaedit)'
 pnpm run obsidian:e2e -- dev:errors
+pnpm run stop:e2e-obsidian                  # stop this worktree's instance on wrap-up
+
+# point the Vitest tests/e2e suite at the isolated instance:
+eval "$(pnpm run --silent start:e2e-obsidian -- --print-env)"
+export HOME="$OBSIDIAN_E2E_OBSIDIAN_HOME"   # re-point the CLI socket, then: pnpm run test:e2e
 ```
 
-- The wrapper links the worktree's own `main.js` / `manifest.json` / `styles.css`
-  and seeds a clean `DEFAULT_SETTINGS`-shaped `data.json` on first provision; it
-  never touches `/Users/christian/Developer/dev_vault/dev`.
-- `pnpm run provision:e2e-vault` and `pnpm run start:e2e-obsidian` expose the
-  provision/launch steps individually; both accept `--help`.
-- To point the Vitest `tests/e2e` suite at the isolated instance, the `obsidian`
-  CLI routes by `$HOME` (it talks to `$HOME/.obsidian-cli.sock`), so you must
-  remap `HOME` as well as the vault name. `--print-env` emits the canonical
-  `OBSIDIAN_E2E_*` names (the runner also emits legacy `METAEDIT_E2E_*` aliases
-  during the migration; the harness reads canonical first, then the alias):
-
-  ```bash
-  pnpm run build                                 # provisioning links main.js
-  eval "$(pnpm run --silent start:e2e-obsidian -- --print-env)"
-  export HOME="$OBSIDIAN_E2E_OBSIDIAN_HOME"      # re-point the CLI socket
-  pnpm run test:e2e
-  ```
-
-### Stopping an isolated instance (avoid leaks)
-Each started instance is a real Obsidian process tree plus a private profile
-directory under `/private/tmp/metaedit-obsidian-e2e/<vault>-<hash>/`. Removing a
-worktree does **not** stop it. Stop it explicitly:
-
-```bash
-pnpm run stop:e2e-obsidian            # stop THIS worktree's instance + remove its tmp dir
-pnpm run stop:e2e-obsidian -- --dry-run   # show what would be stopped/removed
-pnpm run stop:e2e-obsidian -- --prune     # also reap orphaned instances (worktree gone)
-```
-
-The teardown targets only this worktree's instance by its private
-`--user-data-dir` token; the shared `dev` vault, other worktrees, and
-quickadd/podnotes instances are untouched. Two layers keep instances from
-leaking, so you rarely need `stop` by hand:
-
-- **Orca archive hook** - `orca.yaml` runs the teardown for the worktree being
-  removed. Remove worktrees with `orca worktree rm --worktree <selector>
-  --run-hooks` so the hook fires.
-- **Reap on next start** - `start:e2e-obsidian` and `obsidian:e2e` reap any
-  orphaned instance (whose backing worktree no longer exists) before launching.
-
-### Obsidian DevTools
-Developer commands are available through `obsidian`: `dev:debug`, `dev:errors`,
-`dev:console`, `dev:screenshot`, `eval`, and more. Keep the `vault=` selector as
-a prefix on every command. `dev:console` / `dev:errors` are most reliable while
-debugger capture is attached (`obsidian vault=dev dev:debug on`). For non-trivial
-`eval` code, pass it via `code=...` from a file/heredoc to avoid shell-quoting
-corruption.
+The runner emits canonical `OBSIDIAN_E2E_*` env names, plus legacy
+`METAEDIT_E2E_*` aliases during the migration (harness reads canonical first).
 
 ## Evidence-First Bug Triage
 - Default workflow: reproduce in Obsidian first, then implement the fix, then
