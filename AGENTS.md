@@ -30,9 +30,9 @@ hand-written, committed release asset.
 - Use the GitHub CLI (`gh`) for issues, PRs, and releases.
 - When resolving a GitHub issue, use `gh issue develop <issue-number>` to
   create/link the working branch before implementation.
-- Follow Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`, `chore:`,
-  `release(version): ...`) so semantic-release can determine versions. The PR
-  title becomes the squash-merge commit and drives the released version.
+- Follow Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`, `chore:`) so
+  the shared release pipeline can determine versions. The PR title becomes the
+  squash-merge commit and drives the released version.
 - GitHub does not allow approving your own PR from the same account; do not block
   merge waiting for self-approval.
 
@@ -127,13 +127,19 @@ The runner emits canonical `OBSIDIAN_E2E_*` env names, plus legacy
   artifacts.
 
 ## Release & PR Expectations
-Releases are semantic-release based and cut manually via the Release workflow
-(Actions tab or `gh workflow run release.yml`); pushes to `master` do not
-auto-release. `version-bump.mjs` keeps `manifest.json` and `versions.json` in sync with the
-package version and Obsidian `minAppVersion`. Release assets are `main.js`,
-`manifest.json`, and `styles.css`. Treat unexpected diffs in `package.json`,
-`pnpm-lock.yaml`, `manifest.json`, or `versions.json` as blockers until
-understood.
+Releases run on the shared forensic PR-to-release pipeline in
+[`chhoumann/obsidian-plugin-workflows`](https://github.com/chhoumann/obsidian-plugin-workflows),
+consumed via the three caller stubs in `.github/workflows/`
+(`release-prepare.yml`, `release-trigger.yml`, `release.yml`). After every green
+push to `master`, the `metaedit-release-bot` App opens or refreshes one standing
+release PR containing only the synchronized version files (`package.json`,
+`manifest.json`, `versions.json`) and generated notes; **merging that PR is the
+sole release act.** There is no auto-release and no manual dispatch on the happy
+path. The shared pipeline materializes the version files and keeps
+`manifest.json` / `versions.json` in sync with the package version and Obsidian
+`minAppVersion`. Release assets are `main.js`, `manifest.json`, and `styles.css`.
+Treat unexpected diffs in `package.json`, `manifest.json`, or `versions.json` as
+blockers until understood.
 
 Pull requests should include: a concise summary of the user-facing change;
 linked issues when relevant; screenshots or recordings for visible UI changes;
