@@ -48,3 +48,4 @@ jobs:
             default-branch: master
             release-bot-app-slug: metaedit-release-bot
             release-workflow: release.yml
+            workflows-ref: v3

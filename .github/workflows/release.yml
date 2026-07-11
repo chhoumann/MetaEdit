@@ -34,6 +34,8 @@ jobs:
             release-pr: ${{ inputs.releasePr }}
             plugin-name: metaedit
             package-manager: pnpm
+            # Must match the release-policy pinned in release-prepare.yml.
+            release-policy: '[{"scope":"deps","type":"build","release":"patch"}]'
             default-branch: master
             node-version: "24"
             release-bot-app-slug: metaedit-release-bot

@@ -44,6 +44,8 @@ jobs:
         with:
             plugin-name: metaedit
             package-manager: pnpm
+            # Pin the commit-to-release policy so a toolkit update can never change it.
+            release-policy: '[{"scope":"deps","type":"build","release":"patch"}]'
             default-branch: master
             node-version: "24"
             target-sha: ${{ github.event.workflow_run.head_sha || inputs.targetSha }}
