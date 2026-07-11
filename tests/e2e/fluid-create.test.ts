@@ -1,5 +1,5 @@
 import {describe, expect, test} from "vitest";
-import {createMetaEditE2EHarness, evalJsonAsync, PLUGIN_ID} from "./harness";
+import {CLOSE_ALL_MODALS_JS, createMetaEditE2EHarness, evalJsonAsync, PLUGIN_ID} from "./harness";
 
 const getContext = createMetaEditE2EHarness("fluid-create");
 
@@ -132,7 +132,8 @@ describe("MetaEdit fluid property creation", () => {
 				out.coversCancel = dd ? intersects(dd.getBoundingClientRect(), cancelBtn.getBoundingClientRect()) : true;
 				cancel(modal);
 				await promise;
-				document.querySelectorAll(".suggestion-container").forEach(e => e.remove());
+				${CLOSE_ALL_MODALS_JS}
+				await closeAllModals();
 				return out;
 			})()
 			`,

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+	CLOSE_ALL_MODALS_JS,
 	createMetaEditE2EHarness,
 	evalJsonAsync,
 	PLUGIN_ID,
@@ -77,7 +78,8 @@ async function runAutoPropertyEdit(
 				return { content, choices: saved ? saved.choices : undefined };
 			} finally {
 				// Make sure no modal is left open to leak into the next test.
-				document.querySelectorAll(".modal-close-button").forEach((b) => b.click());
+				${CLOSE_ALL_MODALS_JS}
+				await closeAllModals();
 				plugin.settings.AutoProperties = snapshot.auto;
 				plugin.settings.EditMode.mode = snapshot.mode;
 				await plugin.saveSettings();

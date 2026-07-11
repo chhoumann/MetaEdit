@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { createMetaEditE2EHarness, evalJsonAsync, PLUGIN_ID, WAIT_OPTS } from "./harness";
+import { CLOSE_ALL_MODALS_JS, createMetaEditE2EHarness, evalJsonAsync, PLUGIN_ID, WAIT_OPTS } from "./harness";
 
 const getContext = createMetaEditE2EHarness("bulk-metadata");
 
@@ -107,7 +107,8 @@ describe("MetaEdit bulk metadata edit", () => {
 					return { content: await app.vault.read(file), conflictTitle };
 				} finally {
 					app.metadataCache.getFileCache = originalGetFileCache;
-					document.querySelectorAll(".modal-close-button").forEach((button) => button.click());
+					${CLOSE_ALL_MODALS_JS}
+					await closeAllModals();
 				}
 			})()
 		`,

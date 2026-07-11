@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { createMetaEditE2EHarness, evalJsonAsync, PLUGIN_ID, WAIT_OPTS } from "./harness";
+import { CLOSE_ALL_MODALS_JS, createMetaEditE2EHarness, evalJsonAsync, PLUGIN_ID, WAIT_OPTS } from "./harness";
 
 const getContext = createMetaEditE2EHarness("audit-gaps");
 
@@ -62,8 +62,8 @@ describe("MetaEdit audit gap coverage", () => {
 					if (items.length) break;
 				}
 				const texts = items.map(el => ((el.querySelector(".suggestion-item-text") || el).textContent || "").trim());
-				app.workspace.activeModal?.close?.();
-				for (const el of Array.from(document.querySelectorAll(".suggestion-container, .suggestion-item"))) el.remove();
+				${CLOSE_ALL_MODALS_JS}
+				await closeAllModals();
 				return texts.filter(t => t.startsWith("#dup"));
 			})()
 		`,
