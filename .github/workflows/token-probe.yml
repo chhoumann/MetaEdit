@@ -1,0 +1,29 @@
+name: Token probe
+on: workflow_dispatch
+permissions: {}
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const head = (await github.rest.git.getRef({ owner, repo, ref: 'heads/master' })).data.object.sha;
+            const release = 'be2da19a2f0bc5b953cd13d27d4b216ed77770fb';
+            const cases = [
+              ['plain-at-head', 'refs/heads/probe-a', head],
+              ['release-run-at-head', 'refs/heads/release-run/9.9.9', head],
+              ['plain-at-release-commit', 'refs/heads/probe-b', release],
+            ];
+            for (const [label, ref, sha] of cases) {
+              try {
+                await github.rest.git.createRef({ owner, repo, ref, sha });
+                core.notice(`${label}: created OK`);
+                await github.rest.git.deleteRef({ owner, repo, ref: ref.replace('refs/', '') });
+              } catch (error) {
+                core.notice(`${label}: FAILED ${error.status} ${error.message}`);
+              }
+            }
