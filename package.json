@@ -3,6 +3,10 @@
   "version": "1.10.1",
   "description": "MetaEdit helps you manage your metadata.",
   "main": "main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chhoumann/MetaEdit.git"
+  },
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "pnpm run typecheck && node esbuild.config.mjs production",
@@ -15,9 +19,7 @@
     "obsidian:e2e": "obsidian-e2e run",
     "provision:e2e-vault": "obsidian-e2e provision",
     "start:e2e-obsidian": "obsidian-e2e start",
-    "stop:e2e-obsidian": "obsidian-e2e stop",
-    "version": "node version-bump.mjs && git add manifest.json versions.json",
-    "semantic-release": "semantic-release"
+    "stop:e2e-obsidian": "obsidian-e2e stop"
   },
   "keywords": [],
   "author": "Christian B. B. Houmann",
@@ -27,7 +29,6 @@
     "node": ">=20.18.1"
   },
   "devDependencies": {
-    "@semantic-release/git": "^10.0.1",
     "@types/node": "26.1.0",
     "@vitest/coverage-v8": "4.1.9",
     "cz-conventional-changelog": "^3.3.0",
@@ -39,7 +40,6 @@
     "globals": "^17.7.0",
     "obsidian": "1.13.1",
     "obsidian-e2e": "^0.8.1",
-    "semantic-release": "^25.0.5",
     "svelte": "^5.56.4",
     "svelte-check": "^4.7.1",
     "svelte-eslint-parser": "^1.8.0",
@@ -63,59 +63,5 @@
     "overrides": {
       "handlebars": "^4.7.9"
     }
-  },
-  "release": {
-    "tagFormat": "${version}",
-    "plugins": [
-      [
-        "@semantic-release/commit-analyzer",
-        {
-          "releaseRules": [
-            {
-              "type": "chore",
-              "release": "patch"
-            }
-          ]
-        }
-      ],
-      "@semantic-release/release-notes-generator",
-      [
-        "@semantic-release/npm",
-        {
-          "npmPublish": false
-        }
-      ],
-      [
-        "@semantic-release/git",
-        {
-          "assets": [
-            "package.json",
-            "pnpm-lock.yaml",
-            "manifest.json",
-            "versions.json"
-          ],
-          "message": "release(version): Release ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
-        }
-      ],
-      [
-        "@semantic-release/github",
-        {
-          "assets": [
-            {
-              "path": "main.js",
-              "label": "main.js"
-            },
-            {
-              "path": "manifest.json",
-              "label": "manifest.json"
-            },
-            {
-              "path": "styles.css",
-              "label": "styles.css"
-            }
-          ]
-        }
-      ]
-    ]
   }
 }
