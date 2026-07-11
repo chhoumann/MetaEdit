@@ -33,5 +33,8 @@ updates:
         update-types: ["minor", "patch"]
     commit-message:
       prefix: build
+      # Emits build(deps): / build(deps-dev): - the release policy releases a
+      # patch for build(deps), so production bumps ship and dev bumps do not.
+      include: scope
     labels:
       - dependencies
