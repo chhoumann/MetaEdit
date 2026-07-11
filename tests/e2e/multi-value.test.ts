@@ -6,13 +6,14 @@ const getContext = createMetaEditE2EHarness("multi-value");
 
 // Live regressions for the multi-value / array editing cluster (#94, #51, #31, #36).
 //
-// Since PR #168, `editMetaElement` routes every top-level YAML property to the
+// Since PR #168, `editMetaElement` routes eligible top-level YAML properties
+// (Auto Properties are intercepted first) to the
 // NativePropertyPrompt (Obsidian's own widgets), so the cluster's invariants -
 // a list stays a native list, elements with commas or command-lookalike values
 // survive, a scalar stays a scalar - are asserted through that prompt, driving
 // the widget's real interactions (in-place pill edit, pill add, text edit).
 // The legacy GenericSuggester + GenericPrompt multi-value editor still owns
-// inline Dataview fields; the last two UI tests pin that surviving surface.
+// inline Dataview fields; the final four UI tests pin that surviving surface.
 // (#184 note: the prompt/suggester UI renders fine in the headless instance -
 // the earlier tests were simply waiting for a modal this flow no longer opens.)
 describe("MetaEdit multi-value editing", () => {

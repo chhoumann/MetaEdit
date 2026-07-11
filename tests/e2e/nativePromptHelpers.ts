@@ -2,7 +2,7 @@ import { PLUGIN_ID } from "./harness";
 
 /**
  * In-app drivers for the NativePropertyPrompt (the modal `editMetaElement`
- * opens for every top-level YAML property since PR #168): open the prompt,
+ * opens for eligible top-level YAML properties since PR #168): open the prompt,
  * drive Obsidian's own property widgets (contenteditable text, native inputs,
  * multi-select pills), and save/cancel through the real buttons. Interpolate
  * into an eval body; shared by native-properties.test.ts and
