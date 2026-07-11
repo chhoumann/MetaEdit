@@ -11,6 +11,17 @@ name: Trigger release
 on:
     pull_request_target:
         types: [closed]
+    # Recovery path: re-validate an already-merged release PR (e.g. after a
+    # toolkit pin bump fixes a validation bug). The reusable workflow re-derives
+    # everything from the PR number and fails closed, so a bad number cannot
+    # dispatch a release. Dispatch it from the default branch; any other ref is
+    # rejected.
+    workflow_dispatch:
+        inputs:
+            pr-number:
+                description: "Merged release PR number to re-validate"
+                required: true
+                type: string
 
 permissions: {}
 
@@ -21,16 +32,17 @@ concurrency:
 jobs:
     validate:
         if: >-
-            github.event.pull_request.merged == true &&
-            github.event.pull_request.base.ref == 'master' &&
-            startsWith(github.event.pull_request.head.ref, 'release/')
+            github.event_name == 'workflow_dispatch' ||
+            (github.event.pull_request.merged == true &&
+             github.event.pull_request.base.ref == 'master' &&
+             startsWith(github.event.pull_request.head.ref, 'release/'))
         permissions:
             actions: write
             contents: write
             pull-requests: read
         uses: chhoumann/obsidian-plugin-workflows/.github/workflows/release-validate.yml@v3
         with:
-            pr-number: ${{ github.event.pull_request.number }}
+            pr-number: ${{ github.event.pull_request.number || inputs.pr-number }}
             plugin-name: metaedit
             package-manager: pnpm
             default-branch: master
