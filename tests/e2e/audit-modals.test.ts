@@ -120,9 +120,6 @@ describe("MetaEdit modal + kanban flows", () => {
 				${HELPERS}
 				await closeAll();
 				const plugin = app.plugins.plugins.${PLUGIN_ID};
-				// Clear any stray board mapping so the Kanban panel render does not log a
-				// 'file not found' warning (which would pollute evalJsonAsync).
-				plugin.settings.KanbanHelper.boards = [];
 				const root = await openTab();
 				const item = itemByName(root, "Progress Properties");
 				item.querySelector(".extra-setting-button").click();

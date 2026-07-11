@@ -20,8 +20,7 @@ const HELPERS = `
 describe("MetaEdit settings tab", () => {
 	test("SET-03/SET-05: feature toggles flip settings, persist to disk, and survive reopen", async () => {
 		const { obsidian } = getContext();
-		// Toggle Auto Properties and UI Elements (their onChange does not call
-		// toggleAutomators, which logs and would break evalJsonAsync).
+		// Toggle Auto Properties and UI Elements through the rendered settings tab.
 		const result = await evalJsonAsync<{
 			autoFlipped: boolean;
 			autoPersisted: boolean;

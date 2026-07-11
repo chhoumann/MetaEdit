@@ -67,14 +67,13 @@ describe("AUDIT repro: confirmed bug candidates", () => {
 		// Start from a clean diagnostics buffer so we only see errors this run causes.
 		await obsidian.dev.resetDiagnostics().catch(() => undefined);
 
-		// Use obsidian.dev.eval directly (evalJsonAsync's nested-eval wrapper is
-		// unreliable around executeCommandById). Stub getActiveFile to null for one
-		// command run, then restore it.
-		// Run the command as a pure side effect via dev.eval (the fix emits a
-		// console.log, which would break evalJsonAsync's envelope), then assert via
+		// Run the command as a pure side effect (the fix logs a notice-style
+		// message, which evalJsonAsync now tolerates), then assert via
 		// diagnostics. Stub getActiveFile to null for the one command run.
-		await obsidian.dev.eval(`
-			(() => {
+		await evalJsonAsync<void>(
+			obsidian,
+			`
+			(async () => {
 				const orig = app.workspace.getActiveFile;
 				app.workspace.getActiveFile = () => null;
 				try {
@@ -83,7 +82,8 @@ describe("AUDIT repro: confirmed bug candidates", () => {
 					app.workspace.getActiveFile = orig;
 				}
 			})()
-		`);
+		`,
+		);
 		// Let any async command rejection settle into diagnostics.
 		await new Promise((r) => setTimeout(r, 300));
 

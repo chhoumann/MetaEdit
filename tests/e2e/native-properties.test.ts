@@ -166,9 +166,10 @@ describe("MetaEdit native Obsidian property widgets", () => {
 		const notePath = sandbox.path("native-stale.md");
 		await writeLiveFile(obsidian, notePath, "---\ncount: 1\n---\nbody\n");
 
-		const rawResult = await obsidian.dev.eval<string>(
+		const result = await evalJsonAsync<{content?: string; cacheValue?: unknown; error?: string; modalCount?: number}>(
+			obsidian,
 			`
-			(async () => JSON.stringify(await (async () => {
+			(async () => {
 				try {
 					${NATIVE_HELPERS}
 					const plugin = app.plugins.plugins.${PLUGIN_ID};
@@ -198,10 +199,9 @@ describe("MetaEdit native Obsidian property widgets", () => {
 						modalCount: document.querySelectorAll(".modal-container").length,
 					};
 				}
-			})()))()
+			})()
 			`,
 		);
-		const result = JSON.parse(rawResult.slice(rawResult.indexOf("{"))) as {content?: string; cacheValue?: unknown; error?: string; modalCount?: number};
 
 		expect(result.error).toBeUndefined();
 		expect(result.cacheValue).toBe(3);

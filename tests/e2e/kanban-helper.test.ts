@@ -1,3 +1,4 @@
+import type { ObsidianClient } from "obsidian-e2e";
 import { describe, expect, test } from "vitest";
 import {
 	createMetaEditE2EHarness,
@@ -10,29 +11,28 @@ const WAIT = { timeoutMs: 25_000, intervalMs: 250 };
 
 // Enable the Kanban helper for one board and attach the automator to the live
 // modify pipeline, mirroring what the settings tab does at runtime.
-// `plugin.toggleAutomators()` detaches the disabled Progress Properties automator,
-// which logs to the console; that log line would corrupt evalJsonAsync's JSON
-// envelope, so this uses the plain (log-tolerant) eval and ignores the result.
 async function enableBoard(
-	obsidian: ReturnType<typeof getContext>["obsidian"],
+	obsidian: ObsidianClient,
 	boardName: string,
 	property: string,
 ): Promise<void> {
-	await obsidian.dev.eval(`
-		(() => {
+	await evalJsonAsync<void>(
+		obsidian,
+		`
+		(async () => {
 			const plugin = app.plugins.plugins.${PLUGIN_ID};
 			plugin.settings.KanbanHelper = {
 				enabled: true,
 				boards: [{ boardName: ${JSON.stringify(boardName)}, property: ${JSON.stringify(property)} }],
 			};
 			plugin.toggleAutomators();
-			return "kanban-enabled";
 		})()
-	`);
+	`,
+	);
 }
 
 async function writeLiveFile(
-	obsidian: Parameters<typeof evalJsonAsync>[0],
+	obsidian: ObsidianClient,
 	path: string,
 	content: string,
 ): Promise<void> {

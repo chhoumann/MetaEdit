@@ -16,7 +16,7 @@ Both desktop and mobile are live and drive the same MetaEdit build (`main.js` fr
   ```
 - Harness gotchas (learned this audit):
   - `obsidian.dev.eval` returns `undefined` for a sync expression in-process; use `evalJsonAsync` (async IIFE returning an object) for return values.
-  - `evalJsonAsync` breaks if the eval'd plugin code emits `console.log` output. For code paths that log (e.g. the Run no-op), drive the side effect with `obsidian.dev.eval` and assert via `obsidian.dev.runtimeErrors()`.
+  - `evalJsonAsync` results are wrapped in per-call sentinel markers (obsidian-e2e >= 0.8.2), so `console.log` output from the eval'd plugin code no longer corrupts the JSON envelope.
   - MetaType enum: `YAML = 0`, `Dataview = 1`, `Tag = 2`.
 
 ## Mobile (Android emulator + CDP)

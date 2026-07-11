@@ -78,9 +78,11 @@ describe("MetaEdit audit gap coverage", () => {
 	test("PROG-04: Excalidraw files are skipped by the on-modify automators", async () => {
 		const { obsidian, sandbox } = getContext();
 		const notePath = sandbox.path("drawing.excalidraw.md");
-		// Drive the automator with dev.eval (toggleAutomators may log, which would
-		// break evalJsonAsync), then read the file with a clean eval.
-		await obsidian.dev.eval(`
+		// Drive the automator end-to-end (enable, modify, disable), then read the
+		// file back through the sandbox API.
+		await evalJsonAsync<void>(
+			obsidian,
+			`
 			(async () => {
 				const plugin = app.plugins.plugins.${PLUGIN_ID};
 				const path = ${JSON.stringify(notePath)};
@@ -97,7 +99,8 @@ describe("MetaEdit audit gap coverage", () => {
 				plugin.settings.ProgressProperties.properties = [];
 				plugin.toggleAutomators();
 			})()
-		`);
+		`,
+		);
 		// Read the result through the sandbox API (no eval-string construction).
 		const content = await sandbox.waitForContent(
 			"drawing.excalidraw.md",
