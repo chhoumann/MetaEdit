@@ -40,7 +40,7 @@ jobs:
             actions: write
             contents: write
             pull-requests: read
-        uses: chhoumann/obsidian-plugin-workflows/.github/workflows/release-validate.yml@v3
+        uses: chhoumann/obsidian-plugin-workflows/.github/workflows/release-validate.yml@v4
         with:
             pr-number: ${{ github.event.pull_request.number || inputs.pr-number }}
             plugin-name: metaedit
@@ -48,4 +48,3 @@ jobs:
             default-branch: master
             release-bot-app-slug: metaedit-release-bot
             release-workflow: release.yml
-            workflows-ref: v3
