@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+	CLOSE_ALL_MODALS_JS,
 	createMetaEditE2EHarness,
 	evalJsonAsync,
 	PLUGIN_ID,
@@ -611,14 +612,8 @@ describe("MetaEdit runtime", () => {
 				if (!nestedItem) throw new Error("Nested attributes.one row was not rendered.");
 				const nestedButtonCount = nestedItem.querySelectorAll("button").length;
 
-				app.workspace.activeModal?.close?.();
-				for (const button of Array.from(document.querySelectorAll(".modal-close-button"))) {
-					button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-				}
-				for (const element of Array.from(document.querySelectorAll(".suggestion-container, .suggestion-item"))) {
-					element.remove();
-				}
-				await sleep(50);
+				${CLOSE_ALL_MODALS_JS}
+				await closeAllModals();
 
 				return {
 					keys,
@@ -648,10 +643,8 @@ describe("MetaEdit runtime", () => {
 					throw new Error("Timed out waiting for " + selector);
 				};
 
-				for (const button of Array.from(document.querySelectorAll(".modal-close-button"))) {
-					button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-				}
-				await sleep(100);
+				${CLOSE_ALL_MODALS_JS}
+				await closeAllModals();
 
 				const props = await plugin.controller.getPropertiesInFile(file);
 				const property = props.find((prop) => prop.key === "attributes.one");

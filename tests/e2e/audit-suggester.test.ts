@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { createMetaEditE2EHarness, evalJsonAsync, PLUGIN_ID } from "./harness";
+import { CLOSE_ALL_MODALS_JS, createMetaEditE2EHarness, evalJsonAsync, PLUGIN_ID } from "./harness";
 
 const getContext = createMetaEditE2EHarness("audit-suggester");
 
@@ -29,11 +29,7 @@ const HELPERS = `
 		input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true }));
 		return input;
 	};
-	const closeModals = () => {
-		app.workspace.activeModal?.close?.();
-		for (const b of Array.from(document.querySelectorAll(".modal-close-button"))) b.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-		for (const el of Array.from(document.querySelectorAll(".suggestion-container, .suggestion-item, .prompt"))) el.remove();
-	};
+	${CLOSE_ALL_MODALS_JS}
 `;
 
 describe("MetaEdit Edit Meta suggester flows", () => {
@@ -45,7 +41,7 @@ describe("MetaEdit Edit Meta suggester flows", () => {
 			`
 			(async () => {
 				${HELPERS}
-				closeModals(); await sleep(150);
+				await closeAllModals();
 				const plugin = app.plugins.plugins.${PLUGIN_ID};
 				const path = ${JSON.stringify(notePath)};
 				let f = app.vault.getAbstractFileByPath(path);
@@ -72,7 +68,7 @@ describe("MetaEdit Edit Meta suggester flows", () => {
 				await sleep(150);
 				Array.from(modal.querySelectorAll("button")).find((b) => b.textContent.trim() === "Add").click();
 				await waitFor("body", () => (app.metadataCache.getFileCache(f)?.frontmatter ?? {}).freshKey === "freshValue");
-				closeModals();
+				await closeAllModals();
 				await sleep(100);
 				return await app.vault.read(f);
 			})()
@@ -91,7 +87,7 @@ describe("MetaEdit Edit Meta suggester flows", () => {
 			`
 			(async () => {
 				${HELPERS}
-				closeModals(); await sleep(150);
+				await closeAllModals();
 				const plugin = app.plugins.plugins.${PLUGIN_ID};
 				const path = ${JSON.stringify(notePath)};
 				let f = app.vault.getAbstractFileByPath(path);
@@ -118,7 +114,7 @@ describe("MetaEdit Edit Meta suggester flows", () => {
 			`
 			(async () => {
 				${HELPERS}
-				closeModals(); await sleep(150);
+				await closeAllModals();
 				const plugin = app.plugins.plugins.${PLUGIN_ID};
 				const path = ${JSON.stringify(notePath)};
 				let f = app.vault.getAbstractFileByPath(path);
@@ -138,7 +134,7 @@ describe("MetaEdit Edit Meta suggester flows", () => {
 				await waitFor("body", () => !("deleteMe" in (app.metadataCache.getFileCache(f)?.frontmatter ?? {})));
 				await sleep(200);
 				const modalOpen = !!document.querySelector(".suggestion-container .suggestion-item");
-				closeModals();
+				await closeAllModals();
 				return { content: await app.vault.read(f), modalOpen };
 			})()
 		`,
@@ -158,7 +154,7 @@ describe("MetaEdit Edit Meta suggester flows", () => {
 			`
 			(async () => {
 				${HELPERS}
-				closeModals(); await sleep(150);
+				await closeAllModals();
 				const plugin = app.plugins.plugins.${PLUGIN_ID};
 				const path = ${JSON.stringify(notePath)};
 				let f = app.vault.getAbstractFileByPath(path);
@@ -177,7 +173,7 @@ describe("MetaEdit Edit Meta suggester flows", () => {
 				// Transform deletes the YAML key, then appends the inline field.
 				await waitFor("body", () => !("mover" in (app.metadataCache.getFileCache(f)?.frontmatter ?? {})));
 				await sleep(250);
-				closeModals();
+				await closeAllModals();
 				await sleep(100);
 				return await app.vault.read(f);
 			})()

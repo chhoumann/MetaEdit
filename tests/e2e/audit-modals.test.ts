@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { createMetaEditE2EHarness, evalJsonAsync, PLUGIN_ID } from "./harness";
+import { CLOSE_ALL_MODALS_JS, createMetaEditE2EHarness, evalJsonAsync, PLUGIN_ID } from "./harness";
 
 const getContext = createMetaEditE2EHarness("audit-modals");
 
@@ -25,12 +25,7 @@ const HELPERS = `
 	};
 	const itemByName = (root, name) => Array.from(root.querySelectorAll(".setting-item"))
 		.find((el) => el.querySelector(".setting-item-name")?.textContent.trim() === name);
-	const closeAll = async () => {
-		app.setting?.close?.();
-		document.querySelectorAll(".modal-container .modal-close-button").forEach((b) => b.dispatchEvent(new MouseEvent("click", { bubbles: true })));
-		document.querySelectorAll(".modal-container, .suggestion-container, .prompt").forEach((el) => el.remove());
-		await sleep(120);
-	};
+	${CLOSE_ALL_MODALS_JS}
 `;
 
 describe("MetaEdit modal + kanban flows", () => {
@@ -41,7 +36,7 @@ describe("MetaEdit modal + kanban flows", () => {
 			`
 			(async () => {
 				${HELPERS}
-				await closeAll();
+				await closeAllModals();
 				const plugin = app.plugins.plugins.${PLUGIN_ID};
 				const prevEnabled = plugin.settings.AutoProperties.enabled;
 				const prevProps = plugin.settings.AutoProperties.properties;
@@ -75,7 +70,7 @@ describe("MetaEdit modal + kanban flows", () => {
 			`
 			(async () => {
 				${HELPERS}
-				await closeAll();
+				await closeAllModals();
 				const plugin = app.plugins.plugins.${PLUGIN_ID};
 				const path = ${JSON.stringify(notePath)};
 				let f = app.vault.getAbstractFileByPath(path);
@@ -91,11 +86,9 @@ describe("MetaEdit modal + kanban flows", () => {
 				try {
 					const p = plugin.api.autoprop("mood");
 					const titleEl = await waitFor(".metaedit-ap-prompt-title");
-					// Cancel by clicking the modal's close button (the X).
-					const modalEl = titleEl.closest(".modal-container") || document;
-					const closeBtn = modalEl.querySelector(".modal-close-button");
-					if (closeBtn) closeBtn.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-					else document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+					// Cancel the way a user does: Escape through Obsidian's keymap
+					// scope (1.13 removed the .modal-close-button affordance).
+					document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: true }));
 					const resolved = await p;
 					await sleep(150);
 					return { resolved, content: await app.vault.read(f), before };
@@ -118,7 +111,7 @@ describe("MetaEdit modal + kanban flows", () => {
 			`
 			(async () => {
 				${HELPERS}
-				await closeAll();
+				await closeAllModals();
 				const plugin = app.plugins.plugins.${PLUGIN_ID};
 				const root = await openTab();
 				const item = itemByName(root, "Progress Properties");
@@ -155,23 +148,33 @@ describe("MetaEdit modal + kanban flows", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
-	test("PROMPT-02: a date-typed YAML property opens a native date picker in the prompt", async () => {
+	// PROMPT-02: a date-typed YAML property opens Obsidian's native date widget.
+	// Since PR #168 a top-level YAML property is edited in the
+	// NativePropertyPrompt, so the date affordance is the native widget's
+	// input[type=date] - the legacy .metaEditPromptInput date picker no longer
+	// participates in this flow.
+	test("PROMPT-02: a date-typed YAML property opens a native date input in the edit prompt", async () => {
 		const { obsidian, sandbox } = getContext();
 		const notePath = sandbox.path("date-prop.md");
-		const result = await evalJsonAsync<{ inputType: string; hasDateClass: boolean }>(
+		const result = await evalJsonAsync<{
+			inputType: string | null;
+			hasDateClass: boolean;
+			legacyPromptOpened: boolean;
+			modalsAfter: number;
+		}>(
 			obsidian,
 			`
 			(async () => {
 				${HELPERS}
 				const itemText = (item) => ((item.querySelector(".suggestion-item-text") || item).textContent || "").trim();
-				await closeAll();
+				await closeAllModals();
 				const plugin = app.plugins.plugins.${PLUGIN_ID};
 				const path = ${JSON.stringify(notePath)};
 				let f = app.vault.getAbstractFileByPath(path);
 				const body = "---\\ndue: 2026-01-01\\n---\\nbody\\n";
 				if (f) { await app.vault.modify(f, body); } else { f = await app.vault.create(path, body); }
 				await sleep(300);
-				// Assign Obsidian's "date" property type so getDateInputType returns "date".
+				// Assign Obsidian's "date" property type so the native prompt mounts the date widget.
 				app.metadataTypeManager.setType("due", "date");
 				await sleep(200);
 
@@ -179,16 +182,25 @@ describe("MetaEdit modal + kanban flows", () => {
 				const row = await waitFor(".suggestion-item", (i) => itemText(i).startsWith("due"));
 				row.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
 				row.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-				const input = await waitFor(".metaEditPromptInput");
-				const inputType = input.getAttribute("type");
-				const hasDateClass = input.classList.contains("mod-date");
-				await closeAll();
-				return { inputType, hasDateClass };
+				const host = await waitFor(".metaedit-native-property-host");
+				const input = host.querySelector("input");
+				const inputType = input?.getAttribute("type") ?? null;
+				const hasDateClass = input?.classList.contains("mod-date") ?? false;
+				const legacyPromptOpened = Boolean(document.querySelector(".metaEditPromptInput"));
+				await closeAllModals();
+				return {
+					inputType,
+					hasDateClass,
+					legacyPromptOpened,
+					modalsAfter: document.querySelectorAll(".modal-container").length,
+				};
 			})()
 		`,
 		);
 		expect(result.inputType).toBe("date");
 		expect(result.hasDateClass).toBe(true);
+		expect(result.legacyPromptOpened).toBe(false);
+		expect(result.modalsAfter).toBe(0);
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
@@ -200,7 +212,7 @@ describe("MetaEdit modal + kanban flows", () => {
 			`
 			(async () => {
 				${HELPERS}
-				await closeAll();
+				await closeAllModals();
 				const plugin = app.plugins.plugins.${PLUGIN_ID};
 				const path = ${JSON.stringify(boardPath)};
 				let f = app.vault.getAbstractFileByPath(path);

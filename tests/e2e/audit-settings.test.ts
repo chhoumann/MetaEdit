@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { createMetaEditE2EHarness, evalJsonAsync, PLUGIN_ID } from "./harness";
+import { CLOSE_ALL_MODALS_JS, createMetaEditE2EHarness, evalJsonAsync, PLUGIN_ID } from "./harness";
 
 const getContext = createMetaEditE2EHarness("audit-settings");
 
@@ -290,8 +290,8 @@ describe("MetaEdit settings tab", () => {
 						opt.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 					}
 					await sleep(300);
-					app.workspace.activeModal?.close?.();
-					for (const el of Array.from(document.querySelectorAll(".suggestion-container, .suggestion-item, .prompt"))) el.remove();
+					${CLOSE_ALL_MODALS_JS}
+					await closeAllModals();
 					return { suggestValues: captured ?? [], captured: captured !== null };
 				} finally {
 					plugin.controller.createNewYamlPropertyFluid = orig;
