@@ -42,8 +42,8 @@ importers:
         specifier: 1.13.1
         version: 1.13.1(@codemirror/state@6.5.0)(@codemirror/view@6.38.6)
       obsidian-e2e:
-        specifier: ^0.8.2
-        version: 0.8.2(vite-plus@0.1.24(@types/node@26.1.1)(@vitest/coverage-v8@4.1.10)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.97.2)(svelte@5.56.4(@typescript-eslint/types@8.63.0))(typescript@6.0.3)(vite@8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.97.2)(yaml@2.9.0))(yaml@2.9.0))(vitest@4.1.10)
+        specifier: ^0.9.0
+        version: 0.9.0(vite-plus@0.1.24(@types/node@26.1.1)(@vitest/coverage-v8@4.1.10)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.97.2)(svelte@5.56.4(@typescript-eslint/types@8.63.0))(typescript@6.0.3)(vite@8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.97.2)(yaml@2.9.0))(yaml@2.9.0))(vitest@4.1.10)
       svelte:
         specifier: ^5.56.4
         version: 5.56.4(@typescript-eslint/types@8.63.0)
@@ -1390,8 +1390,8 @@ packages:
     resolution: {integrity: sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==}
     engines: {node: '>=8'}
 
-  browserslist@4.28.5:
-    resolution: {integrity: sha512-Cu2E6QejHWzuDMTkuwgpABFgDfZrXLQq5V13YOACZx4mFAG4IwGTbTfHPMr4WtxlHoXSM8FIuRwYYCz5XiabaQ==}
+  browserslist@4.28.6:
+    resolution: {integrity: sha512-FQBYNK15VMslhLHpA7+n+n1GOlF1kId2xcCg7/j95f24AOF6VDYMNH4mFxF7KuaTdv627faazpOAjFzMrfJOUw==}
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
     hasBin: true
 
@@ -1418,8 +1418,8 @@ packages:
     resolution: {integrity: sha512-P8BjAsXvZS+VIDUI11hHCQEv74YT67YUi5JJFNWIqL235sBmjX4+qx9Muvls5ivyNENctx46xQLQ3aTuE7ssaQ==}
     engines: {node: '>=6'}
 
-  caniuse-lite@1.0.30001803:
-    resolution: {integrity: sha512-g/uHREV2ZpK9qMalCsWaxmA6ol+DX8GYhuf3T40RKoP+oL7vhRJh8LNt73PCjpnR6l14FzfPrB5Yux4PKm2meg==}
+  caniuse-lite@1.0.30001805:
+    resolution: {integrity: sha512-52noaS3DubycKSXaU30TwPGIp+POyQSUVa5jBEq3vkRkY0kjyb3LQgvhU6WGyCcyXqVLWO0Cw0Q6BSdD0kUfVA==}
 
   chai@6.2.2:
     resolution: {integrity: sha512-NUPRluOfOiTKBKvWPtSD4PhFvWCqOi0BGStNWs57X9js7XGTprSmFoz5F0tWhR4WPjNeR9jXqdC7/UpSJTnlRg==}
@@ -2516,6 +2516,11 @@ packages:
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
+  nanoid@3.3.16:
+    resolution: {integrity: sha512-bzlKTyNJ7+LdGIIwy8ijFpIqEQIvafahV7eYykJ8Cvh42EdJeODoJ6gUJXpQJvej1BddH8OqTXZNE/KfbWAu8Q==}
+    engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
+    hasBin: true
+
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
 
@@ -2562,8 +2567,8 @@ packages:
     resolution: {integrity: sha512-gXah6aZrcUxjWg2zR2MwouP2eHlCBzdV4pygudehaKXSGW4v2AsRQUK+lwwXhii6KFZcunEnmSUoYp5CXibxtA==}
     engines: {node: '>= 0.4'}
 
-  obsidian-e2e@0.8.2:
-    resolution: {integrity: sha512-3fWfWJoyjNJVjoD0K+6ohvBOilGCC0BRYwzRLKU4kZ3ZDGW7VUDiTSL46SgnAx/kXCW/teVV1OMw5UcazcXEGQ==}
+  obsidian-e2e@0.9.0:
+    resolution: {integrity: sha512-eolHF8eiwidRmT8JK+KLzv2o28ckKLUvBhwfiz5rfxx5mmbGqaJyNnne8uQ5YaURowX9u7T7Jga1Q6jihUv2eQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
     peerDependencies:
@@ -2727,6 +2732,10 @@ packages:
 
   postcss@8.5.16:
     resolution: {integrity: sha512-vuwillviilfKZsg0VGj5R/YwwcHx4SLsIOI/7K6mQkWx+l5cUHTjj5g0AasTBcyXsbfTgrwsUNmVUb5xVwyPwg==}
+    engines: {node: ^10 || ^12 || >=14}
+
+  postcss@8.5.18:
+    resolution: {integrity: sha512-xdB1oSLHbz1vRWgCDalrCqEFTWzFlhqFC5tIHLMOSUIjhm3XXQ1qrFy8S/ESr1JYRRXqM3c1QFiMZUJdUTqyMQ==}
     engines: {node: ^10 || ^12 || >=14}
 
   postcss@8.5.6:
@@ -3389,7 +3398,7 @@ snapshots:
     dependencies:
       '@babel/compat-data': 7.29.7
       '@babel/helper-validator-option': 7.29.7
-      browserslist: 4.28.5
+      browserslist: 4.28.6
       lru-cache: 5.1.1
       semver: 6.3.1
     optional: true
@@ -4234,7 +4243,7 @@ snapshots:
       '@oxc-project/runtime': 0.133.0
       '@oxc-project/types': 0.133.0
       lightningcss: 1.32.0
-      postcss: 8.5.16
+      postcss: 8.5.18
     optionalDependencies:
       '@types/node': 26.1.1
       esbuild: 0.28.1
@@ -4468,13 +4477,13 @@ snapshots:
     dependencies:
       fill-range: 7.1.1
 
-  browserslist@4.28.5:
+  browserslist@4.28.6:
     dependencies:
       baseline-browser-mapping: 2.10.43
-      caniuse-lite: 1.0.30001803
+      caniuse-lite: 1.0.30001805
       electron-to-chromium: 1.5.389
       node-releases: 2.0.51
-      update-browserslist-db: 1.2.3(browserslist@4.28.5)
+      update-browserslist-db: 1.2.3(browserslist@4.28.6)
     optional: true
 
   buffer@5.7.1:
@@ -4503,7 +4512,7 @@ snapshots:
 
   callsites@3.1.0: {}
 
-  caniuse-lite@1.0.30001803:
+  caniuse-lite@1.0.30001805:
     optional: true
 
   chai@6.2.2: {}
@@ -5767,6 +5776,8 @@ snapshots:
 
   nanoid@3.3.15: {}
 
+  nanoid@3.3.16: {}
+
   natural-compare@1.4.0: {}
 
   node-addon-api@7.1.1:
@@ -5824,7 +5835,7 @@ snapshots:
       define-properties: 1.2.1
       es-object-atoms: 1.1.2
 
-  obsidian-e2e@0.8.2(vite-plus@0.1.24(@types/node@26.1.1)(@vitest/coverage-v8@4.1.10)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.97.2)(svelte@5.56.4(@typescript-eslint/types@8.63.0))(typescript@6.0.3)(vite@8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.97.2)(yaml@2.9.0))(yaml@2.9.0))(vitest@4.1.10):
+  obsidian-e2e@0.9.0(vite-plus@0.1.24(@types/node@26.1.1)(@vitest/coverage-v8@4.1.10)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.97.2)(svelte@5.56.4(@typescript-eslint/types@8.63.0))(typescript@6.0.3)(vite@8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.97.2)(yaml@2.9.0))(yaml@2.9.0))(vitest@4.1.10):
     dependencies:
       vite-plus: 0.1.24(@types/node@26.1.1)(@vitest/coverage-v8@4.1.10)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.97.2)(svelte@5.56.4(@typescript-eslint/types@8.63.0))(typescript@6.0.3)(vite@8.1.4(@types/node@26.1.1)(esbuild@0.28.1)(jiti@2.6.1)(sass@1.97.2)(yaml@2.9.0))(yaml@2.9.0)
       yaml: 2.9.0
@@ -6005,6 +6016,12 @@ snapshots:
   postcss@8.5.16:
     dependencies:
       nanoid: 3.3.15
+      picocolors: 1.1.1
+      source-map-js: 1.2.1
+
+  postcss@8.5.18:
+    dependencies:
+      nanoid: 3.3.16
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
@@ -6500,9 +6517,9 @@ snapshots:
 
   universalify@2.0.1: {}
 
-  update-browserslist-db@1.2.3(browserslist@4.28.5):
+  update-browserslist-db@1.2.3(browserslist@4.28.6):
     dependencies:
-      browserslist: 4.28.5
+      browserslist: 4.28.6
       escalade: 3.2.0
       picocolors: 1.1.1
     optional: true
