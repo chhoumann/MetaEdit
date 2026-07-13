@@ -149,6 +149,36 @@ describe("MetaController inline Dataview writes", () => {
         );
     });
 
+    it("updatePropertyInFile rewrites inline fields inside Admonition fences (#188)", async () => {
+        const {controller, file, store} = setup(
+            [
+                "```ad-note",
+                "title: Metadata",
+                "status:: Backlog",
+                "```",
+                "",
+                "```js",
+                "status:: fenced example",
+                "```",
+            ].join("\n"),
+        );
+
+        await controller.updatePropertyInFile({key: "status", content: "Backlog", type: MetaType.Dataview}, "Done", file);
+
+        expect(store.content).toBe(
+            [
+                "```ad-note",
+                "title: Metadata",
+                "status:: Done",
+                "```",
+                "",
+                "```js",
+                "status:: fenced example",
+                "```",
+            ].join("\n"),
+        );
+    });
+
     it("updateMultipleInFile rewrites multiple real inline fields but leaves fenced examples untouched", async () => {
         const {controller, file, store} = setup(
             [

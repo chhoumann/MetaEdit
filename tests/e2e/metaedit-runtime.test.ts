@@ -129,6 +129,73 @@ describe("MetaEdit runtime", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
+	test("reads and updates Dataview fields inside Admonition fences (#188)", async () => {
+		const { obsidian, sandbox } = getContext();
+
+		const notePath = sandbox.path("admonition-inline-fields.md");
+		await writeLiveFile(
+			obsidian,
+			notePath,
+			[
+				"```ad-note",
+				"title: Meta data",
+				"collapse: closed",
+				"",
+				"NoteDate:: 2024-03-07",
+				"Id:: PORT-18",
+				"Summary:: Some summary here",
+				"```",
+				"",
+				"```js",
+				"InsideJs:: hidden",
+				"```",
+			].join("\n"),
+		);
+
+		const before = await evalJsonAsync<{
+			noteDate: string;
+			id: string;
+			summary: string;
+			insideJs: string | null;
+			keys: string[];
+		}>(
+			obsidian,
+			`
+			(async () => {
+				const api = app.plugins.plugins.${PLUGIN_ID}.api;
+				const file = app.vault.getAbstractFileByPath(${JSON.stringify(notePath)});
+				return {
+					noteDate: await api.getPropertyValue("NoteDate", file),
+					id: await api.getPropertyValue("Id", file),
+					summary: await api.getPropertyValue("Summary", file),
+					insideJs: (await api.getPropertyValue("InsideJs", file)) ?? null,
+					keys: (await api.getPropertiesInFile(file)).map((property) => property.key),
+				};
+			})()
+		`,
+		);
+
+		expect(before).toEqual({
+			noteDate: "2024-03-07",
+			id: "PORT-18",
+			summary: "Some summary here",
+			insideJs: null,
+			keys: ["NoteDate", "Id", "Summary"],
+		});
+
+		await callApi(obsidian, "update", ["Id", "PORT-19", notePath]);
+
+		const content = await sandbox.waitForContent(
+			"admonition-inline-fields.md",
+			(value) => value.includes("Id:: PORT-19"),
+			WAIT_OPTS,
+		);
+		expect(content).toContain("Id:: PORT-19");
+		expect(content).toContain("InsideJs:: hidden");
+		expect(await callApi<string>(obsidian, "getPropertyValue", ["Id", notePath])).toBe("PORT-19");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
 	test("parses inline fields after an unmatched leading thematic break", async () => {
 		const { obsidian, sandbox } = getContext();
 
