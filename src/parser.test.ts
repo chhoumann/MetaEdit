@@ -420,6 +420,23 @@ describe("MetaEditParser inline field parsing", () => {
         ]);
     });
 
+    it("keeps code fences nested inside an Admonition hidden (#188)", () => {
+        const content = [
+            "````ad-note",
+            "before:: visible",
+            "```js",
+            "insideJs:: hidden",
+            "```",
+            "after:: visible",
+            "````",
+        ].join("\n");
+
+        expect(parseInline(content)).toEqual([
+            {key: "before", content: "visible"},
+            {key: "after", content: "visible"},
+        ]);
+    });
+
     it("keeps a shorter inner fence from closing a longer outer fence", () => {
         const content = [
             "real:: yes",

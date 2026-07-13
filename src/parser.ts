@@ -59,11 +59,12 @@ const FULL_LINE_PREFIX = /^\s*(?:>\s+)*(?:[-*+]\s+|\d+[.)]\s+)?/;
 const CODE_FENCE = /^\s{0,3}(`{3,}|~{3,})/;
 
 type OpenFence = {char: string, len: number, readable: boolean};
+type FenceLine = {char: string, len: number, bare: boolean, infoString: string};
 
 // A potential fence line: the run's character, its length, and whether the run is
 // followed only by whitespace. A closing fence must be "bare" (no info string);
 // an opening fence may carry an info string (e.g. ```dataview).
-function matchFenceLine(line: string): {char: string, len: number, bare: boolean, infoString: string} | null {
+function matchFenceLine(line: string): FenceLine | null {
     const match = line.match(CODE_FENCE);
     if (!match) return null;
     const run = match[1];
@@ -72,22 +73,41 @@ function matchFenceLine(line: string): {char: string, len: number, bare: boolean
 }
 
 // Advance fenced-code state by one line. A block closes only on a run of the SAME
-// character at least as long as the opener, followed by whitespace - so a shorter
-// inner fence (e.g. ``` shown inside a ```` block) does not close the outer block
-// early and leak its example fields as metadata.
-function nextFenceState(openFence: OpenFence | null, line: string): {open: OpenFence | null, boundary: "open" | "close" | null} {
+// character at least as long as the opener, followed by whitespace. Readable
+// Admonition containers may hold shorter or differently-delimited nested fences;
+// those temporarily hide their code examples until their own closing marker.
+function nextFenceState(openFences: readonly OpenFence[], line: string): {open: readonly OpenFence[], boundary: "open" | "close" | null} {
     const fence = matchFenceLine(line);
-    if (!fence) return {open: openFence, boundary: null};
-    if (openFence === null) {
+    if (!fence) return {open: openFences, boundary: null};
+
+    const openFence = openFences[openFences.length - 1];
+    if (!openFence) {
         return {
-            open: {char: fence.char, len: fence.len, readable: fence.infoString.startsWith("ad-")},
+            open: [{char: fence.char, len: fence.len, readable: fence.infoString.startsWith("ad-")}],
             boundary: "open",
         };
     }
     if (fence.char === openFence.char && fence.len >= openFence.len && fence.bare) {
-        return {open: null, boundary: "close"};
+        return {open: openFences.slice(0, -1), boundary: "close"};
     }
-    return {open: openFence, boundary: null};
+
+    // An ordinary code fence treats every non-closing fence marker as code. A
+    // readable Admonition instead parses its Markdown body, where a shorter
+    // same-character fence (or any differently-delimited fence) may nest.
+    const canOpenNestedFence = openFence.readable &&
+        (fence.char !== openFence.char || fence.len < openFence.len);
+    if (canOpenNestedFence) {
+        return {
+            open: [...openFences, {
+                char: fence.char,
+                len: fence.len,
+                readable: fence.infoString.startsWith("ad-"),
+            }],
+            boundary: "open",
+        };
+    }
+
+    return {open: openFences, boundary: null};
 }
 
 export default class MetaEditParser {
@@ -319,7 +339,7 @@ export default class MetaEditParser {
     private *walkInlineContentLines(content: string): IterableIterator<InlineContentLine> {
         const lines = this.splitContentLines(content);
         const frontmatterInfo = this.getFrontmatterInfo(content);
-        let openFence: OpenFence | null = null;
+        let openFences: readonly OpenFence[] = [];
 
         for (let index = 0; index < lines.length; index++) {
             const line = lines[index];
@@ -330,15 +350,15 @@ export default class MetaEditParser {
                 continue;
             }
 
-            const {open, boundary} = nextFenceState(openFence, line.text);
-            openFence = open;
+            const {open, boundary} = nextFenceState(openFences, line.text);
+            openFences = open;
 
             yield {
                 ...line,
                 index,
                 inFrontmatter: false,
                 fenceBoundary: boundary,
-                readable: boundary === null && (openFence === null || openFence.readable),
+                readable: boundary === null && openFences.every(fence => fence.readable),
             };
         }
     }

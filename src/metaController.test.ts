@@ -152,14 +152,13 @@ describe("MetaController inline Dataview writes", () => {
     it("updatePropertyInFile rewrites inline fields inside Admonition fences (#188)", async () => {
         const {controller, file, store} = setup(
             [
-                "```ad-note",
+                "````ad-note",
                 "title: Metadata",
                 "status:: Backlog",
-                "```",
-                "",
                 "```js",
                 "status:: fenced example",
                 "```",
+                "````",
             ].join("\n"),
         );
 
@@ -167,14 +166,13 @@ describe("MetaController inline Dataview writes", () => {
 
         expect(store.content).toBe(
             [
-                "```ad-note",
+                "````ad-note",
                 "title: Metadata",
                 "status:: Done",
-                "```",
-                "",
                 "```js",
                 "status:: fenced example",
                 "```",
+                "````",
             ].join("\n"),
         );
     });

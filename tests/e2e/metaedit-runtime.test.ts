@@ -146,6 +146,13 @@ describe("MetaEdit runtime", () => {
 				"Summary:: Some summary here",
 				"```",
 				"",
+				"````ad-warning",
+				"NestedVisible:: visible",
+				"```js",
+				"Id:: NESTED-CODE",
+				"```",
+				"````",
+				"",
 				"```js",
 				"InsideJs:: hidden",
 				"```",
@@ -156,6 +163,7 @@ describe("MetaEdit runtime", () => {
 			noteDate: string;
 			id: string;
 			summary: string;
+			nestedVisible: string;
 			insideJs: string | null;
 			keys: string[];
 		}>(
@@ -168,6 +176,7 @@ describe("MetaEdit runtime", () => {
 					noteDate: await api.getPropertyValue("NoteDate", file),
 					id: await api.getPropertyValue("Id", file),
 					summary: await api.getPropertyValue("Summary", file),
+					nestedVisible: await api.getPropertyValue("NestedVisible", file),
 					insideJs: (await api.getPropertyValue("InsideJs", file)) ?? null,
 					keys: (await api.getPropertiesInFile(file)).map((property) => property.key),
 				};
@@ -179,8 +188,9 @@ describe("MetaEdit runtime", () => {
 			noteDate: "2024-03-07",
 			id: "PORT-18",
 			summary: "Some summary here",
+			nestedVisible: "visible",
 			insideJs: null,
-			keys: ["NoteDate", "Id", "Summary"],
+			keys: ["NoteDate", "Id", "Summary", "NestedVisible"],
 		});
 
 		await callApi(obsidian, "update", ["Id", "PORT-19", notePath]);
@@ -191,6 +201,7 @@ describe("MetaEdit runtime", () => {
 			WAIT_OPTS,
 		);
 		expect(content).toContain("Id:: PORT-19");
+		expect(content).toContain("Id:: NESTED-CODE");
 		expect(content).toContain("InsideJs:: hidden");
 		expect(await callApi<string>(obsidian, "getPropertyValue", ["Id", notePath])).toBe("PORT-19");
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
