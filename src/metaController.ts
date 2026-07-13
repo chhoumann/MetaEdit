@@ -95,7 +95,8 @@ export default class MetaController {
      * {@link updatePropertyInFile}, which replaces every existing instance.
      *
      * Placement is computed by {@link MetaEditParser.computeInlineInsertIndex} so the
-     * field is never inserted inside frontmatter or a fenced code block. The write goes
+     * field is never inserted inside frontmatter or an ordinary fenced code block.
+     * Admonition `ad-*` fences remain readable metadata containers. The write goes
      * through the per-file queue, so it serializes with other MetaEdit writes instead of
      * racing them (the previous implementation read and wrote outside the queue, and
      * silently no-opped when the chosen line index was 0).

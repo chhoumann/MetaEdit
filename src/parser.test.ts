@@ -398,6 +398,45 @@ describe("MetaEditParser inline field parsing", () => {
         ]);
     });
 
+    it("reads fields inside Admonition fences while keeping ordinary code fences hidden (#188)", () => {
+        const content = [
+            "outside:: yes",
+            "```ad-note",
+            "title: Metadata",
+            "insideNote:: visible",
+            "```",
+            "~~~ad-warning",
+            "insideWarning:: visible",
+            "~~~",
+            "```js",
+            "insideJs:: hidden",
+            "```",
+        ].join("\n");
+
+        expect(parseInline(content)).toEqual([
+            {key: "outside", content: "yes"},
+            {key: "insideNote", content: "visible"},
+            {key: "insideWarning", content: "visible"},
+        ]);
+    });
+
+    it("keeps code fences nested inside an Admonition hidden (#188)", () => {
+        const content = [
+            "````ad-note",
+            "before:: visible",
+            "```js",
+            "insideJs:: hidden",
+            "```",
+            "after:: visible",
+            "````",
+        ].join("\n");
+
+        expect(parseInline(content)).toEqual([
+            {key: "before", content: "visible"},
+            {key: "after", content: "visible"},
+        ]);
+    });
+
     it("keeps a shorter inner fence from closing a longer outer fence", () => {
         const content = [
             "real:: yes",

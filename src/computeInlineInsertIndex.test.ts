@@ -120,6 +120,16 @@ describe("computeInlineInsertIndex - never inside fenced code blocks", () => {
     });
 });
 
+describe("computeInlineInsertIndex - Admonition metadata containers", () => {
+    it("inserts after a matching field inside an ad-* fence (#188)", () => {
+        const content = ["```ad-note", "watch:: a", "tail", "```"].join("\n");
+
+        expect(append(content, "watch", "b")).toBe(
+            ["```ad-note", "watch:: a", "watch:: b", "tail", "```"].join("\n"),
+        );
+    });
+});
+
 describe("computeInlineInsertIndex - location: end", () => {
     it("appends at end of body even when a matching field exists earlier", () => {
         const content = ["watch:: a", "body", "more"].join("\n");

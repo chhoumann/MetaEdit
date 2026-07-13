@@ -19,7 +19,8 @@ export type Property = {
 // Where to insert a newly appended inline field instance.
 // - "afterLastMatch": right after the last existing `name::` line, else end of body.
 // - "end": always at the end of the body (after the last content, after a trailing
-//   closed code fence), never inside frontmatter or a fenced code block.
+//   closed code fence), never inside frontmatter or an ordinary code block.
+//   Admonition `ad-*` fences are readable metadata containers, not code examples.
 export type InlineFieldInsertLocation = "afterLastMatch" | "end";
 // `start`/`end` are the field's span in the line; `sepEnd` is the offset just
 // after `::`; `valueEnd` is where the value content ends (the closing bracket
@@ -52,33 +53,61 @@ const INLINE_FIELD_WRAPPERS: Readonly<Record<string, string>> = Object.freeze({"
 const FULL_LINE_PREFIX = /^\s*(?:>\s+)*(?:[-*+]\s+|\d+[.)]\s+)?/;
 
 // Opening fences for code blocks (``` or ~~~), optionally indented up to three
-// spaces. Inline fields inside code blocks are examples, not metadata.
+// spaces. Inline fields inside ordinary code blocks are examples, not metadata.
+// Admonition uses `ad-*` fences as rendered Markdown containers, so their
+// contents remain readable to preserve MetaEdit's established integration.
 const CODE_FENCE = /^\s{0,3}(`{3,}|~{3,})/;
 
-type OpenFence = {char: string, len: number};
+type OpenFence = {char: string, len: number, readable: boolean};
+type FenceLine = {char: string, len: number, bare: boolean, infoString: string};
 
 // A potential fence line: the run's character, its length, and whether the run is
 // followed only by whitespace. A closing fence must be "bare" (no info string);
 // an opening fence may carry an info string (e.g. ```dataview).
-function matchFenceLine(line: string): {char: string, len: number, bare: boolean} | null {
+function matchFenceLine(line: string): FenceLine | null {
     const match = line.match(CODE_FENCE);
     if (!match) return null;
     const run = match[1];
-    return {char: run[0], len: run.length, bare: line.slice(match[0].length).trim() === ""};
+    const infoString = line.slice(match[0].length).trim();
+    return {char: run[0], len: run.length, bare: infoString === "", infoString};
 }
 
 // Advance fenced-code state by one line. A block closes only on a run of the SAME
-// character at least as long as the opener, followed by whitespace - so a shorter
-// inner fence (e.g. ``` shown inside a ```` block) does not close the outer block
-// early and leak its example fields as metadata.
-function nextFenceState(openFence: OpenFence | null, line: string): {open: OpenFence | null, boundary: "open" | "close" | null} {
+// character at least as long as the opener, followed by whitespace. Readable
+// Admonition containers may hold shorter or differently-delimited nested fences;
+// those temporarily hide their code examples until their own closing marker.
+function nextFenceState(openFences: readonly OpenFence[], line: string): {open: readonly OpenFence[], boundary: "open" | "close" | null} {
     const fence = matchFenceLine(line);
-    if (!fence) return {open: openFence, boundary: null};
-    if (openFence === null) return {open: {char: fence.char, len: fence.len}, boundary: "open"};
-    if (fence.char === openFence.char && fence.len >= openFence.len && fence.bare) {
-        return {open: null, boundary: "close"};
+    if (!fence) return {open: openFences, boundary: null};
+
+    const openFence = openFences[openFences.length - 1];
+    if (!openFence) {
+        return {
+            open: [{char: fence.char, len: fence.len, readable: fence.infoString.startsWith("ad-")}],
+            boundary: "open",
+        };
     }
-    return {open: openFence, boundary: null};
+    if (fence.char === openFence.char && fence.len >= openFence.len && fence.bare) {
+        return {open: openFences.slice(0, -1), boundary: "close"};
+    }
+
+    // An ordinary code fence treats every non-closing fence marker as code. A
+    // readable Admonition instead parses its Markdown body, where a shorter
+    // same-character fence (or any differently-delimited fence) may nest.
+    const canOpenNestedFence = openFence.readable &&
+        (fence.char !== openFence.char || fence.len < openFence.len);
+    if (canOpenNestedFence) {
+        return {
+            open: [...openFences, {
+                char: fence.char,
+                len: fence.len,
+                readable: fence.infoString.startsWith("ad-"),
+            }],
+            boundary: "open",
+        };
+    }
+
+    return {open: openFences, boundary: null};
 }
 
 export default class MetaEditParser {
@@ -310,7 +339,7 @@ export default class MetaEditParser {
     private *walkInlineContentLines(content: string): IterableIterator<InlineContentLine> {
         const lines = this.splitContentLines(content);
         const frontmatterInfo = this.getFrontmatterInfo(content);
-        let openFence: OpenFence | null = null;
+        let openFences: readonly OpenFence[] = [];
 
         for (let index = 0; index < lines.length; index++) {
             const line = lines[index];
@@ -321,15 +350,15 @@ export default class MetaEditParser {
                 continue;
             }
 
-            const {open, boundary} = nextFenceState(openFence, line.text);
-            openFence = open;
+            const {open, boundary} = nextFenceState(openFences, line.text);
+            openFences = open;
 
             yield {
                 ...line,
                 index,
                 inFrontmatter: false,
                 fenceBoundary: boundary,
-                readable: boundary === null && openFence === null,
+                readable: boundary === null && openFences.every(fence => fence.readable),
             };
         }
     }
@@ -497,7 +526,8 @@ export default class MetaEditParser {
      * returned index is into `content.split(/\r?\n/)` (the same split
      * {@link splitContentLines} performs), so a caller can splice directly.
      *
-     * Guarantees: the index is never inside YAML frontmatter or a fenced code block.
+     * Guarantees: the index is never inside YAML frontmatter or an ordinary fenced
+     * code block. Admonition `ad-*` fences remain valid metadata regions.
      * - "afterLastMatch": just after the last body line that declares `name` (full-line
      *   or bracketed), falling back to "end" when there is no such field.
      * - "end": just after the last body content line or trailing closing code fence.
@@ -524,7 +554,7 @@ export default class MetaEditParser {
                 lastAnchorIdx = line.index;
                 continue;
             }
-            if (!line.readable) continue; // fence interior - never a target
+            if (!line.readable) continue; // ordinary fence interior - never a target
 
             if (line.text.trim() !== "") lastAnchorIdx = line.index;
             if (line.text.includes("::") && this.parseLineFields(line.text).some(field => field.key === name)) {
