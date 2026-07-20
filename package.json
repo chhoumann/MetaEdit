@@ -31,7 +31,6 @@
 	"devDependencies": {
 		"@types/node": "26.1.1",
 		"@vitest/coverage-v8": "4.1.10",
-		"cz-conventional-changelog": "^3.3.0",
 		"esbuild": "0.28.1",
 		"esbuild-svelte": "0.9.5",
 		"eslint": "^9.39.4",
@@ -50,18 +49,17 @@
 		"vite": "^8.1.5",
 		"vitest": "^4.1.10"
 	},
-	"config": {
-		"commitizen": {
-			"path": "./node_modules/cz-conventional-changelog"
-		}
-	},
 	"pnpm": {
 		"onlyBuiltDependencies": [
 			"esbuild",
 			"svelte-preprocess"
 		],
 		"overrides": {
-			"handlebars": "^4.7.9"
+			"@babel/core@<=7.29.0": "^7.29.6",
+			"brace-expansion@<1.1.13": "^1.1.16",
+			"handlebars": "^4.7.9",
+			"js-yaml@>=4.0.0 <=4.1.1": "^4.3.0",
+			"postcss@<8.5.10": "^8.5.20"
 		}
 	}
 }
