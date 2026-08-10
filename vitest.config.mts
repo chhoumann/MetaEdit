@@ -7,7 +7,7 @@ export default defineConfig({
     environment: "node",
     // Unit tests live next to the code (src/**), in __tests__/, and alongside the
     // E2E harness scripts (scripts/**). The live Obsidian E2E suite under
-    // tests/e2e/ has its own config (vitest.e2e.config.ts) and is excluded here.
+    // tests/e2e/ has its own config (vitest.e2e.config.mts) and is excluded here.
     include: [
       "src/**/*.test.ts",
       "__tests__/**/*.test.ts",
