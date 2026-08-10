@@ -12,7 +12,7 @@ Both desktop and mobile are live and drive the same MetaEdit build (`main.js` fr
   pnpm run build
   eval "$(pnpm run --silent start:e2e-obsidian -- --print-env)"
   export HOME="$METAEDIT_E2E_OBSIDIAN_HOME"
-  pnpm run test:e2e            # or: npx vitest run --config vitest.e2e.config.ts <file>
+  pnpm run test:e2e            # or: npx vitest run --config vitest.e2e.config.mts <file>
   ```
 - Harness gotchas (learned this audit):
   - `obsidian.dev.eval` returns `undefined` for a sync expression in-process; use `evalJsonAsync` (async IIFE returning an object) for return values.
