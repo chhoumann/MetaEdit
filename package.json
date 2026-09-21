@@ -29,7 +29,7 @@
 		"node": ">=20.18.1"
 	},
 	"devDependencies": {
-		"@types/node": "26.5.1",
+		"@types/node": "26.6.1",
 		"@vitest/coverage-v8": "4.1.11",
 		"esbuild": "0.28.2",
 		"esbuild-svelte": "0.9.5",
