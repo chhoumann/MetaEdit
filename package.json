@@ -46,7 +46,7 @@
 		"tslib": "^2.2.0",
 		"typescript": "^6.0.3",
 		"typescript-eslint": "^8.70.1",
-		"vite": "^8.3.1",
+		"vite": "^8.3.3",
 		"vitest": "^4.1.11"
 	},
 	"pnpm": {
@@ -56,13 +56,17 @@
 		],
 		"overrides": {
 			"@babel/core@<=7.29.0": "^7.29.6",
-			"brace-expansion@<1.1.18": "^1.1.18",
-			"brace-expansion@>=2.0.0 <2.1.4": "^2.1.4",
-			"fast-uri@>=3.0.0 <3.1.5": "^3.1.5",
+			"brace-expansion@<1.1.21": "^1.1.21",
+			"brace-expansion@>=2.0.0 <2.1.7": "^2.1.7",
+			"fast-uri@>=3.0.0 <3.1.8": "^3.1.8",
 			"handlebars": "^4.7.9",
-			"js-yaml@>=4.0.0 <4.3.1": "^4.3.1",
+			"js-yaml@>=4.0.0 <4.3.2": "^4.3.2",
+			"moment@<2.31.0": "^2.31.0",
 			"nanoid@<3.3.17": "^3.3.17",
-			"postcss@<8.5.23": "^8.5.23"
+			"postcss-selector-parser@<7.1.6": "^7.1.6",
+			"postcss@<8.5.23": "^8.5.23",
+			"source-map-js@<1.2.2": "^1.2.2",
+			"tinypool@<2.1.2": "2.1.2"
 		}
 	}
 }
