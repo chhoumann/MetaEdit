@@ -21,6 +21,6 @@
   },
   "devDependencies": {
     "starlight-links-validator": "^0.27.0",
-    "wrangler": "^4.103.0"
+    "wrangler": "^4.151.1"
   }
 }

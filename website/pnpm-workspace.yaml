@@ -9,9 +9,8 @@ trustPolicy: no-downgrade
 # keep the provenance level of earlier releases.
 trustPolicyIgnoreAfter: 525600
 
-# Their native binaries ship as optional dependencies, so none of these install
-# scripts has work to do.
+# Their native binaries ship as optional dependencies, so neither install script
+# has work to do.
 allowBuilds:
   esbuild: false
-  sharp: false
   workerd: false
