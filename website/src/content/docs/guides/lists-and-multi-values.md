@@ -5,7 +5,7 @@ sidebar:
   order: 3
 ---
 
-Multi-value data flows through three surfaces in MetaEdit: real YAML lists open Obsidian's native list widget, frontmatter tags open Obsidian's tags widget, and everything else - inline Dataview fields, plain scalars - can opt into an element-by-element list editor through the "Edit Mode" setting. This page walks through all three and the guarantees that keep your list elements intact.
+Multi-value data flows through three surfaces in MetaEdit: real YAML lists open Obsidian's native list widget, frontmatter tags open Obsidian's tags widget, and everything else - inline Dataview fields, plain scalars - can opt into an element-by-element list editor through the "Edit mode" setting. This page walks through all three and the guarantees that keep your list elements intact.
 
 ## Real YAML lists: the native list widget
 
@@ -34,23 +34,23 @@ Body `#tags` are a different feature entirely - see [edit tags](/guides/edit-tag
 
 ## Everything else: the list editor and Edit Mode
 
-Values that are not native-editable YAML - inline Dataview fields and nested YAML scalars - are single values by default, edited through a plain text prompt. The "Edit Mode" setting lets you treat them as lists instead: when it applies, selecting the property opens MetaEdit's element-by-element list editor rather than the single prompt.
+Values that are not native-editable YAML - inline Dataview fields and nested YAML scalars - are single values by default, edited through a plain text prompt. The "Edit mode" setting lets you treat them as lists instead: when it applies, selecting the property opens MetaEdit's element-by-element list editor rather than the single prompt.
 
 ### The Edit Mode setting
 
-In the MetaEdit settings tab, "Edit Mode" is a dropdown with three values:
+In the "Editing" group of the MetaEdit settings tab, "Edit mode" is a dropdown with three values:
 
 | Value | Meaning |
 | --- | --- |
-| "All Single" | Every value is edited as one value (the default) |
-| "All Multi" | Every value is edited as a list |
-| "Some Multi" | Everything is single except the properties you list |
+| "One value" | Every value is edited as one value (the default) |
+| "List" | Every value is edited as a list |
+| "List for chosen properties" | Everything is one value except the properties you list |
 
-With "Some Multi" selected, an extra button appears (tooltip: "Configure which properties are Multi."). It opens a table where you add the property names to treat as lists:
+With "List for chosen properties" selected, a "List properties" row appears below the dropdown. Click it to open its page, then use the "+" button ("Add property") to add each property name to treat as a list. The "x" on a row removes it.
 
-![The Edit Mode section in settings with the dropdown set to Some Multi and the Property table with an Add button visible](../../../assets/media/edit-mode-some-multi.png)
+![The Editing group with "Edit mode" set to "List for chosen properties" and the "List properties" row below it](../../../assets/media/edit-mode-some-multi.png)
 
-Name matching is exact and case-sensitive: `genres` does not match `Genres`. Changes save immediately, and the list persists even while another mode is selected. See the [settings reference](/reference/settings/) for the full section.
+Name matching is exact and case-sensitive: `genres` does not match `Genres`. Changes save immediately, and the list persists even while another mode is selected. See the [settings reference](/reference/settings/#edit-mode) for the full section.
 
 ### Using the list editor
 
@@ -66,7 +66,7 @@ Picking an add option opens a prompt titled "Enter a new value"; picking an exis
 
 ### What Edit Mode also governs
 
-Beyond routing edits, Edit Mode shapes new values on the legacy add paths. When the mode is "All Multi", or "Some Multi" with the property listed, a scalar value written through those paths is wrapped into a one-element YAML list:
+Beyond routing edits, Edit Mode shapes new values on the legacy add paths. When the mode is "List", or "List for chosen properties" with the property listed, a scalar value written through those paths is wrapped into a one-element YAML list:
 
 - ["Transform to YAML ⇄ Dataview"](/guides/delete-and-transform/) when converting an inline field into frontmatter.
 - The API's [`createYamlProperty`](/api/properties/).

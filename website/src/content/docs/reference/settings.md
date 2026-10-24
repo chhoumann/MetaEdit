@@ -5,55 +5,68 @@ sidebar:
   order: 2
 ---
 
-This page documents every MetaEdit setting in the fixed order the tab shows them, with each setting's exact name, description, default, and what its configuration panel contains. Open them under Settings, in the "MetaEdit" tab, headed "MetaEdit Settings".
+This page documents every MetaEdit setting in the order the tab shows them, with each setting's exact name, description, default, and what its sub-page contains. Open them under Settings, in the "MetaEdit" tab. The tab has three groups: "Editing", "Menu", and "Automation".
 
-![The MetaEdit Settings tab with all six sections visible: Progress Properties, Auto Properties, Edit Meta menu, Edit Mode, Kanban Board Helper, UI Elements](../../../assets/media/settings-tab.png)
+![The MetaEdit settings tab with its three groups: Editing, Menu, and Automation](../../../assets/media/settings-tab.png)
 
-Two things apply everywhere:
+Three things apply everywhere:
 
-- **Changes save immediately.** There is no Save button anywhere in the tab, and writes are serialized. Edits inside the Auto Properties panel additionally roll back and show a notice if the save fails.
-- **Panels open inline.** Every setting except "UI Elements" and "Edit Mode" has an extra icon button on its row (the "Edit Meta menu" description calls it "the gear") that expands a configuration panel below the toggle; "Edit Mode" shows its button only while "Some Multi" is selected. Panels start collapsed.
+- **Changes save immediately.** There is no Save button anywhere in the tab, and writes are serialized. If a save fails, a notice appears: "MetaEdit could not save the setting: {reason}". Edits on the "Preset values" page also roll back when their save fails.
+- **Sub-pages open in place.** A row with a count on the right is a sub-page. Click it to open its settings page, and use the back arrow to return. A feature's sub-page row shows only while that feature is on.
+- **Settings search finds every MetaEdit setting.**
 
-### Defaults at a glance
+## Defaults at a glance
 
 | Setting | Default | Takes effect |
 | --- | --- | --- |
-| "Progress Properties" | Off | Immediately (attaches the automator live) |
-| "Auto Properties" | Off | Immediately |
-| "Edit Meta menu" | Off | Next time the picker opens |
-| "Edit Mode" | "All Single" | Immediately |
-| "Kanban Board Helper" | Off | Immediately (attaches the automator live) |
-| "UI Elements" | On | Immediately (registers or unregisters the menus live) |
+| "Edit mode" | "One value" | Immediately |
+| "Auto properties" | Off | Immediately |
+| "Right-click menu" | On | Immediately (registers or unregisters the menus live) |
+| "Hide properties" | Off | Next time the picker opens |
+| "Hide file tags" | Off | Next time the picker opens |
+| "Progress properties" | Off | Immediately (attaches the automator live) |
+| "Kanban board helper" | Off | Immediately (attaches the automator live) |
 
-"UI Elements" is the only setting that defaults to enabled.
+"Right-click menu" is the only setting that defaults to on.
 
-## Progress Properties
+## Editing
 
-- **Description:** "Update properties automatically."
-- **Toggle tooltip:** "Toggle Progress Properties". Default off.
+### Edit mode
 
-Enables the [Progress Properties](/guides/progress-properties/) automator, which keeps task-count properties in your notes up to date. Toggling attaches or detaches the automator immediately - no reload needed.
+- **Description:** "Whether property values are saved as one value or as a list."
+- **Dropdown values:** "One value" (default), "List", "List for chosen properties".
 
-![The Progress Properties panel expanded, showing a Name/Type table with rows mapping Total, Complete, and Incomplete to property names, red X removers, and an Add button](../../../assets/media/progress-properties-panel.png)
+Controls whether property values are edited (and created, on the legacy paths) as single values or as lists. See [lists and multi-values](/guides/lists-and-multi-values/) for the full routing rules.
 
-The panel is a table with columns "Name" and "Type". Each row pairs:
+![The Editing group with "Edit mode" set to "List for chosen properties" and the "List properties" row below it](../../../assets/media/edit-mode-some-multi.png)
 
-- a text input (placeholder "Property name") for the property key in your notes,
-- a dropdown with exactly three types: "Total Tasks", "Completed Tasks", "Incomplete Tasks",
-- a "❌" button that removes the row.
+:::note[Where Edit mode applies]
+Edit mode does not apply to YAML properties edited or created with Obsidian's native widgets - it governs inline Dataview fields, non-native YAML scalars, and the legacy add paths (transform to YAML, the API's `createYamlProperty`, and [bulk edit](/guides/bulk-edit/)). YAML lists are inherently multi-value whatever the mode says: a real top-level frontmatter list opens Obsidian's native list widget, and a non-native YAML list (for example a nested array) always uses the legacy list editor - see [work with lists and multi-value properties](/guides/lists-and-multi-values/). An [Auto Property](/guides/auto-properties/) with an explicit "Single" or "Multi" type also overrides Edit mode for its key.
+:::
 
-The "Add" button appends a new row with the type defaulting to "Total Tasks". New rows start with an empty name and nothing validates the name before saving, so fill it in right away. Property names match exactly and case-sensitively, and the automator only updates properties that already exist in a note - it never creates them.
+### List properties
 
-## Auto Properties
+A sub-page row, shown only while "Edit mode" is "List for chosen properties". It lists the properties treated as lists. Everything else is one value.
 
-- **Description:** "Quick switch for values you know the value of."
-- **Toggle tooltip:** "Toggle Auto Properties". Default off.
+- The "+" button ("Add property") asks for a property name. Blank names and names already in the list are ignored.
+- The "x" on a row deletes it.
+
+Name matching is exact and case-sensitive. Choosing "One value" or "List" hides the row, but the stored list persists across mode switches - it comes back when you return to "List for chosen properties".
+
+### Auto properties
+
+- **Description:** "Pick from preset values when you edit these properties."
+- **Default:** off.
 
 Enables [Auto Properties](/guides/auto-properties/): predefined value sets that replace free-text prompts when you edit or create a matching property. While the toggle is off, no Auto Property activates anywhere, including the `autoprop()` [API call](/api/auto-properties/).
 
-![The Auto Properties panel with two property cards: "status" as Single with a description and four values, and "genres" as Multi](../../../assets/media/autoprop-settings.png)
+### Preset values
 
-With no properties defined, the panel shows: "No auto properties yet. Add one to define a reusable set of values for a property." Each auto property renders as a card containing:
+A sub-page row, shown only while "Auto properties" is on. Its count is the number of auto properties defined.
+
+![The "Preset values" page with two property cards: "status" as Single with a description and four values, and "genres" as Multi](../../../assets/media/autoprop-settings.png)
+
+With no properties defined, the page shows: "No auto properties yet. Add one to define a reusable set of values for a property." Each auto property renders as a card containing:
 
 | Control | Details |
 | --- | --- |
@@ -64,25 +77,29 @@ With no properties defined, the panel shows: "No auto properties yet. Add one to
 | "Values" list | One text input per choice, placeholder "Value (or paste a list)", each with an x "Remove value" button |
 | "Add value" | Appends an empty value box |
 
-At the bottom of the panel, "Add auto property" appends a new card. There is no reorder control; new items always append at the end.
+At the bottom of the page, "Add auto property" appends a new card. There is no reorder control; new items always append at the end.
 
 **Paste a whole list:** pasting into a value box splits the text into individual choices - on lines when the text contains any line break, otherwise on commas. Tokens are trimmed, blanks dropped, and duplicates skipped. A paste that yields fewer than two tokens behaves like a normal paste.
 
 If a save fails, the change is rolled back and a notice appears: "MetaEdit could not save the Auto Properties setting: {reason}".
 
-## Edit Meta menu
+## Menu
 
-- **Description:** "Control what the 'Edit Meta' menu lists. Enable it, then use the gear to hide specific properties by name or all of a note's file tags."
-- **Toggle tooltip:** "Toggle menu filtering". Default off.
+### Right-click menu
 
-Filters which rows the [property picker](/reference/commands-and-menus/#the-property-picker) lists. While the master toggle is off, nothing is filtered - the gear panel only exists while the toggle is on.
+- **Description:** "Show Edit Meta when you right-click a note or link."
+- **Default:** on.
 
-![The Edit Meta menu panel expanded, with the Hide file tags toggle and the "Hide specific properties by name:" table](../../../assets/media/edit-meta-menu-panel.png)
+Gates all three context-menu items - "Edit Meta" plus both bulk edit items - even though the description mentions only "Edit Meta". Turning it off unregisters the menu handlers immediately; turning it on brings them back, no restart needed. See [commands and menus](/reference/commands-and-menus/#context-menu-items).
 
-The panel contains two controls:
+### Hide properties
 
-- **"Hide file tags"** (tooltip "Toggle hiding file tags", default off). Description: "Hide the note's #tags from the menu, leaving only frontmatter and inline fields. A frontmatter 'tags' property stays editable." It removes only body `#tag` rows from the picker.
-- **"Hide specific properties by name:"** - a table of property names (placeholder "Property name", "❌" removers, "Add" button). A property is hidden when its key exactly matches a listed name; matching is case-sensitive, with no wildcards.
+- **Description:** "Leave chosen properties out of the property menu."
+- **Default:** off.
+
+Filters which rows the [property picker](/reference/commands-and-menus/#the-property-picker) lists. While the toggle is off, nothing is filtered, and the "Hide file tags" and "Hidden properties" rows are hidden.
+
+![The Menu group with "Hide properties" on, showing the "Hide file tags" toggle and the "Hidden properties" row below it](../../../assets/media/edit-meta-menu-panel.png)
 
 Filtering only hides picker rows - it never deletes anything from your notes. Hidden-but-present keys are also excluded from the "New YAML property" and "New Dataview field" name suggestions, so you cannot accidentally re-create a key the note already has.
 
@@ -90,44 +107,60 @@ Filtering only hides picker rows - it never deletes anything from your notes. Hi
 This feature was previously named "Ignored Properties", and its storage key in `data.json` is still `IgnoredProperties`. Old versions applied the ignore list even while the feature toggle was off, so on first load after upgrading, a vault with the feature disabled but a non-empty ignore list gets the toggle switched on once, automatically. That preserves your previous filtering; turn it off afterwards if you no longer want it, and it will stay off.
 :::
 
-## Edit Mode
+### Hide file tags
 
-- **Description:** "Single: property values are just one value. Multi: properties are arrays. Some Multi: all options are single, except those specified in the settings (click button)."
-- **Dropdown values:** "All Single" (default), "All Multi", "Some Multi".
+- **Description:** "A frontmatter tags property stays in the menu."
+- **Default:** off. Shown only while "Hide properties" is on.
 
-Controls whether property values are edited (and created, on the legacy paths) as single values or as lists. See [lists and multi-values](/guides/lists-and-multi-values/) for the full routing rules.
+Removes the note's body `#tag` rows from the picker, leaving only frontmatter and inline fields. A frontmatter `tags` property stays editable.
 
-![The Edit Mode section with the dropdown set to Some Multi and the Property table with an Add button visible](../../../assets/media/edit-mode-some-multi.png)
+### Hidden properties
 
-While "Some Multi" is selected, an extra button appears (tooltip "Configure which properties are Multi."). It opens a table of property names (placeholder "Property name", "❌" removers, "Add") listing the properties treated as Multi. Choosing "All Single" or "All Multi" hides the button and the panel, but the stored list persists across mode switches - it comes back when you return to "Some Multi".
+A sub-page row, shown only while "Hide properties" is on. It lists the property names to hide from the picker.
 
-:::note[Where Edit Mode applies]
-Edit Mode does not apply to YAML properties edited or created with Obsidian's native widgets - it governs inline Dataview fields, non-native YAML scalars, and the legacy add paths (transform to YAML, the API's `createYamlProperty`, and [bulk edit](/guides/bulk-edit/)). YAML lists are inherently multi-value whatever the mode says: a real top-level frontmatter list opens Obsidian's native list widget, and a non-native YAML list (for example a nested array) always uses the legacy list editor - see [work with lists and multi-value properties](/guides/lists-and-multi-values/). An [Auto Property](/guides/auto-properties/) with an explicit "Single" or "Multi" type also overrides Edit Mode for its key.
-:::
+- The "+" button ("Add property") asks for a property name. Blank names and names already in the list are ignored.
+- The "x" on a row deletes it.
 
-## Kanban Board Helper
+A property is hidden when its key exactly matches a listed name. Matching is case-sensitive, with no wildcards.
 
-- **Description:** "Update properties in links in kanban boards automatically when a card is moved to a new lane."
-- **Toggle tooltip:** "Toggle Kanban Helper". Default off.
+## Automation
+
+### Progress properties
+
+- **Description:** "Keep task counts in a note's properties up to date."
+- **Default:** off.
+
+Enables the [Progress Properties](/guides/progress-properties/) automator, which keeps task-count properties in your notes up to date. Toggling attaches or detaches the automator immediately - no reload needed.
+
+### Tracked task counts
+
+A sub-page row, shown only while "Progress properties" is on. Each entry pairs a property name with the count it holds.
+
+![The "Tracked task counts" page listing Total, Complete, and Incomplete, each with its task-count dropdown](../../../assets/media/progress-properties-panel.png)
+
+- The "+" button ("Add property") asks for the property name. Blank names and names already in the list are ignored. New entries default to "Total tasks".
+- Each row has a dropdown with exactly three counts: "Total tasks", "Completed tasks", "Incomplete tasks".
+- The "x" on a row deletes it.
+
+Property names match exactly and case-sensitively, and the automator only updates properties that already exist in a note - it never creates them. In `data.json` the counts are stored as `Total Tasks`, `Completed Tasks`, and `Incomplete Tasks`.
+
+### Kanban board helper
+
+- **Description:** "When a card moves to another lane, update a property in the note it links to."
+- **Default:** off.
 
 Enables the [Kanban Board Helper](/guides/kanban-helper/) automator. Toggling attaches or detaches it immediately.
 
-![The Kanban Board Helper panel with a configured board row: Board "Editorial calendar", Property in link "status", Possible values "Ideas, Drafting, Published", and the board-name input with Add button](../../../assets/media/kanban-helper-panel.png)
+### Boards
 
-The panel is a table with columns "Board", "Property in link", and "Possible values" (plus an unlabeled remove column):
+A sub-page row, shown only while "Kanban board helper" is on. Each entry is one board.
 
-- **"Board"** - the board file's basename.
-- **"Property in link"** - a text input (placeholder "Property name") for the property to update in the notes the board's cards link to.
-- **"Possible values"** - read-only; the board's lane headings joined by ", ", or "FILE NOT FOUND" if the configured board file no longer exists (a "file {name} not found." warning also appears).
+![The "Boards" page with a board named Editorial calendar, "Lanes: Ideas, Drafting, Published" under its name, and "status" in its property field](../../../assets/media/kanban-helper-panel.png)
 
-Below the table, a text input with autocomplete suggests Kanban boards - markdown files whose frontmatter contains a `kanban-plugin` key, in practice boards created by the community Kanban plugin. The "Add" button adds a row only when the typed text exactly matches a suggested board basename that is not already configured; otherwise it silently does nothing. The board list is computed when the settings tab renders, so boards created afterwards need the tab reopened.
-
-## UI Elements
-
-- **Description:** "Toggle UI elements: the 'Edit Meta' right-click menu option."
-- **Toggle tooltip:** "Toggle UI elements". Default on.
-
-The only setting without a panel. It gates all three context-menu items - "Edit Meta" plus both bulk edit items - even though the description mentions only "Edit Meta". Turning it off unregisters the menu handlers immediately; turning it on brings them back, no restart needed. See [commands and menus](/reference/commands-and-menus/#context-menu-items).
+- The "+" button ("Add board") opens a picker of Kanban boards that are not added yet: markdown files whose frontmatter contains a `kanban-plugin` key, in practice boards created by the community Kanban plugin. The picker reads your vault when you click, so it includes boards created while the tab is open. If there are none, a notice appears: "MetaEdit found no other Kanban boards in this vault."
+- Each row shows the board file's basename, with "Lanes: {headings}" under it listing the board's lane headings. A board without headings shows "No lanes yet.", and a board file that no longer exists shows "Board not found."
+- Each row has a text field (placeholder "Property in linked notes") for the property to update in the notes the board's cards link to.
+- The "x" on a row deletes it.
 
 ## Related pages
 

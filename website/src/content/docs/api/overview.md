@@ -7,7 +7,7 @@ sidebar:
 
 MetaEdit exposes a 14-method JavaScript API that other plugins, Templater templates, and `dataviewjs` blocks can call to read and write note metadata. This page shows how to get the API object, the conventions every method shares, and where each method is documented.
 
-The API surface described here is MetaEdit 1.9.0, which requires Obsidian 1.12.7+ and works on desktop and mobile. See the [changelog](/help/changelog/) for what each release added.
+The API surface described here is MetaEdit 1.9.0 and later. MetaEdit requires Obsidian 1.13.4+ and works on desktop and mobile. See the [changelog](/help/changelog/) for what each release added.
 
 ## Get the API
 

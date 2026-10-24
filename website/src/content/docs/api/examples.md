@@ -39,7 +39,7 @@ Incomplete:: 1
 
 How it works: [`autoprop`](/api/auto-properties/) opens the Auto Property value prompt for `Status`, then for `Priority`, and returns whatever you pick; Templater interpolates the result into the inline Dataview fields. For the prompts to appear, Auto Properties named exactly `Status` and `Priority` must exist and be enabled in [MetaEdit's settings](/reference/settings/) - name matching is case-sensitive, and `autoprop` returns `null` (which renders literally) when the property is missing or the prompt is cancelled.
 
-The `Total`, `Complete`, and `Incomplete` lines are there for [Progress Properties](/guides/progress-properties/): configure those three names in the Progress Properties panel and MetaEdit updates the counts whenever the note's tasks change. The template pre-creates the fields because the automator only updates properties that already exist.
+The `Total`, `Complete`, and `Incomplete` lines are there for [Progress Properties](/guides/progress-properties/): add those three names on the "Tracked task counts" settings page and MetaEdit updates the counts whenever the note's tasks change. The template pre-creates the fields because the automator only updates properties that already exist.
 
 ## Complete a task from a Dataview table (Buttons version)
 

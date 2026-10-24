@@ -22,7 +22,7 @@ A few things to know about the menu items:
 
 - They only appear when the folder or selection contains at least one Markdown file somewhere in scope. Non-Markdown files are ignored.
 - A note reached two ways (selected directly and inside a selected folder) is edited once.
-- Both items are gated by the "UI Elements" toggle in [MetaEdit's settings](/reference/settings/) (on by default). Its description only mentions the "Edit Meta" option, but it gates the bulk items too.
+- Both items are gated by the "Right-click menu" toggle in [MetaEdit's settings](/reference/settings/#right-click-menu) (on by default). Its description only mentions "Edit Meta", but it gates the bulk items too.
 
 ## Name the property and value
 
@@ -93,8 +93,8 @@ If every count is zero, the detail reads "no changes". When any note fails, the 
 ## Boundaries and guarantees
 
 - **YAML frontmatter only.** Bulk edit never touches inline Dataview fields (`key:: value`), and only `.md` files are edited. See [What MetaEdit can edit](/concepts/what-metaedit-can-edit/).
-- **Ignores Auto Properties and "Edit Meta menu" filtering.** The key and value you type are written as-is; no pick-from-list prompt appears and hidden properties are not exempt. See [Auto Properties](/guides/auto-properties/).
-- **Honors Edit Mode wrapping.** Under "All Multi", or "Some Multi" with the key listed, a freshly added or overwriting value is wrapped as a one-element list, matching what a single-note add would produce. Merge produces lists regardless. See [Lists and multi-values](/guides/lists-and-multi-values/).
+- **Ignores Auto Properties and "Hide properties" filtering.** The key and value you type are written as-is; no pick-from-list prompt appears and hidden properties are not exempt. See [Auto Properties](/guides/auto-properties/).
+- **Honors Edit Mode wrapping.** Under "List", or "List for chosen properties" with the key listed, a freshly added or overwriting value is wrapped as a one-element list, matching what a single-note add would produce. Merge produces lists regardless. See [Lists and multi-values](/guides/lists-and-multi-values/).
 - **Idempotent re-runs.** Running the same bulk edit again reports the already-correct notes as unchanged and rewrites nothing, so a re-run after adding new notes to a folder is safe and cheap.
 - **Serialized writes.** Each note is written through MetaEdit's per-file write queue, so a bulk write cannot be lost to another MetaEdit edit of the same note. See [Write safety](/concepts/write-safety/).
 - **Not undoable.** There is no Ctrl+Z for a bulk run, as the overwrite confirmation warns.

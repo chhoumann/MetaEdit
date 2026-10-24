@@ -19,25 +19,25 @@ See [commands and menus](/reference/commands-and-menus/) for every way to open t
 
 **Cause:** one of three things.
 
-- The "UI Elements" setting is off. It gates all of MetaEdit's context-menu items, including the two bulk edit items.
+- The "Right-click menu" setting is off. It gates all of MetaEdit's context-menu items, including the two bulk edit items.
 - The file is not a markdown note. "Edit Meta" only appears for `.md` files.
 - You right-clicked somewhere MetaEdit does not attach to. The item appears on file explorer entries, internal links in notes, and Calendar plugin days - not on tab headers or editor text selections.
 
-**Fix:** open Settings, go to the MetaEdit tab, and turn on "UI Elements" (its description reads "Toggle UI elements: the 'Edit Meta' right-click menu option.", and it also controls the bulk items). The change applies immediately, no restart needed.
+**Fix:** open Settings, go to the MetaEdit tab, and turn on "Right-click menu" in the "Menu" group (its description reads "Show Edit Meta when you right-click a note or link.", and it also controls the bulk items). The change applies immediately, no restart needed.
 
-See the [settings reference](/reference/settings/) for details.
+See the [settings reference](/reference/settings/#right-click-menu) for details.
 
 ## A property is missing from the picker
 
 **Cause:** the property is being filtered or is not individually editable.
 
-- "Edit Meta menu" filtering is enabled and the property's key is on the hidden list. Matching is exact and case-sensitive.
+- "Hide properties" is on and the property's key is on the "Hidden properties" list. Matching is exact and case-sensitive.
 - "Hide file tags" is on, which removes body `#tag` rows from the picker. A frontmatter `tags` property stays visible and editable.
 - The value is a parent container - an object, or a list containing objects or lists. These are always hidden by design because they cannot be edited as one value; their nested leaves appear as individual child rows instead.
 
-**Fix:** open Settings, go to the MetaEdit tab, and expand "Edit Meta menu". Remove the key from the hidden list, or turn the section's master toggle off - when it is off, nothing is filtered.
+**Fix:** open Settings, go to the MetaEdit tab, and open "Hidden properties" in the "Menu" group. Remove the key with its "x" button, or turn "Hide properties" off - when it is off, nothing is filtered.
 
-![The Edit Meta menu settings panel with the Hide file tags toggle and the per-name property hiding table](../../../assets/media/edit-meta-menu-panel.png)
+![The Menu group with "Hide properties" on, showing the "Hide file tags" toggle and the "Hidden properties" row below it](../../../assets/media/edit-meta-menu-panel.png)
 
 :::note
 Filtering only hides rows in the picker. It never deletes data, and hidden-but-present keys are still excluded from new-property name suggestions so you cannot accidentally create a duplicate.
@@ -49,7 +49,7 @@ See [what MetaEdit can (and can't) edit](/concepts/what-metaedit-can-edit/) for 
 
 Both automators share the same gates. Work through this checklist:
 
-1. **The toggle is on.** "Progress Properties" and "Kanban Board Helper" both default to off in the MetaEdit settings tab.
+1. **The toggle is on.** "Progress properties" and "Kanban board helper" both default to off in the "Automation" group of the MetaEdit settings tab.
 2. **The note has YAML frontmatter.** A note with no frontmatter block is never processed, even if the property you track is an inline Dataview field.
 3. **The property already exists in the note.** Neither automator ever creates a property - both only update existing ones. Add `total: 0` (or your key) yourself first.
 4. **The note is not an Excalidraw note.** Notes whose frontmatter contains any key with "excalidraw" in it are skipped to avoid fighting Excalidraw's auto-save.
@@ -66,7 +66,7 @@ See [Progress Properties](/guides/progress-properties/) and the [Kanban Board He
 - **Only the leading link counts.** A card must be a top-level task line like `- [ ] [[Note]] ...`; trailing links on the same line (Kanban date links such as `@[[2026-07-01]]`, `see [[ref]]` mentions) and indented sub-items are ignored.
 - **Heading-less cards have no lane.** A card above the first heading is skipped because there is no lane name to write.
 - **Ambiguous basenames are refused.** If several notes share the linked basename and Obsidian's cache cannot resolve which one is meant, the helper skips that card rather than write to the wrong note.
-- **A renamed board file breaks the configuration.** Boards are matched by file basename and the stored name does not follow a rename; the settings row then shows "FILE NOT FOUND" in its "Possible values" column. Re-add the board under its new name.
+- **A renamed board file breaks the configuration.** Boards are matched by file basename and the stored name does not follow a rename; the board's row on the "Boards" settings page then shows "Board not found." Re-add the board under its new name.
 - **The linked note must already have the property.** If it is missing you get a notice per affected card: `MetaEdit: (WARNING) '<property>' not found in "<note>" (Kanban board '<board>').`
 
 **Fix:** structure cards as `- [ ] [[Note]]` under a heading, keep board file names stable, and add the configured property to each linked note. Details in the [Kanban Board Helper guide](/guides/kanban-helper/).
@@ -91,7 +91,7 @@ See [delete and transform properties](/guides/delete-and-transform/).
 
 **Cause:** the edit ran in fallback mode. When Obsidian's native property widgets are unavailable, MetaEdit shows a plain text input instead, preceded by a note reading "Obsidian native property widgets are not available." or "Obsidian's native `<type>` property widget is not available." Everything committed through that text input is stored as a string.
 
-**Fix:** on Obsidian 1.12.7 or newer (which MetaEdit 1.9.0 requires) the native widgets are normally always present, so fallback mode should be rare. If you see those notes regularly, update Obsidian. To repair an already-stringified value, edit the property again with the native widget, or fix its type in Obsidian's Properties view.
+**Fix:** on Obsidian 1.13.4 or newer (which MetaEdit requires) the native widgets are normally always present, so fallback mode should be rare. If you see those notes regularly, update Obsidian. To repair an already-stringified value, edit the property again with the native widget, or fix its type in Obsidian's Properties view.
 
 See [edit properties with native widgets](/guides/edit-properties/).
 
@@ -103,11 +103,11 @@ See [edit properties with native widgets](/guides/edit-properties/).
 
 See [bulk edit metadata across notes](/guides/bulk-edit/).
 
-## The "Edit Meta menu" toggle turned itself on after an update
+## The "Hide properties" toggle turned itself on after an update
 
 **Cause:** a one-time settings migration. Older MetaEdit versions filtered your hidden-property list even while the feature toggle was off (a bug). Now that the toggle is honored, the upgrade turns the feature on once for users who had built up a hidden list, so their picker keeps looking the way it always did.
 
-**Fix:** nothing is broken. If you want no filtering, turn the toggle off - the migration runs only once, so it will not flip back on. See the [settings reference](/reference/settings/).
+**Fix:** nothing is broken. If you want no filtering, turn the toggle off - the migration runs only once, so it will not flip back on. See the [settings reference](/reference/settings/#hide-properties).
 
 ## Open the developer console
 
@@ -122,7 +122,7 @@ Several MetaEdit messages go to the console only:
 If your problem is not covered here, open an issue on [GitHub](https://github.com/chhoumann/MetaEdit/issues) and include:
 
 - Your Obsidian version (Settings, then "About") and platform (desktop or mobile, OS).
-- Your MetaEdit version (Settings, then "Community plugins"). The current release is 1.9.0 and requires Obsidian 1.12.7 or newer; the [changelog](/help/changelog/) explains how older Obsidian installs are served 1.8.4.
+- Your MetaEdit version (Settings, then "Community plugins"). MetaEdit requires Obsidian 1.13.4 or newer; the [changelog](/help/changelog/#how-older-obsidian-versions-are-served) explains how older Obsidian installs are served an older release.
 - Exact steps to reproduce, including how you triggered MetaEdit ("MetaEdit: Run", "Edit Meta", or a bulk item) and the relevant note content (frontmatter, inline fields, tags).
 - The exact text of any notice, plus anything in the developer console.
-- Relevant settings: Edit Mode, Auto Properties, "Edit Meta menu" filtering, and automator toggles.
+- Relevant settings: "Edit mode", "Auto properties", "Hide properties", and the automator toggles.

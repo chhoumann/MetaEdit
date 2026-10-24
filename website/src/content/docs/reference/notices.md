@@ -38,7 +38,7 @@ See [create properties](/guides/create-properties/).
 The "New property" modal also shows two inline warnings under the key field (not popups); the "Add" button is disabled while either shows:
 
 - `"{key}" is a reserved property name and can't be used.`
-- `This note already has a property named "{key}".` - includes keys hidden by the ["Edit Meta menu" filter](/reference/settings/#edit-meta-menu).
+- `This note already has a property named "{key}".` - includes keys hidden by the ["Hide properties" setting](/reference/settings/#hide-properties).
 
 ## Delete and transform
 
@@ -76,8 +76,17 @@ See [Auto Properties](/guides/auto-properties/).
 
 | Notice | When it appears | What to do |
 | --- | --- | --- |
-| `MetaEdit could not save the Auto Property choice: {reason}` | Saving a newly typed value into the Auto Property's choice list failed. The value was still written to your note - only remembering it as a choice failed. | Add the value manually under [Settings, "Auto Properties"](/reference/settings/#auto-properties). |
-| `MetaEdit could not save the Auto Properties setting: {reason}` | An edit in the Auto Properties settings panel failed to persist and was rolled back. | Retry the edit; check for disk or sync problems if it keeps failing. |
+| `MetaEdit could not save the Auto Property choice: {reason}` | Saving a newly typed value into the Auto Property's choice list failed. The value was still written to your note - only remembering it as a choice failed. | Add the value manually on the ["Preset values"](/reference/settings/#preset-values) settings page. |
+| `MetaEdit could not save the Auto Properties setting: {reason}` | An edit on the "Preset values" settings page failed to persist and was rolled back. | Retry the edit; check for disk or sync problems if it keeps failing. |
+
+## Settings
+
+See the [settings reference](/reference/settings/).
+
+| Notice | When it appears | What to do |
+| --- | --- | --- |
+| `MetaEdit could not save the setting: {reason}` | A settings change failed to write to `data.json`. | Retry the change; check for disk or sync problems if it keeps failing. |
+| `MetaEdit found no other Kanban boards in this vault.` | You clicked "Add board" on the "Boards" page, but every note with a `kanban-plugin` frontmatter key is already added, or the vault has none. | Create the board with the Kanban plugin first, or check that its frontmatter has the `kanban-plugin` key. |
 
 ## Progress Properties and Kanban Board Helper
 
@@ -86,7 +95,6 @@ See [Progress Properties](/guides/progress-properties/) and the [Kanban Board He
 | Notice | When it appears | What to do |
 | --- | --- | --- |
 | `MetaEdit: (WARNING) '{property}' not found in "{note}" (Kanban board '{board}').` | A card changed lanes, but the linked note does not contain the configured property. The helper only updates existing properties - it never creates them. | Add the property to the note (any value), then move the card again. |
-| `MetaEdit: (WARNING) file {board} not found.` | A configured board file no longer exists - the settings panel also shows `FILE NOT FOUND` in its "Possible values" column. Boards are matched by file basename, so renaming the board file breaks the row. | Remove the row and re-add the board under its new name. |
 | `MetaEdit: (ERROR) {message}` | A Progress Properties update failed while writing task counts. | Check the note's frontmatter parses (Obsidian shows invalid frontmatter in the editor), then modify the note again to re-trigger the count. |
 
 ## Reserved property names

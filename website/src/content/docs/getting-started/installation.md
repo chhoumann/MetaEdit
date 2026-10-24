@@ -12,11 +12,11 @@ MetaEdit installs like any other Obsidian community plugin and needs no configur
 | | |
 | --- | --- |
 | MetaEdit version | 1.9.0 (current) |
-| Obsidian version | 1.12.7 or newer |
+| Obsidian version | 1.13.4 or newer |
 | Platforms | Desktop and mobile, with no feature differences |
 
 :::note[On an older Obsidian?]
-If your vault runs an Obsidian version older than 1.12.7, the community plugin updater automatically serves you MetaEdit 1.8.4, the newest release compatible with your app. You do not need to pick a version yourself. Update Obsidian to get 1.9.0 and its [native property editing](/guides/edit-properties/).
+If your vault runs an Obsidian version older than 1.13.4, the community plugin updater automatically serves you the newest MetaEdit release compatible with your app. On anything older than 1.12.7 that is 1.8.4, which predates [native property editing](/guides/edit-properties/). You do not need to pick a version yourself. Update Obsidian to get the current release.
 :::
 
 ## Install from the Community plugins browser
@@ -42,7 +42,7 @@ MetaEdit deliberately adds no ribbon icon, so don't look for one. Instead:
 - Open the command palette (`⌘/Ctrl+P`) in any note and search for **MetaEdit: Run**. If the command is there, the plugin is loaded.
 - Right-click any `.md` file in the file explorer. You should see an **Edit Meta** item with a pencil icon.
 
-If the **Edit Meta** item is missing, check that the "UI Elements" toggle is on in MetaEdit's settings - it is on by default. See the [settings reference](/reference/settings/) for details.
+If the **Edit Meta** item is missing, check that the "Right-click menu" toggle is on in MetaEdit's settings - it is on by default. See the [settings reference](/reference/settings/#right-click-menu) for details.
 
 ## Optional companion plugins
 

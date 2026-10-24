@@ -23,7 +23,7 @@ The footer holds an "Add" button, a "Cancel" button, and an info icon whose tool
 
 ### Key autocomplete
 
-As you type the name, a dropdown suggests property names already used anywhere in your vault plus your configured [Auto Property](/guides/auto-properties/) names. Keys the note already has are excluded - including ones hidden from the picker by the ["Edit Meta menu" filters](/reference/settings/) - so you are never offered a name that would be rejected as a duplicate.
+As you type the name, a dropdown suggests property names already used anywhere in your vault plus your configured [Auto Property](/guides/auto-properties/) names. Keys the note already has are excluded - including ones hidden from the picker by the ["Hide properties" setting](/reference/settings/#hide-properties) - so you are never offered a name that would be rejected as a duplicate.
 
 ### Automatic type adoption
 

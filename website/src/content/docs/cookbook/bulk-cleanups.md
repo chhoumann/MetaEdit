@@ -7,7 +7,7 @@ sidebar:
 
 MetaEdit's bulk edit writes one YAML property across many notes in a single pass, with a conflict policy that decides what happens to notes that already have the key. This page turns the three policies into three migration recipes you can reuse: an additive stamp, a list merge, and a value standardization with a safety net.
 
-If you have not used bulk edit before, the [bulk edit guide](/guides/bulk-edit/) covers the full flow. The short version: right-click a folder and choose "Bulk edit metadata in this folder (and subfolders)", or select several notes and choose "Bulk edit metadata in selected notes". There is no command palette entry - bulk edit is context-menu only, and both items live behind the "UI Elements" toggle in [settings](/reference/settings/) (on by default).
+If you have not used bulk edit before, the [bulk edit guide](/guides/bulk-edit/) covers the full flow. The short version: right-click a folder and choose "Bulk edit metadata in this folder (and subfolders)", or select several notes and choose "Bulk edit metadata in selected notes". There is no command palette entry - bulk edit is context-menu only, and both items live behind the "Right-click menu" toggle in [settings](/reference/settings/#right-click-menu) (on by default).
 
 ![Right-clicking a folder, choosing the bulk edit menu item, entering a property name and value, then picking a conflict policy](../../../assets/media/bulk-edit-flow.gif)
 
@@ -25,7 +25,7 @@ When some notes in scope already define the property, MetaEdit shows a chooser w
 
 If no note in scope has the key yet, the chooser is skipped and everything is an add. Pressing Escape in the chooser aborts the whole operation - nothing is written.
 
-Two things bulk edit always does, regardless of policy: it writes YAML frontmatter only (never inline `key:: value` fields), and it honors your Edit Mode setting, so a key configured as multi-value is written as a one-element list just like a single-note add. It ignores Auto Properties and Edit Meta menu filtering entirely, and it is not undoable with Ctrl+Z.
+Two things bulk edit always does, regardless of policy: it writes YAML frontmatter only (never inline `key:: value` fields), and it honors your Edit Mode setting, so a key configured as multi-value is written as a one-element list just like a single-note add. It ignores Auto Properties and "Hide properties" filtering entirely, and it is not undoable with Ctrl+Z.
 
 ## Recipe 1: stamp a type on a folder
 

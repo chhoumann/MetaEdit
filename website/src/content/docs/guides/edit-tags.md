@@ -28,7 +28,7 @@ The picker footer states the scope: "#tag - rename in this note · vault-wide: T
 Body tag rows never show the "Delete property" or "Transform to YAML ⇄ Dataview" icons. Those actions operate on a `key:` line, which a body tag does not have, so 1.9.0 removed them from tag rows rather than let them silently no-op or mangle the tag. See [delete and transform properties](/guides/delete-and-transform/) for where they do apply.
 :::
 
-To hide body tag rows from the picker entirely, enable "Hide file tags" under the "Edit Meta menu" section in settings - the frontmatter `tags:` property stays editable. See the [settings reference](/reference/settings/).
+To hide body tag rows from the picker entirely, turn on "Hide properties" in the "Menu" settings group, then enable "Hide file tags" - the frontmatter `tags:` property stays editable. See the [settings reference](/reference/settings/).
 
 ## Choose an action
 

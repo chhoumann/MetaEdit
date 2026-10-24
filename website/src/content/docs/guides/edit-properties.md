@@ -87,7 +87,7 @@ Every native edit is guarded so a race or a widget failure can never corrupt you
 - **Serialized writes.** All MetaEdit writes to one file run through a per-file queue, so concurrent operations apply in order instead of losing updates. See [how MetaEdit writes to your notes](/concepts/write-safety/).
 
 :::caution[Plain-text fallback]
-Native widgets rely on Obsidian internals available from Obsidian 1.12.7, which is why MetaEdit requires that version. If a widget is unavailable anyway, the "Edit {key}" modal degrades to a plain text input with an explanatory note such as "Obsidian native property widgets are not available." You can still save, but values committed through the fallback are written as strings.
+Native widgets rely on Obsidian internals available from Obsidian 1.12.7, and MetaEdit requires Obsidian 1.13.4 or newer. If a widget is unavailable anyway, the "Edit {key}" modal degrades to a plain text input with an explanatory note such as "Obsidian native property widgets are not available." You can still save, but values committed through the fallback are written as strings.
 :::
 
 ## The text prompt
