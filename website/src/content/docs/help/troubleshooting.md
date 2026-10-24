@@ -67,7 +67,7 @@ See [Progress Properties](/guides/progress-properties/) and the [Kanban Board He
 - **Heading-less cards have no lane.** A card above the first heading is skipped because there is no lane name to write.
 - **Ambiguous basenames are refused.** If several notes share the linked basename and Obsidian's cache cannot resolve which one is meant, the helper skips that card rather than write to the wrong note.
 - **A renamed board file breaks the configuration.** Boards are matched by file basename and the stored name does not follow a rename; the settings row then shows "FILE NOT FOUND" in its "Possible values" column. Re-add the board under its new name.
-- **The linked note must already have the property.** If it is missing you get a notice per affected card: `MetaEdit: (ERROR) '<property>' not found in "<note>" (Kanban board '<board>').`
+- **The linked note must already have the property.** If it is missing you get a notice per affected card: `MetaEdit: (WARNING) '<property>' not found in "<note>" (Kanban board '<board>').`
 
 **Fix:** structure cards as `- [ ] [[Note]]` under a heading, keep board file names stable, and add the configured property to each linked note. Details in the [Kanban Board Helper guide](/guides/kanban-helper/).
 
@@ -116,10 +116,6 @@ Several MetaEdit messages go to the console only:
 - **Windows/Linux:** press `Ctrl+Shift+I`, then open the Console tab.
 - **macOS:** press `Cmd+Option+I`, then open the Console tab.
 - **Mobile:** there is no built-in console. On Android you can attach Chrome's remote debugger via `chrome://inspect` with USB debugging enabled; iOS does not expose one.
-
-:::note[Warnings are labeled "(ERROR)"]
-Due to a logging quirk, MetaEdit warnings surface prefixed `MetaEdit: (ERROR) ...`. The label does not mean data was lost - read the message itself. See the [FAQ](/help/faq/#why-does-a-warning-say-error) and the [notices reference](/reference/notices/).
-:::
 
 ## File a good issue
 

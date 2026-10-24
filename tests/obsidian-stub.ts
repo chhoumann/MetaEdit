@@ -28,6 +28,20 @@ export function createTFile(path: string): obsidian.TFile {
   return new TFile(path) as unknown as obsidian.TFile;
 }
 
+export function debounce<T extends unknown[]>(cb: (...args: T) => unknown, timeout = 0) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const debounced = (...args: T) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => cb(...args), timeout);
+    return debounced;
+  };
+  debounced.cancel = () => {
+    clearTimeout(timer);
+    return debounced;
+  };
+  return debounced;
+}
+
 export class Notice {
   static messages: string[] = [];
 

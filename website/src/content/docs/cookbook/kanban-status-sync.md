@@ -107,7 +107,7 @@ Drag a card, wait a few seconds, and the table regroups. The same property also 
 
 | Symptom | Cause and fix |
 | --- | --- |
-| Notice: `MetaEdit: (ERROR) 'status' not found in "Website relaunch" (Kanban board 'Projects').` | The linked note lacks the property. The helper updates properties but never creates them - add `status` to the note first (step 2). |
+| Notice: `MetaEdit: (WARNING) 'status' not found in "Website relaunch" (Kanban board 'Projects').` | The linked note lacks the property. The helper updates properties but never creates them - add `status` to the note first (step 2). |
 | Nothing happens after a drag | Wait for the 5-second debounce; it resets while the board keeps changing. The helper only reacts to modifications made through Obsidian. |
 | One specific card never syncs | Only the leading link of a top-level card line counts (`- [ ] [[Note]] ...`). Trailing links such as Kanban date links, links in the card text, and indented sub-items are ignored. A card sitting above the first lane heading has no lane and is skipped. If several notes share the card's bare name and Obsidian cannot resolve the link, the helper skips it rather than guess. |
 | Board stopped syncing after you renamed it | Boards are matched by file basename, and the stored row keeps the old name. Remove the row and re-add the renamed board. If the board file is gone, its "Possible values" cell shows `FILE NOT FOUND`. |
