@@ -44,3 +44,26 @@ updates:
       include: scope
     labels:
       - dependencies
+
+  # Docs site (website/package.json + website/pnpm-lock.yaml).
+  - package-ecosystem: npm
+    directory: /website
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    # Mirrors minimumReleaseAge in website/pnpm-workspace.yaml.
+    cooldown:
+      default-days: 7
+    groups:
+      # One group, because Astro, Starlight and starlight-links-validator
+      # require each other's new versions and must move in one PR.
+      website:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    commit-message:
+      # Emits build(website): - nothing here ships in the plugin, so these
+      # bumps must not match the release policy's build(deps).
+      prefix: build(website)
+    labels:
+      - dependencies
