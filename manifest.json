@@ -2,7 +2,7 @@
 	"id": "metaedit",
 	"name": "MetaEdit",
 	"version": "1.10.3",
-	"minAppVersion": "1.12.7",
+	"minAppVersion": "1.13.4",
 	"description": "MetaEdit helps you manage your metadata.",
 	"author": "Christian B. B. Houmann",
 	"authorUrl": "https://bagerbach.com",

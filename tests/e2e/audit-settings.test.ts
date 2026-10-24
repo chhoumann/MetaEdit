@@ -15,12 +15,31 @@ const HELPERS = `
 	};
 	const itemByName = (root, name) => Array.from(root.querySelectorAll(".setting-item"))
 		.find((el) => el.querySelector(".setting-item-name")?.textContent.trim() === name);
+	const isShown = (el) => Boolean(el && el.offsetParent !== null);
+	const openPage = async (root, name) => {
+		itemByName(root, name).click();
+		for (let i = 0; i < 50; i++) {
+			await sleep(80);
+			const title = document.querySelector(".setting-page-title");
+			if (title?.textContent.trim() === name) return title.closest(".setting-page").querySelector(".setting-page-content");
+		}
+		throw new Error("Settings page did not open: " + name);
+	};
+	const answerPrompt = async (value) => {
+		let input = null;
+		for (let i = 0; i < 50 && !input; i++) { await sleep(80); input = document.querySelector(".metaEditPromptInput"); }
+		if (!input) throw new Error("Prompt did not open");
+		input.value = value;
+		input.dispatchEvent(new Event("input", { bubbles: true }));
+		input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+		await sleep(400);
+	};
 `;
 
 describe("MetaEdit settings tab", () => {
 	test("SET-03/SET-05: feature toggles flip settings, persist to disk, and survive reopen", async () => {
 		const { obsidian } = getContext();
-		// Toggle Auto Properties and UI Elements through the rendered settings tab.
+		// Toggle Auto properties and the right-click menu through the rendered settings tab.
 		const result = await evalJsonAsync<{
 			autoFlipped: boolean;
 			autoPersisted: boolean;
@@ -41,18 +60,18 @@ describe("MetaEdit settings tab", () => {
 				};
 
 				const autoBefore = plugin.settings.AutoProperties.enabled;
-				await toggle("Auto Properties");
+				await toggle("Auto properties");
 				const autoAfter = plugin.settings.AutoProperties.enabled;
 				const autoPersisted = (await plugin.loadData()).AutoProperties.enabled === autoAfter;
 
 				const uiBefore = plugin.settings.UIElements.enabled;
-				await toggle("UI Elements");
+				await toggle("Right-click menu");
 				const uiAfter = plugin.settings.UIElements.enabled;
 				const uiPersisted = (await plugin.loadData()).UIElements.enabled === uiAfter;
 
 				// Restore both to their original state via the same UI path.
-				if (plugin.settings.AutoProperties.enabled !== autoBefore) await toggle("Auto Properties");
-				if (plugin.settings.UIElements.enabled !== uiBefore) await toggle("UI Elements");
+				if (plugin.settings.AutoProperties.enabled !== autoBefore) await toggle("Auto properties");
+				if (plugin.settings.UIElements.enabled !== uiBefore) await toggle("Right-click menu");
 				app.setting.close();
 
 				return {
@@ -71,31 +90,126 @@ describe("MetaEdit settings tab", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
-	test("SET-04: the gear button expands and collapses a sub-settings panel", async () => {
+	test("SET-04: a feature's sub-page shows only while the feature is on, and opens as a settings page", async () => {
 		const { obsidian } = getContext();
-		const result = await evalJsonAsync<{ expanded: boolean; collapsed: boolean }>(
+		const result = await evalJsonAsync<{ hiddenWhenOff: boolean; shownWhenOn: boolean; editorMounted: boolean }>(
 			obsidian,
 			`
 			(async () => {
 				${HELPERS}
-				const root = await openTab();
-				const item = itemByName(root, "Auto Properties");
-				const gear = item.querySelector(".extra-setting-button");
-				// The collapsible panel is the div the Svelte content mounts into; it
-				// carries the 'metaedit-hidden' class which the gear toggles.
-				const detail = item.querySelector(".metaedit-auto-properties").parentElement;
-				const startsHidden = detail.classList.contains("metaedit-hidden");
-				gear.click(); await sleep(200);
-				const expanded = !detail.classList.contains("metaedit-hidden");
-				gear.click(); await sleep(200);
-				const collapsed = detail.classList.contains("metaedit-hidden");
-				app.setting.close();
-				return { expanded: startsHidden && expanded, collapsed };
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const before = plugin.settings.AutoProperties.enabled;
+				plugin.settings.AutoProperties.enabled = false;
+				await plugin.saveSettings();
+				try {
+					const root = await openTab();
+					const hiddenWhenOff = !isShown(itemByName(root, "Preset values"));
+					itemByName(root, "Auto properties").querySelector(".checkbox-container").click();
+					await sleep(250);
+					const shownWhenOn = isShown(itemByName(root, "Preset values"));
+					const page = await openPage(root, "Preset values");
+					const editorMounted = Boolean(page.querySelector(".metaedit-auto-properties"));
+					app.setting.close();
+					return { hiddenWhenOff, shownWhenOn, editorMounted };
+				} finally {
+					plugin.settings.AutoProperties.enabled = before;
+					await plugin.saveSettings();
+				}
 			})()
 		`,
 		);
-		expect(result.expanded).toBe(true);
-		expect(result.collapsed).toBe(true);
+		expect(result.hiddenWhenOff).toBe(true);
+		expect(result.shownWhenOn).toBe(true);
+		expect(result.editorMounted).toBe(true);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("SET-06: List properties follows the edit mode and edits EditMode.properties", async () => {
+		const { obsidian } = getContext();
+		const result = await evalJsonAsync<{
+			hiddenInSingle: boolean;
+			shownInSomeMulti: boolean;
+			afterAdd: string[];
+			persisted: string[];
+			afterDelete: string[];
+		}>(
+			obsidian,
+			`
+			(async () => {
+				${HELPERS}
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const snapshot = JSON.parse(JSON.stringify(plugin.settings.EditMode));
+				plugin.settings.EditMode = { mode: "All Single", properties: [] };
+				await plugin.saveSettings();
+				try {
+					const root = await openTab();
+					const hiddenInSingle = !isShown(itemByName(root, "List properties"));
+					const select = itemByName(root, "Edit mode").querySelector("select");
+					select.value = "Some Multi";
+					select.dispatchEvent(new Event("change", { bubbles: true }));
+					await sleep(300);
+					const shownInSomeMulti = isShown(itemByName(root, "List properties"));
+
+					let page = await openPage(root, "List properties");
+					page.querySelector("[aria-label='Add property']").click();
+					await answerPrompt("auditList");
+					const afterAdd = plugin.settings.EditMode.properties.slice();
+					const persisted = (await plugin.loadData()).EditMode.properties;
+
+					page = document.querySelector(".setting-page-content");
+					itemByName(page, "auditList").querySelector("[aria-label='Delete']").click();
+					await sleep(400);
+					const afterDelete = plugin.settings.EditMode.properties.slice();
+					app.setting.close();
+					return { hiddenInSingle, shownInSomeMulti, afterAdd, persisted, afterDelete };
+				} finally {
+					plugin.settings.EditMode = snapshot;
+					await plugin.saveSettings();
+				}
+			})()
+		`,
+		);
+		expect(result.hiddenInSingle).toBe(true);
+		expect(result.shownInSomeMulti).toBe(true);
+		expect(result.afterAdd).toEqual(["auditList"]);
+		expect(result.persisted).toEqual(["auditList"]);
+		expect(result.afterDelete).toEqual([]);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
+	test("SET-07: Hidden properties edits IgnoredProperties.properties and ignores duplicates", async () => {
+		const { obsidian } = getContext();
+		const result = await evalJsonAsync<{ afterAdds: string[]; rows: string[] }>(
+			obsidian,
+			`
+			(async () => {
+				${HELPERS}
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const snapshot = JSON.parse(JSON.stringify(plugin.settings.IgnoredProperties));
+				plugin.settings.IgnoredProperties = { enabled: true, properties: [], hideFileTags: false };
+				await plugin.saveSettings();
+				try {
+					const root = await openTab();
+					await openPage(root, "Hidden properties");
+					for (const name of ["secret", "  secret  ", "draft"]) {
+						document.querySelector(".setting-page-content [aria-label='Add property']").click();
+						await answerPrompt(name);
+					}
+					const rows = Array.from(document.querySelectorAll(".setting-page-content .setting-item-name"))
+						.map((el) => el.textContent.trim())
+						.filter(Boolean);
+					const afterAdds = plugin.settings.IgnoredProperties.properties.slice();
+					app.setting.close();
+					return { afterAdds, rows };
+				} finally {
+					plugin.settings.IgnoredProperties = snapshot;
+					await plugin.saveSettings();
+				}
+			})()
+		`,
+		);
+		expect(result.afterAdds).toEqual(["secret", "draft"]);
+		expect(result.rows).toEqual(["secret", "draft"]);
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
@@ -107,11 +221,10 @@ describe("MetaEdit settings tab", () => {
 			(async () => {
 				${HELPERS}
 				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const wasEnabled = plugin.settings.AutoProperties.enabled;
+				plugin.settings.AutoProperties.enabled = true;
 				const root = await openTab();
-				const item = itemByName(root, "Auto Properties");
-				// Expand the panel.
-				item.querySelector(".extra-setting-button").click();
-				await sleep(200);
+				const item = await openPage(root, "Preset values");
 				const before = plugin.settings.AutoProperties.properties.length;
 				// Click "Add auto property".
 				const addBtn = Array.from(item.querySelectorAll("button")).find(b => b.textContent.trim().includes("Add auto property"));
@@ -133,6 +246,8 @@ describe("MetaEdit settings tab", () => {
 				await sleep(200);
 				const afterRemove = plugin.settings.AutoProperties.properties.map(a => a.name);
 				app.setting.close();
+				plugin.settings.AutoProperties.enabled = wasEnabled;
+				await plugin.saveSettings();
 				return { afterAdd, afterRemove };
 			})()
 		`,
@@ -163,9 +278,7 @@ describe("MetaEdit settings tab", () => {
 				await plugin.saveSettings();
 
 				const root = await openTab();
-				const item = itemByName(root, "Auto Properties");
-				item.querySelector(".extra-setting-button").click();
-				await sleep(250);
+				const item = await openPage(root, "Preset values");
 
 				await plugin.api.setAutoProperties([{ name: "status", choices: ["todo", "external"], type: "Single" }]);
 				const afterExternal = plugin.settings.AutoProperties.properties[0].choices.slice();
