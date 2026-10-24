@@ -42,6 +42,8 @@ hand-written, committed release asset.
 - `pnpm run lint`: ESLint over the TypeScript sources.
 - `pnpm run test`: Vitest unit suite (jsdom-free, `node` environment).
 - `pnpm run test:e2e`: build, then run the live Obsidian E2E suite (`tests/e2e/`).
+  CI's `E2E (Obsidian)` job runs the same suite headless under Xvfb against the
+  Obsidian version pinned in `.github/workflows/ci.yml`.
 - `pnpm run obsidian:e2e -- <command>`: run an `obsidian` CLI command against an
   isolated, auto-provisioned worktree instance (see below).
 

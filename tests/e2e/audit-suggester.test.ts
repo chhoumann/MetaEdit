@@ -96,7 +96,8 @@ describe("MetaEdit Edit Meta suggester flows", () => {
 				await sleep(300);
 				// Adding an existing key triggers the duplicate Notice.
 				await plugin.controller.addYamlProp("status", "x", f);
-				const notice = await waitFor(".notice");
+				// Notices from earlier suites can still be on screen.
+				const notice = await waitFor(".notice", (n) => n.textContent.includes("already has property"));
 				return (notice.textContent || "").trim();
 			})()
 		`,
