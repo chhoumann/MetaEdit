@@ -64,13 +64,22 @@ function toEsbuildMessage({message, start, end}, file, source) {
 	};
 }
 
-function compileSvelte() {
+// Registered first so no other loader can hand esbuild a rune module's source.
+function rejectSvelteRuneModules() {
 	return {
-		name: "compile-svelte",
+		name: "reject-svelte-rune-modules",
 		setup(build) {
 			build.onLoad({filter: /\.svelte\.[cm]?[jt]s$/}, (args) => ({
 				errors: [{text: `Svelte rune modules (.svelte.js/.svelte.ts) are not supported by this build: ${args.path}`}],
 			}));
+		},
+	};
+}
+
+function compileSvelte() {
+	return {
+		name: "compile-svelte",
+		setup(build) {
 			build.onLoad({filter: /\.svelte$/}, async (args) => {
 				const source = await readFile(args.path, "utf8");
 				try {
@@ -107,6 +116,7 @@ const options = {
 	},
 	logLevel: "info",
 	plugins: [
+		rejectSvelteRuneModules(),
 		...(isProduction ? [stripDevCommandBlocks()] : []),
 		compileSvelte(),
 	],
