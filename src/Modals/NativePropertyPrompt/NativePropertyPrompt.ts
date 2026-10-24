@@ -54,6 +54,10 @@ export default class NativePropertyPrompt extends Modal {
 
 	private constructor(app: App, file: TFile, property: Property) {
 		super(app);
+		// onOpen() focuses the value editor. hasInitialInputFocus is a private Modal flag;
+		// left on, Obsidian 1.13+ then moves focus to the first focusable element
+		// (the type pill) - orphaning the value autocomplete popover.
+		(this as unknown as {hasInitialInputFocus: boolean}).hasInitialInputFocus = false;
 		this.file = file;
 		this.property = property;
 		this.waitForClose = new Promise<NativePropertyPromptResult>((resolve) => {
