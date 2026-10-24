@@ -162,20 +162,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  '@babel/core@<=7.29.0': ^7.29.6
-  brace-expansion@<1.1.21: ^1.1.21
-  brace-expansion@>=2.0.0 <2.1.7: ^2.1.7
-  fast-uri@>=3.0.0 <3.1.8: ^3.1.8
-  handlebars: ^4.7.9
-  js-yaml@>=4.0.0 <4.3.2: ^4.3.2
-  moment@<2.31.0: ^2.31.0
-  nanoid@<3.3.17: ^3.3.17
-  postcss-selector-parser@<7.1.6: ^7.1.6
-  postcss@<8.5.23: ^8.5.23
-  source-map-js@<1.2.2: ^1.2.2
-  tinypool@<2.1.2: 2.1.2
-
 importers:
 
   .:
@@ -1117,7 +1103,7 @@ packages:
     resolution: {integrity: sha512-6DiM4E7v4coTE4uzA8U//WhtPwyhiim3eyjEMFCnUpzbrkK9wJHgKDT2mR+HbtSrd/NubVaYTOpSpjUl8NQeRg==}
     engines: {node: '>= 10'}
     peerDependencies:
-      postcss: ^8.5.23
+      postcss: '>=8.0.9'
       ts-node: '>=9.0.0'
     peerDependenciesMeta:
       postcss:
@@ -1129,13 +1115,13 @@ packages:
     resolution: {integrity: sha512-1WzZxRLaAFwEh6Do+zyGpjWV3nGJNxxhuh7Ubu/q1ICImMgZJnLwhoaEpRbG4pJppp2Y1ncL9ffA2f+LhrefQg==}
     engines: {node: '>=18.0'}
     peerDependencies:
-      postcss: ^8.5.23
+      postcss: ^8.4.31
 
   postcss-scss@4.0.9:
     resolution: {integrity: sha512-AjKOeiwAitL/MXxQW2DliT28EKukvvbEWx3LBmJIRN8KfBGZbRTxNYW0kSqi1COiTZ57nZ9NW06S6ux//N1c9A==}
     engines: {node: '>=12.0'}
     peerDependencies:
-      postcss: ^8.5.23
+      postcss: ^8.4.29
 
   postcss-selector-parser@7.1.6:
     resolution: {integrity: sha512-7qASPzhKF2l2KLboRZux8CCTRMdGiV08vWmyKzPz22qZ7ZjQBOeY7rNzNoCLSUiftJ7HUq0GERHmxw/t0dCdMw==}
