@@ -1,4 +1,5 @@
 import globals from "globals";
+import { readFileSync } from "node:fs";
 import { defineConfig } from "eslint/config";
 import svelte from "eslint-plugin-svelte";
 import tseslint from "typescript-eslint";
@@ -15,6 +16,9 @@ const sharedGlobals = {
 // entry mirrors the obsidianmd rule named in its message. Keep this scoped to
 // production plugin source: tests and harness code legitimately stub Obsidian
 // globals and should not inherit plugin-review restrictions.
+// Unlike upstream, no-restricted-globals also flags `typeof document` and
+// `typeof globalThis` guards; none exist in the plugin source.
+const pluginName = JSON.parse(readFileSync(new URL("./manifest.json", import.meta.url), "utf8")).name;
 const timerFunctions = ["setTimeout", "setInterval", "clearTimeout", "clearInterval", "requestAnimationFrame"];
 const obsidianGuidelineRules = {
 	"no-restricted-globals": [
@@ -56,7 +60,7 @@ const obsidianGuidelineRules = {
 			message: "Use new Setting(containerEl).setName(...).setHeading() instead of HTML headings (obsidianmd/settings-tab/no-manual-html-headings).",
 		},
 		{
-			selector: "CallExpression[callee.property.name='addCommand'] > ObjectExpression > Property[key.name='name'] > Literal.value[value=/metaedit/i]",
+			selector: `CallExpression[callee.property.name='addCommand'] > ObjectExpression > Property[key.name='name'] > Literal.value[value=/${pluginName}/i]`,
 			message: "Obsidian already prefixes command names with the plugin name (obsidianmd/commands/no-plugin-name-in-command-name).",
 		},
 	],
