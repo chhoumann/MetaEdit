@@ -82,7 +82,7 @@ describe("MetaEdit native Obsidian property widgets", () => {
 			relatedPills: string[];
 			aliasesPills: string[];
 			cleanup: {
-				bodyDelta: number;
+				leakedBodyChildren: number;
 				documentListenerDelta: number;
 				modalCount: number;
 				suggestionCount: number;
@@ -120,7 +120,7 @@ describe("MetaEdit native Obsidian property widgets", () => {
 		expect(result.cache.cssclasses).toEqual(["wide", "readable"]);
 		expect(result.relatedPills).toContain("gamma");
 		expect(result.aliasesPills).toContain("Alias, Two");
-		expect(result.cleanup.bodyDelta).toBe(0);
+		expect(result.cleanup.leakedBodyChildren).toBe(0);
 		expect(result.cleanup.documentListenerDelta).toBeLessThanOrEqual(0);
 		expect(result.cleanup.modalCount).toBe(0);
 		expect(result.cleanup.suggestionCount).toBe(0);

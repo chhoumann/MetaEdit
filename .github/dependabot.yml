@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # GitHub Actions across all workflows. Keeps the SHA pins from rotting — the
+  # GitHub Actions across all workflows. Keeps the SHA pins from rotting - the
   # Node 20 deprecation slipped into many repos precisely because nothing watched
   # these.
   - package-ecosystem: github-actions
@@ -8,9 +8,16 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     groups:
       actions:
         patterns: ["*"]
+        exclude-patterns: ["chhoumann/obsidian-plugin-workflows*"]
+      # Toolkit bumps change release behavior, so they get their own PR. One
+      # group keeps the three release stubs on the same toolkit commit.
+      release-toolkit:
+        patterns: ["chhoumann/obsidian-plugin-workflows*"]
     commit-message:
       prefix: ci
     labels:
@@ -24,6 +31,10 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 10
+    # Mirrors minimumReleaseAge in pnpm-workspace.yaml.
+    cooldown:
+      default-days: 7
+      exclude: ["obsidian-e2e"]
     groups:
       dev-dependencies:
         dependency-type: development
@@ -36,5 +47,28 @@ updates:
       # Emits build(deps): / build(deps-dev): - the release policy releases a
       # patch for build(deps), so production bumps ship and dev bumps do not.
       include: scope
+    labels:
+      - dependencies
+
+  # Docs site (website/package.json + website/pnpm-lock.yaml).
+  - package-ecosystem: npm
+    directory: /website
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    # Mirrors minimumReleaseAge in website/pnpm-workspace.yaml.
+    cooldown:
+      default-days: 7
+    groups:
+      # One group, because Astro, Starlight and starlight-links-validator
+      # require each other's new versions and must move in one PR.
+      website:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    commit-message:
+      # Emits build(website): - nothing here ships in the plugin, so these
+      # bumps must not match the release policy's build(deps).
+      prefix: build(website)
     labels:
       - dependencies

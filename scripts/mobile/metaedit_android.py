@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["websockets==17.2"]
+# [tool.uv]
+# exclude-newer = "2026-10-17T00:00:00Z"
+# ///
 """Deploy and inspect MetaEdit in Obsidian Android over CDP.
 
 This harness assumes an Android emulator or device is already running Obsidian.

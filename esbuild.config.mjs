@@ -1,10 +1,9 @@
 import {builtinModules} from "node:module";
 import {readFile} from "node:fs/promises";
-import {dirname, join, sep} from "node:path";
+import {dirname, join, relative, sep} from "node:path";
 import {fileURLToPath} from "node:url";
 import esbuild from "esbuild";
-import esbuildSvelte from "esbuild-svelte";
-import sveltePreprocess from "svelte-preprocess";
+import {compile} from "svelte/compiler";
 
 const isProduction = process.argv.includes("production");
 const projectSrcDir = `${join(dirname(fileURLToPath(import.meta.url)), "src")}${sep}`;
@@ -55,6 +54,51 @@ function stripDevCommandBlocks() {
 	};
 }
 
+function toEsbuildMessage({message, start, end}, file, source) {
+	if (!start || !end) return {text: message};
+	const lineText = source.split(/\r\n|\r|\n/)[start.line - 1];
+	const lineEnd = start.line === end.line ? end.column : lineText.length;
+	return {
+		text: message,
+		location: {file, line: start.line, column: start.column, length: lineEnd - start.column, lineText},
+	};
+}
+
+// Registered first so no other loader can hand esbuild a rune module's source.
+function rejectSvelteRuneModules() {
+	return {
+		name: "reject-svelte-rune-modules",
+		setup(build) {
+			build.onLoad({filter: /\.svelte\.[cm]?[jt]s$/}, (args) => ({
+				errors: [{text: `Svelte rune modules (.svelte.js/.svelte.ts) are not supported by this build: ${args.path}`}],
+			}));
+		},
+	};
+}
+
+function compileSvelte() {
+	return {
+		name: "compile-svelte",
+		setup(build) {
+			build.onLoad({filter: /\.svelte$/}, async (args) => {
+				const source = await readFile(args.path, "utf8");
+				try {
+					const {js, warnings} = compile(source, {
+						filename: relative(process.cwd(), args.path),
+						css: "injected",
+					});
+					return {
+						contents: `${js.code}\n//# sourceMappingURL=${js.map.toUrl()}`,
+						warnings: warnings.map((warning) => toEsbuildMessage(warning, args.path, source)),
+					};
+				} catch (error) {
+					return {errors: [toEsbuildMessage(error, args.path, source)]};
+				}
+			});
+		},
+	};
+}
+
 const options = {
 	entryPoints: ["src/main.ts"],
 	bundle: true,
@@ -72,11 +116,9 @@ const options = {
 	},
 	logLevel: "info",
 	plugins: [
+		rejectSvelteRuneModules(),
 		...(isProduction ? [stripDevCommandBlocks()] : []),
-		esbuildSvelte({
-			compilerOptions: {css: "injected"},
-			preprocess: sveltePreprocess(),
-		}),
+		compileSvelte(),
 	],
 };
 

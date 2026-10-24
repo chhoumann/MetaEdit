@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["pymobiledevice3==11.33.1"]
+# [tool.uv]
+# exclude-newer = "2026-10-17T00:00:00Z"
+# ///
 """Deploy and inspect MetaEdit in Obsidian iOS over USB.
 
 This harness follows the proven safdeb/podnotes_ios.py pattern:
 
-	uv run --no-project --with pymobiledevice3 python scripts/mobile/metaedit_ios.py diagnose
-	uv run --no-project --with pymobiledevice3 python scripts/mobile/metaedit_ios.py eval --file scripts/mobile/probes/issue99_frontmatter.js
+	uv run scripts/mobile/metaedit_ios.py diagnose
+	uv run scripts/mobile/metaedit_ios.py eval --file scripts/mobile/probes/issue99_frontmatter.js
 
 Deploy writes into the phone's real Obsidian vault. It intentionally requires an
 explicit flag, creates a local backup of the existing phone plugin folder first,

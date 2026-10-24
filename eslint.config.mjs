@@ -1,7 +1,11 @@
 import globals from "globals";
-import obsidianmd from "eslint-plugin-obsidianmd";
+import { readFileSync } from "node:fs";
+import { defineConfig } from "eslint/config";
 import svelte from "eslint-plugin-svelte";
 import tseslint from "typescript-eslint";
+
+const pluginNamePattern = JSON.parse(readFileSync(new URL("./manifest.json", import.meta.url), "utf8"))
+	.name.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 
 const sharedGlobals = {
 	...globals.node,
@@ -10,20 +14,61 @@ const sharedGlobals = {
 	activeWindow: "readonly",
 };
 
-// Obsidian developer-policy / guideline rules. Keep this scoped to production
-// plugin source: tests and harness code legitimately stub Obsidian globals and
-// should not inherit plugin-review restrictions.
+// Obsidian developer-policy / guideline checks, expressed with core rules so we
+// don't pull in eslint-plugin-obsidianmd's dependency tree for seven rules. Each
+// entry mirrors the obsidianmd rule named in its message. Keep this scoped to
+// production plugin source: tests and harness code legitimately stub Obsidian
+// globals and should not inherit plugin-review restrictions.
+// Unlike upstream, no-restricted-globals also flags `typeof document` and
+// `typeof globalThis` guards; none exist in the plugin source.
+const timerFunctions = ["setTimeout", "setInterval", "clearTimeout", "clearInterval", "requestAnimationFrame"];
 const obsidianGuidelineRules = {
-	"obsidianmd/no-static-styles-assignment": "error",
-	"obsidianmd/prefer-window-timers": "error",
-	"obsidianmd/prefer-active-doc": "error",
-	"obsidianmd/detach-leaves": "error",
-	"obsidianmd/no-global-this": "error",
-	"obsidianmd/settings-tab/no-manual-html-headings": "error",
-	"obsidianmd/commands/no-plugin-name-in-command-name": "error",
+	"no-restricted-globals": [
+		"error",
+		...timerFunctions.map((name) => ({
+			name,
+			message: `Use 'window.${name}()' for popout window compatibility (obsidianmd/prefer-window-timers).`,
+		})),
+		{
+			name: "document",
+			message: "Use 'activeDocument' for popout window compatibility (obsidianmd/prefer-active-doc).",
+		},
+		...["global", "globalThis"].map((name) => ({
+			name,
+			message: "Use 'window' or 'activeWindow' for popout window compatibility (obsidianmd/no-global-this).",
+		})),
+	],
+	"no-restricted-syntax": [
+		"error",
+		{
+			selector: `CallExpression > MemberExpression.callee[object.name='activeWindow'][property.name=/^(${timerFunctions.join("|")})$/]`,
+			message: "Use 'window' for timers, not 'activeWindow' (obsidianmd/prefer-window-timers).",
+		},
+		...[
+			"AssignmentExpression[right.type='Literal'][left.object.property.name='style']",
+			"CallExpression[callee.property.name='setProperty'][callee.object.property.name='style'][arguments.1.type='Literal']",
+			"CallExpression[callee.property.name='setAttribute'][arguments.0.value='style'][arguments.1.type='Literal']",
+			"CallExpression[callee.property.name=/^setCss(Props|Styles)$/] > ObjectExpression > Property > Literal.key[value=/^(?!--)/]",
+		].map((selector) => ({
+			selector,
+			message: "Avoid static inline styles; use CSS classes, or setCssProps with CSS variables (obsidianmd/no-static-styles-assignment).",
+		})),
+		{
+			selector: "MethodDefinition[key.name='onunload'] > FunctionExpression > BlockStatement > ExpressionStatement > CallExpression[callee.property.name='detachLeavesOfType']",
+			message: "Don't detach leaves in onunload (obsidianmd/detach-leaves).",
+		},
+		{
+			selector: "ClassDeclaration[superClass.name='PluginSettingTab'] CallExpression[callee.property.name='createEl'][arguments.0.value=/^h[1-6]$/]",
+			message: "Use new Setting(containerEl).setName(...).setHeading() instead of HTML headings (obsidianmd/settings-tab/no-manual-html-headings).",
+		},
+		{
+			selector: `CallExpression[callee.property.name='addCommand'] > ObjectExpression > Property[key.name='name'] > Literal.value[value=/${pluginNamePattern}/i]`,
+			message: "Obsidian already prefixes command names with the plugin name (obsidianmd/commands/no-plugin-name-in-command-name).",
+		},
+	],
 };
 
-export default tseslint.config(
+export default defineConfig(
 	{
 		// Generated artifacts, vendored code, the legacy JS build tooling, and
 		// release scripts are not linted.
@@ -31,7 +76,6 @@ export default tseslint.config(
 			"node_modules/**",
 			"main.js",
 			"**/*.js.map",
-			"coverage/**",
 			".obsidian-e2e-vaults/**",
 			".obsidian-e2e-artifacts/**",
 			"esbuild.config.mjs",
@@ -42,8 +86,8 @@ export default tseslint.config(
 			"website/**",
 		],
 	},
-	...tseslint.configs.recommended,
-	...svelte.configs["flat/recommended"],
+	tseslint.configs.recommended,
+	svelte.configs.recommended,
 	{
 		files: ["**/*.{ts,mts,cts}"],
 		languageOptions: {
@@ -81,7 +125,6 @@ export default tseslint.config(
 	{
 		files: ["src/**/*.{ts,mts,cts}"],
 		ignores: ["src/**/*.{test,spec}.{ts,mts,cts}", "src/tests/**"],
-		plugins: { obsidianmd },
 		rules: obsidianGuidelineRules,
 	},
 );

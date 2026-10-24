@@ -223,7 +223,7 @@ async function addPillWithWikilinkSuggestion(file, key, targetText) {
 }
 
 function beginCleanupMeasurement() {
-	const bodyBefore = document.body.children.length;
+	const bodyBefore = new Set(document.body.children);
 	let adds = 0;
 	let removes = 0;
 	const originalAdd = document.addEventListener;
@@ -241,7 +241,7 @@ function beginCleanupMeasurement() {
 			document.addEventListener = originalAdd;
 			document.removeEventListener = originalRemove;
 			return {
-				bodyDelta: document.body.children.length - bodyBefore,
+				leakedBodyChildren: [...document.body.children].filter((el) => !bodyBefore.has(el)).length,
 				documentListenerDelta: adds - removes,
 				modalCount: document.querySelectorAll(".modal-container").length,
 				suggestionCount: document.querySelectorAll(".suggestion-container").length,

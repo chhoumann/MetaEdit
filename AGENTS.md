@@ -37,11 +37,10 @@ hand-written, committed release asset.
   merge waiting for self-approval.
 
 ## Build, Test, and Development Commands
-- `pnpm run dev`: watch-mode Rollup build, regenerating `main.js` as you edit.
-- `pnpm run build`: production Rollup bundle (`main.js`).
+- `pnpm run dev`: watch-mode esbuild build, regenerating `main.js` as you edit.
+- `pnpm run build`: typecheck, then the production esbuild bundle (`main.js`).
 - `pnpm run lint`: ESLint over the TypeScript sources.
 - `pnpm run test`: Vitest unit suite (jsdom-free, `node` environment).
-- `pnpm run test:coverage`: unit suite with V8 coverage.
 - `pnpm run test:e2e`: build, then run the live Obsidian E2E suite (`tests/e2e/`).
 - `pnpm run obsidian:e2e -- <command>`: run an `obsidian` CLI command against an
   isolated, auto-provisioned worktree instance (see below).

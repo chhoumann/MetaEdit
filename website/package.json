@@ -3,6 +3,7 @@
   "type": "module",
   "version": "0.0.1",
   "private": true,
+  "packageManager": "pnpm@12.14.0",
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
@@ -12,21 +13,14 @@
     "deploy": "astro build && wrangler deploy"
   },
   "dependencies": {
-    "@astrojs/starlight": "0.41.1",
-    "@fontsource/ibm-plex-mono": "^5.2.7",
-    "@fontsource/ibm-plex-sans": "^5.2.8",
-    "astro": "^7.0.2",
-    "sharp": "^0.34.5"
+    "@astrojs/starlight": "0.42.6",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
+    "astro": "^7.4.0",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
-    "starlight-links-validator": "^0.25.2",
-    "wrangler": "^4.103.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "sharp",
-      "workerd"
-    ]
+    "starlight-links-validator": "^0.27.0",
+    "wrangler": "^4.151.1"
   }
 }

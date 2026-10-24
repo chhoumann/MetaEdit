@@ -14,7 +14,6 @@
 		"lint": "eslint . --max-warnings=0",
 		"test": "vitest run --passWithNoTests",
 		"test:watch": "vitest",
-		"test:coverage": "vitest run --coverage",
 		"test:e2e": "pnpm run build && vitest run --config vitest.e2e.config.mts",
 		"obsidian:e2e": "obsidian-e2e run",
 		"provision:e2e-vault": "obsidian-e2e provision",
@@ -24,49 +23,23 @@
 	"keywords": [],
 	"author": "Christian B. B. Houmann",
 	"license": "MIT",
-	"packageManager": "pnpm@10.32.1",
+	"packageManager": "pnpm@12.14.0",
 	"engines": {
-		"node": ">=20.18.1"
+		"node": "^22.13.0 || ^24.0.0 || >=26"
 	},
 	"devDependencies": {
-		"@types/node": "26.6.2",
-		"@vitest/coverage-v8": "4.1.11",
+		"@types/node": "26.6.5",
 		"esbuild": "0.28.2",
-		"esbuild-svelte": "0.9.5",
-		"eslint": "^9.39.4",
-		"eslint-plugin-obsidianmd": "^0.4.2",
-		"eslint-plugin-svelte": "^3.23.0",
-		"globals": "^17.12.0",
-		"obsidian": "1.13.1",
-		"obsidian-e2e": "^0.10.0",
-		"svelte": "^5.57.1",
-		"svelte-check": "^4.7.6",
-		"svelte-eslint-parser": "^1.8.1",
-		"svelte-preprocess": "^6.0.5",
-		"tslib": "^2.2.0",
+		"eslint": "^10.13.0",
+		"eslint-plugin-svelte": "^3.23.1",
+		"globals": "^17.13.0",
+		"obsidian": "1.14.4",
+		"obsidian-e2e": "^0.14.0",
+		"svelte": "^5.57.2",
+		"svelte-check": "^4.7.7",
 		"typescript": "^6.0.3",
-		"typescript-eslint": "^8.70.1",
-		"vite": "^8.3.3",
-		"vitest": "^4.1.11"
-	},
-	"pnpm": {
-		"onlyBuiltDependencies": [
-			"esbuild",
-			"svelte-preprocess"
-		],
-		"overrides": {
-			"@babel/core@<=7.29.0": "^7.29.6",
-			"brace-expansion@<1.1.21": "^1.1.21",
-			"brace-expansion@>=2.0.0 <2.1.7": "^2.1.7",
-			"fast-uri@>=3.0.0 <3.1.8": "^3.1.8",
-			"handlebars": "^4.7.9",
-			"js-yaml@>=4.0.0 <4.3.2": "^4.3.2",
-			"moment@<2.31.0": "^2.31.0",
-			"nanoid@<3.3.17": "^3.3.17",
-			"postcss-selector-parser@<7.1.6": "^7.1.6",
-			"postcss@<8.5.23": "^8.5.23",
-			"source-map-js@<1.2.2": "^1.2.2",
-			"tinypool@<2.1.2": "2.1.2"
-		}
+		"typescript-eslint": "^8.71.2",
+		"vite": "^8.3.4",
+		"vitest": "^5.0.5"
 	}
 }
