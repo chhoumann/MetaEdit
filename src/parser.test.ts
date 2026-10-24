@@ -1,6 +1,6 @@
 import {describe, expect, it, vi} from "vitest";
 import * as obsidian from "obsidian";
-import {TFile} from "obsidian";
+import {createTFile} from "../tests/obsidian-stub";
 import MetaEditParser from "./parser";
 import {MetaType} from "./Types/metaType";
 
@@ -29,7 +29,7 @@ const replaceInline = (line: string, key: string, value: string): string =>
 
 describe("MetaEditParser frontmatter parsing", () => {
     it("reads frontmatter from live file content when cache positions are stale", async () => {
-        const file = new TFile("legacy.md");
+        const file = createTFile("legacy.md");
         const parser = createParser(
             {
                 frontmatter: {
@@ -52,7 +52,7 @@ describe("MetaEditParser frontmatter parsing", () => {
     // getFrontMatterInfo + parseYaml read path (the cache-fallback path is
     // covered below).
     it("reads a YAML array via the live frontmatter path as a real array", async () => {
-        const file = new TFile("tags-list.md");
+        const file = createTFile("tags-list.md");
         const parser = createParser(
             {
                 frontmatter: {tags: ["state/inprogress", "course/x"]},
@@ -72,7 +72,7 @@ describe("MetaEditParser frontmatter parsing", () => {
     });
 
     it("reads frontmatter with CRLF line endings", async () => {
-        const file = new TFile("crlf-frontmatter.md");
+        const file = createTFile("crlf-frontmatter.md");
         const parser = createParser(null, "---\r\nstatus: draft\r\n---\r\nfoo:: bar\r\n");
 
         await expect(parser.parseFrontmatter(file)).resolves.toEqual([
@@ -84,7 +84,7 @@ describe("MetaEditParser frontmatter parsing", () => {
     });
 
     it("keeps the legacy dot frontmatter closer compatible", async () => {
-        const file = new TFile("dot-frontmatter.md");
+        const file = createTFile("dot-frontmatter.md");
         const parser = createParser(null, "---\nstatus: draft\n...\nfoo:: bar\n");
 
         await expect(parser.parseFrontmatter(file)).resolves.toEqual([
@@ -96,7 +96,7 @@ describe("MetaEditParser frontmatter parsing", () => {
     });
 
     it("prefers a legacy dot frontmatter closer before a later thematic break", async () => {
-        const file = new TFile("dot-frontmatter-later-break.md");
+        const file = createTFile("dot-frontmatter-later-break.md");
         const parser = createParser(null, "---\nstatus: draft\n...\nfoo:: bar\n---\nbar:: baz\n");
 
         await expect(parser.parseFrontmatter(file)).resolves.toEqual([
@@ -109,7 +109,7 @@ describe("MetaEditParser frontmatter parsing", () => {
     });
 
     it("falls back to cached frontmatter entries when no position metadata exists", async () => {
-        const file = new TFile("cache-only.md");
+        const file = createTFile("cache-only.md");
         const parser = createParser(
             {
                 frontmatter: {
@@ -127,7 +127,7 @@ describe("MetaEditParser frontmatter parsing", () => {
     });
 
     it("reads live frontmatter content when the metadata cache has not populated yet", async () => {
-        const file = new TFile("live-only.md");
+        const file = createTFile("live-only.md");
         const parser = createParser(null, "---\nstatus: draft\n---\nBody\n");
 
         await expect(parser.parseFrontmatter(file)).resolves.toEqual([
@@ -136,7 +136,7 @@ describe("MetaEditParser frontmatter parsing", () => {
     });
 
     it("keeps root YAML rows and adds virtual nested scalar leaf rows", async () => {
-        const file = new TFile("nested.md");
+        const file = createTFile("nested.md");
         const parser = createParser(
             {
                 frontmatter: {
@@ -234,10 +234,10 @@ describe("MetaEditParser frontmatter parsing", () => {
     // with `for..in`, which would surface string/array indices like `0:value`.
     it("ignores non-mapping frontmatter instead of emitting index keys (#85)", async () => {
         const stringFm = createParser({frontmatter: "tags:someValue"}, "");
-        await expect(stringFm.parseFrontmatter(new TFile("string-fm.md"))).resolves.toEqual([]);
+        await expect(stringFm.parseFrontmatter(createTFile("string-fm.md"))).resolves.toEqual([]);
 
         const arrayFm = createParser({frontmatter: ["item1", "item2"]}, "");
-        await expect(arrayFm.parseFrontmatter(new TFile("array-fm.md"))).resolves.toEqual([]);
+        await expect(arrayFm.parseFrontmatter(createTFile("array-fm.md"))).resolves.toEqual([]);
     });
 
     // #130 follow-up: a note opening with `---` but holding malformed YAML gives
@@ -252,7 +252,7 @@ describe("MetaEditParser frontmatter parsing", () => {
         });
         try {
             const parser = createParser(null, "---\nstatus: : :\n---\nfoo:: bar\n");
-            await expect(parser.parseFrontmatter(new TFile("malformed-fm.md"))).resolves.toEqual([]);
+            await expect(parser.parseFrontmatter(createTFile("malformed-fm.md"))).resolves.toEqual([]);
             expect(spy).toHaveBeenCalled();
         } finally {
             spy.mockRestore();
@@ -272,7 +272,7 @@ describe("MetaEditParser frontmatter parsing", () => {
                 {frontmatter: {status: "cached"}},
                 "---\nstatus: : :\n---\nfoo:: bar\n",
             );
-            await expect(parser.parseFrontmatter(new TFile("malformed-with-cache.md"))).resolves.toEqual([
+            await expect(parser.parseFrontmatter(createTFile("malformed-with-cache.md"))).resolves.toEqual([
                 {key: "status", content: "cached", type: MetaType.YAML},
             ]);
         } finally {
@@ -285,14 +285,14 @@ describe("MetaEditParser frontmatter parsing", () => {
     // never calls parseYaml, so the permissive stub is sufficient here.
     it("still surfaces inline fields when the frontmatter is malformed", async () => {
         const parser = createParser(null, "---\nstatus: : :\n---\nfoo:: bar\n");
-        await expect(parser.parseInlineFields(new TFile("malformed-fm.md"))).resolves.toEqual([
+        await expect(parser.parseInlineFields(createTFile("malformed-fm.md"))).resolves.toEqual([
             {key: "foo", content: "bar", type: MetaType.Dataview},
         ]);
     });
 
     it("still surfaces inline fields when the malformed frontmatter uses CRLF", async () => {
         const parser = createParser(null, "---\r\nstatus: : :\r\n---\r\nfoo:: bar\r\n");
-        await expect(parser.parseInlineFields(new TFile("malformed-crlf.md"))).resolves.toEqual([
+        await expect(parser.parseInlineFields(createTFile("malformed-crlf.md"))).resolves.toEqual([
             {key: "foo", content: "bar", type: MetaType.Dataview},
         ]);
     });
@@ -300,7 +300,7 @@ describe("MetaEditParser frontmatter parsing", () => {
 
 describe("MetaEditParser inline field parsing", () => {
     it("parses exact inline keys that contain regex metacharacters", async () => {
-        const file = new TFile("inline.md");
+        const file = createTFile("inline.md");
         const parser = createParser(
             {},
             "progress (%):: old\n[[my-key:: value]]\n(status:: complete)\n",

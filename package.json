@@ -10,7 +10,8 @@
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "pnpm run typecheck && node esbuild.config.mjs production",
-		"typecheck": "tsc --noEmit -p tsconfig.src.json && svelte-check --tsconfig ./tsconfig.src.json --threshold error",
+		"typecheck": "tsc --noEmit -p tsconfig.src.json && svelte-check --tsconfig ./tsconfig.src.json --threshold error && pnpm run typecheck:tests",
+		"typecheck:tests": "tsc --noEmit -p tsconfig.json",
 		"lint": "eslint . --max-warnings=0",
 		"test": "vitest run --passWithNoTests",
 		"test:watch": "vitest",

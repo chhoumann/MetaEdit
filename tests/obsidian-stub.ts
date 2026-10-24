@@ -1,3 +1,5 @@
+import type * as obsidian from "obsidian";
+
 export class TFile {
   path: string;
   name: string;
@@ -18,6 +20,12 @@ export class TFile {
       this.extension = "";
     }
   }
+}
+
+// Typechecking resolves "obsidian" to the real API, which has no public TFile
+// constructor, so specs build files through this instead of `new TFile(path)`.
+export function createTFile(path: string): obsidian.TFile {
+  return new TFile(path) as unknown as obsidian.TFile;
 }
 
 export class Notice {

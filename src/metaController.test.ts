@@ -1,5 +1,6 @@
 import {beforeEach, describe, expect, it, vi} from "vitest";
-import {TFile} from "obsidian";
+import {type TFile} from "obsidian";
+import {createTFile} from "../tests/obsidian-stub";
 
 // The controller transitively imports Svelte-backed modals, which the node test
 // environment cannot transform. The append writer never touches them, so replace the
@@ -32,7 +33,7 @@ const setup = (initial: string) => {
         },
     };
     const controller = new MetaController(app as never, {} as never);
-    return {controller, file: new TFile("note.md"), store, app};
+    return {controller, file: createTFile("note.md"), store, app};
 };
 
 const callUpdateMultiple = (controller: MetaController, props: Property[], file: TFile) =>
@@ -362,7 +363,7 @@ describe("MetaController native YAML property editing", () => {
             },
         };
         const controller = new MetaController(app as never, plugin as never);
-        return {controller, file: new TFile("note.md"), fm, processFrontMatter, setType};
+        return {controller, file: createTFile("note.md"), fm, processFrontMatter, setType};
     };
 
     beforeEach(() => {
@@ -562,7 +563,7 @@ describe("MetaController reserved-key guard", () => {
             },
         };
         const controller = new MetaController(app as never, plugin as never);
-        return {controller, file: new TFile("note.md"), fm, processFrontMatter, vaultModify};
+        return {controller, file: createTFile("note.md"), fm, processFrontMatter, vaultModify};
     };
 
     beforeEach(() => {
@@ -676,7 +677,7 @@ describe("MetaController.createNativeYamlProperty (fluid creation write path)", 
         };
         const plugin = {settings: {EditMode: {mode, properties: [] as string[]}, AutoProperties: {enabled: false, properties: []}}};
         const controller = new MetaController(app as never, plugin as never);
-        return {controller, file: new TFile("note.md"), fm, processFrontMatter};
+        return {controller, file: createTFile("note.md"), fm, processFrontMatter};
     };
 
     beforeEach(() => {

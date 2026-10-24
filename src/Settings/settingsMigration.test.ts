@@ -36,7 +36,7 @@ describe("mergeSettings", () => {
             SomeFutureSection: {foo: 1},
         };
 
-        const merged = mergeSettings(loaded) as typeof loaded & Record<string, unknown>;
+        const merged: Record<string, unknown> = {...mergeSettings(loaded)};
         expect(merged.SomeFutureSection).toEqual({foo: 1});
     });
 
