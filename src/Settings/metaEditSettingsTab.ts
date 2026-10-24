@@ -33,10 +33,6 @@ export class MetaEditSettingsTab extends PluginSettingTab {
         this.destroySvelteElements();
         containerEl.empty();
 
-        new Setting(containerEl)
-            .setName("MetaEdit Settings")
-            .setHeading();
-
         this.addProgressPropertiesSetting(containerEl);
         this.addAutoPropertiesSetting(containerEl);
         this.addEditMetaMenuSetting(containerEl);

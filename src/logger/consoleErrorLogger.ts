@@ -23,7 +23,7 @@ export class ConsoleErrorLogger extends MetaEditLogger {
         const log = this.getMetaEditError(logMsg, ErrorLevel.Log);
         this.addMessageToErrorLog(log);
 
-        console.log(this.formatOutputString(log));
+        console.debug(this.formatOutputString(log));
     }
 
     private addMessageToErrorLog(error: MetaEditError): void {
