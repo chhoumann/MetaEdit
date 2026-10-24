@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # GitHub Actions across all workflows. Keeps the SHA pins from rotting — the
+  # GitHub Actions across all workflows. Keeps the SHA pins from rotting - the
   # Node 20 deprecation slipped into many repos precisely because nothing watched
   # these.
   - package-ecosystem: github-actions
