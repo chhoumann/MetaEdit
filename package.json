@@ -14,7 +14,6 @@
 		"lint": "eslint . --max-warnings=0",
 		"test": "vitest run --passWithNoTests",
 		"test:watch": "vitest",
-		"test:coverage": "vitest run --coverage",
 		"test:e2e": "pnpm run build && vitest run --config vitest.e2e.config.mts",
 		"obsidian:e2e": "obsidian-e2e run",
 		"provision:e2e-vault": "obsidian-e2e provision",
@@ -30,7 +29,6 @@
 	},
 	"devDependencies": {
 		"@types/node": "26.6.2",
-		"@vitest/coverage-v8": "4.1.11",
 		"esbuild": "0.28.2",
 		"eslint": "^10.13.0",
 		"eslint-plugin-svelte": "^3.23.1",
@@ -41,7 +39,7 @@
 		"svelte-check": "^4.7.6",
 		"typescript": "^6.0.3",
 		"typescript-eslint": "^8.71.2",
-		"vite": "^8.3.3",
-		"vitest": "^4.1.11"
+		"vite": "^8.3.4",
+		"vitest": "^5.0.5"
 	}
 }

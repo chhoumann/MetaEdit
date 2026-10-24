@@ -70,7 +70,6 @@ export default defineConfig(
 			"node_modules/**",
 			"main.js",
 			"**/*.js.map",
-			"coverage/**",
 			".obsidian-e2e-vaults/**",
 			".obsidian-e2e-artifacts/**",
 			"esbuild.config.mjs",

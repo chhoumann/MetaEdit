@@ -14,7 +14,6 @@ main.js
 
 # obsidian
 data.json
-/coverage/
 
 # Obsidian E2E harness (isolated per-worktree vaults, instances, failure artifacts)
 .obsidian-e2e-vaults
