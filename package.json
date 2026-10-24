@@ -34,7 +34,7 @@
 		"eslint-plugin-svelte": "^3.23.1",
 		"globals": "^17.13.0",
 		"obsidian": "1.13.1",
-		"obsidian-e2e": "^0.10.0",
+		"obsidian-e2e": "^0.14.0",
 		"svelte": "^5.57.1",
 		"svelte-check": "^4.7.6",
 		"typescript": "^6.0.3",
