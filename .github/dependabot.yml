@@ -13,6 +13,8 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+        # Toolkit bumps change release behavior, so they get their own PR.
+        exclude-patterns: ["chhoumann/obsidian-plugin-workflows*"]
     commit-message:
       prefix: ci
     labels:
