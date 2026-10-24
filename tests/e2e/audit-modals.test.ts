@@ -214,7 +214,7 @@ describe("MetaEdit modal + kanban flows", () => {
 	test("KAN-02/KAN-03: configure a board mapping and display its lane headings", async () => {
 		const { obsidian, sandbox } = getContext();
 		const boardPath = sandbox.path("board.md");
-		const result = await evalJsonAsync<{ boardsListed: boolean; lanes: string; mapped: boolean }>(
+		const result = await evalJsonAsync<{ boardsListed: boolean; lanes: string; mapped: boolean; property: string; persistedProperty: string }>(
 			obsidian,
 			`
 			(async () => {
@@ -246,8 +246,14 @@ describe("MetaEdit modal + kanban flows", () => {
 					const mapped = plugin.settings.KanbanHelper.boards.some(b => b.boardName === "board");
 					// The lane headings render as the row description.
 					const lanes = row.querySelector(".setting-item-description").textContent;
+					const input = row.querySelector("input[type=text]");
+					input.value = "status";
+					input.dispatchEvent(new Event("input", { bubbles: true }));
+					await sleep(300);
+					const property = plugin.settings.KanbanHelper.boards.find(b => b.boardName === "board")?.property;
+					const persistedProperty = (await plugin.loadData()).KanbanHelper.boards.find(b => b.boardName === "board")?.property;
 					app.setting.close();
-					return { boardsListed, lanes, mapped };
+					return { boardsListed, lanes, mapped, property, persistedProperty };
 				} finally {
 					plugin.settings.KanbanHelper.boards = prevBoards;
 					plugin.settings.KanbanHelper.enabled = false;
@@ -258,6 +264,8 @@ describe("MetaEdit modal + kanban flows", () => {
 		);
 		expect(result.boardsListed).toBe(true);
 		expect(result.mapped).toBe(true);
+		expect(result.property).toBe("status");
+		expect(result.persistedProperty).toBe("status");
 		// KAN-03: lane headings are displayed (null-safe getFileCache).
 		expect(result.lanes).toContain("To Do");
 		expect(result.lanes).toContain("Done");

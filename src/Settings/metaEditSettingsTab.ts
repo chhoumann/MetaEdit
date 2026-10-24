@@ -72,6 +72,15 @@ const progressTypeLabels: Record<ProgressPropertyOptions, string> = {
     [ProgressPropertyOptions.TaskIncomplete]: "Incomplete tasks",
 };
 
+/**
+ * Rows are deleted by the entry they rendered, not by index: two quick deletes
+ * can both be queued before the first one saves and shifts the indexes.
+ */
+function removeEntry<T>(entries: T[], entry: T | undefined): void {
+    const index = entry === undefined ? -1 : entries.indexOf(entry);
+    if (index !== -1) entries.splice(index, 1);
+}
+
 /** A settings sub-page whose whole body is one Svelte editor. */
 class SvelteSettingPage extends SettingPage {
     private mounted: MountedSvelteComponent | null = null;
@@ -135,9 +144,12 @@ export class MetaEditSettingsTab extends PluginSettingTab {
         if (!isControlKey(key)) return;
         const control: Control = controls[key];
 
-        if (await this.persist(settings => control.set(settings, value))) {
-            control.apply?.(this.plugin);
-        }
+        const saved = await this.persist(settings => {
+            const previous = control.get(settings);
+            control.set(settings, value);
+            return () => control.set(settings, previous);
+        });
+        if (saved) control.apply?.(this.plugin);
         this.refreshDomState();
     }
 
@@ -254,7 +266,7 @@ export class MetaEditSettingsTab extends PluginSettingTab {
     }
 
     private propertyNameList(list: (settings: MetaEditSettings) => string[]): SettingDefinitionList<ControlKey> {
-        const names = list(this.plugin.settings);
+        const names = [...list(this.plugin.settings)];
 
         return {
             type: "list",
@@ -264,18 +276,17 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                 action: async () => {
                     const name = (await GenericPrompt.Prompt(this.app, "Property name"))?.trim();
                     if (!name || names.includes(name)) return;
-                    await this.persist(settings => list(settings).push(name));
+                    await this.editList(list, entries => entries.push(name));
                 },
             },
-            onDelete: index => void this.persist(settings => list(settings).splice(index, 1)),
+            onDelete: index => void this.editList(list, entries => removeEntry(entries, names[index])),
             items: names.map(name => ({name})),
         };
     }
 
     private progressPropertyList(): SettingDefinitionList<ControlKey> {
-        const properties = this.plugin.settings.ProgressProperties.properties;
-        const find = (settings: MetaEditSettings, name: string) =>
-            settings.ProgressProperties.properties.find(property => property.name === name);
+        const list = (settings: MetaEditSettings) => settings.ProgressProperties.properties;
+        const properties = [...list(this.plugin.settings)];
 
         return {
             type: "list",
@@ -285,22 +296,20 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                 action: async () => {
                     const name = (await GenericPrompt.Prompt(this.app, "Property name"))?.trim();
                     if (!name || properties.some(property => property.name === name)) return;
-                    await this.persist(settings => settings.ProgressProperties.properties.push({
-                        name,
-                        type: ProgressPropertyOptions.TaskTotal,
-                    }));
+                    await this.editList(list, entries => entries.push({name, type: ProgressPropertyOptions.TaskTotal}));
                 },
             },
-            onDelete: index => void this.persist(settings => settings.ProgressProperties.properties.splice(index, 1)),
+            onDelete: index => void this.editList(list, entries => removeEntry(entries, properties[index])),
             items: properties.map(property => ({
                 name: property.name,
                 render: setting => {
                     setting.addDropdown(dropdown => dropdown
                         .addOptions(progressTypeLabels)
                         .setValue(property.type)
-                        .onChange(value => void this.persist(settings => {
-                            const stored = find(settings, property.name);
-                            if (stored) stored.type = value as ProgressPropertyOptions;
+                        .onChange(value => void this.persist(() => {
+                            const previous = property.type;
+                            property.type = value as ProgressPropertyOptions;
+                            return () => property.type = previous;
                         })));
                 },
             })),
@@ -308,9 +317,8 @@ export class MetaEditSettingsTab extends PluginSettingTab {
     }
 
     private kanbanBoardList(): SettingDefinitionList<ControlKey> {
-        const boards = this.plugin.settings.KanbanHelper.boards;
-        const find = (settings: MetaEditSettings, boardName: string) =>
-            settings.KanbanHelper.boards.find(board => board.boardName === boardName);
+        const list = (settings: MetaEditSettings) => settings.KanbanHelper.boards;
+        const boards = [...list(this.plugin.settings)];
 
         return {
             type: "list",
@@ -327,10 +335,10 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                     }
                     const boardName = await GenericSuggester.Suggest(this.app, candidates, candidates);
                     if (!boardName) return;
-                    await this.persist(settings => settings.KanbanHelper.boards.push({boardName, property: ""}));
+                    await this.editList(list, entries => entries.push({boardName, property: ""}));
                 },
             },
-            onDelete: index => void this.persist(settings => settings.KanbanHelper.boards.splice(index, 1)),
+            onDelete: index => void this.editList(list, entries => removeEntry(entries, boards[index])),
             items: boards.map(board => ({
                 name: board.boardName,
                 render: setting => {
@@ -340,9 +348,10 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                     setting.addText(text => text
                         .setPlaceholder("Property in linked notes")
                         .setValue(board.property)
-                        .onChange(value => void this.persist(settings => {
-                            const stored = find(settings, board.boardName);
-                            if (stored) stored.property = value.trim();
+                        .onChange(value => void this.persist(() => {
+                            const previous = board.property;
+                            board.property = value.trim();
+                            return () => board.property = previous;
                         })));
                 },
             })),
@@ -358,18 +367,30 @@ export class MetaEditSettingsTab extends PluginSettingTab {
         return lanes.length > 0 ? `Lanes: ${lanes.join(", ")}` : "No lanes yet.";
     }
 
-    /** Save a settings change. Returns whether it reached disk. */
-    private async persist(mutate: (settings: MetaEditSettings) => void): Promise<boolean> {
+    /**
+     * Save a settings change through the serialized writer. `mutate` returns how to
+     * undo it; a failed save undoes it and re-renders, so memory and the tab match
+     * disk. Returns whether the change reached disk.
+     */
+    private async persist(mutate: (settings: MetaEditSettings) => () => void): Promise<boolean> {
         try {
-            await this.plugin.updateSettings(() => {
-                mutate(this.plugin.settings);
-            });
+            await this.plugin.updateSettings(() => mutate(this.plugin.settings));
             return true;
         } catch (error) {
             const reason = error instanceof Error ? error.message : String(error);
             new Notice(`MetaEdit could not save the setting: ${reason}`);
+            this.update();
             return false;
         }
+    }
+
+    private editList<T>(list: (settings: MetaEditSettings) => T[], change: (entries: T[]) => void): Promise<boolean> {
+        return this.persist(settings => {
+            const entries = list(settings);
+            const previous = [...entries];
+            change(entries);
+            return () => entries.splice(0, entries.length, ...previous);
+        });
     }
 
     private async saveAutoPropertiesOperation(operation: AutoPropertySettingsOperation) {

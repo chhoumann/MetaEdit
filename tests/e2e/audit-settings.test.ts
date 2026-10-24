@@ -177,9 +177,9 @@ describe("MetaEdit settings tab", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
-	test("SET-07: Hidden properties edits IgnoredProperties.properties and ignores duplicates", async () => {
+	test("SET-07: Hidden properties edits IgnoredProperties.properties, ignores duplicates, and deletes the clicked rows", async () => {
 		const { obsidian } = getContext();
-		const result = await evalJsonAsync<{ afterAdds: string[]; rows: string[] }>(
+		const result = await evalJsonAsync<{ afterAdds: string[]; rows: string[]; afterDeletes: string[]; persisted: string[] }>(
 			obsidian,
 			`
 			(async () => {
@@ -191,7 +191,7 @@ describe("MetaEdit settings tab", () => {
 				try {
 					const root = await openTab();
 					await openPage(root, "Hidden properties");
-					for (const name of ["secret", "  secret  ", "draft"]) {
+					for (const name of ["secret", "  secret  ", "draft", "keep"]) {
 						document.querySelector(".setting-page-content [aria-label='Add property']").click();
 						await answerPrompt(name);
 					}
@@ -199,8 +199,16 @@ describe("MetaEdit settings tab", () => {
 						.map((el) => el.textContent.trim())
 						.filter(Boolean);
 					const afterAdds = plugin.settings.IgnoredProperties.properties.slice();
+
+					// Both deletes are queued before the first one saves and re-renders.
+					const page = document.querySelector(".setting-page-content");
+					const deleteButtons = ["secret", "draft"].map((name) => itemByName(page, name).querySelector("[aria-label='Delete']"));
+					deleteButtons.forEach((button) => button.click());
+					await sleep(500);
+					const afterDeletes = plugin.settings.IgnoredProperties.properties.slice();
+					const persisted = (await plugin.loadData()).IgnoredProperties.properties;
 					app.setting.close();
-					return { afterAdds, rows };
+					return { afterAdds, rows, afterDeletes, persisted };
 				} finally {
 					plugin.settings.IgnoredProperties = snapshot;
 					await plugin.saveSettings();
@@ -208,8 +216,10 @@ describe("MetaEdit settings tab", () => {
 			})()
 		`,
 		);
-		expect(result.afterAdds).toEqual(["secret", "draft"]);
-		expect(result.rows).toEqual(["secret", "draft"]);
+		expect(result.afterAdds).toEqual(["secret", "draft", "keep"]);
+		expect(result.rows).toEqual(["secret", "draft", "keep"]);
+		expect(result.afterDeletes).toEqual(["keep"]);
+		expect(result.persisted).toEqual(["keep"]);
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
@@ -309,10 +319,10 @@ describe("MetaEdit settings tab", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
-	test("MENU-04: UIElements toggle registers and unregisters the Edit Meta file menu", async () => {
+	test("MENU-04: the Right-click menu toggle registers and unregisters the Edit Meta file menu", async () => {
 		const { obsidian, sandbox } = getContext();
 		const notePath = sandbox.path("menu-toggle.md");
-		const result = await evalJsonAsync<{ whenOn: boolean; whenOff: boolean }>(
+		const result = await evalJsonAsync<{ whenOn: boolean; whenOff: boolean; storedOff: boolean; whenBackOn: boolean }>(
 			obsidian,
 			`
 			(async () => {
@@ -339,26 +349,29 @@ describe("MetaEdit settings tab", () => {
 					return sink.some((t) => /Edit Meta/.test(t));
 				};
 
-				// Ensure enabled.
-				if (!plugin.settings.UIElements.enabled) { plugin.linkMenu.registerEvent(); plugin.settings.UIElements.enabled = true; }
-				await sleep(100);
+				const root = await openTab();
+				const toggle = async () => {
+					itemByName(root, "Right-click menu").querySelector(".checkbox-container").click();
+					await sleep(250);
+				};
+				if (!plugin.settings.UIElements.enabled) await toggle();
 				const whenOn = menuHasEditMeta();
 
-				// Disable via the real handler path.
-				plugin.linkMenu.unregisterEvent();
-				plugin.settings.UIElements.enabled = false;
-				await sleep(100);
+				await toggle();
 				const whenOff = menuHasEditMeta();
+				const storedOff = plugin.settings.UIElements.enabled;
 
-				// Restore enabled for other tests.
-				plugin.linkMenu.registerEvent();
-				plugin.settings.UIElements.enabled = true;
-				return { whenOn, whenOff };
+				await toggle();
+				const whenBackOn = menuHasEditMeta();
+				app.setting.close();
+				return { whenOn, whenOff, storedOff, whenBackOn };
 			})()
 		`,
 		);
 		expect(result.whenOn).toBe(true);
 		expect(result.whenOff).toBe(false);
+		expect(result.storedOff).toBe(false);
+		expect(result.whenBackOn).toBe(true);
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
