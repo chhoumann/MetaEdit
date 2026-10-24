@@ -1,9 +1,9 @@
 import {builtinModules} from "node:module";
 import {readFile} from "node:fs/promises";
-import {dirname, join, sep} from "node:path";
+import {dirname, join, relative, sep} from "node:path";
 import {fileURLToPath} from "node:url";
 import esbuild from "esbuild";
-import esbuildSvelte from "esbuild-svelte";
+import {compile} from "svelte/compiler";
 
 const isProduction = process.argv.includes("production");
 const projectSrcDir = `${join(dirname(fileURLToPath(import.meta.url)), "src")}${sep}`;
@@ -54,6 +54,39 @@ function stripDevCommandBlocks() {
 	};
 }
 
+function toEsbuildMessage({message, start, end}, file, source) {
+	if (!start || !end) return {text: message};
+	const lineText = source.split(/\r\n|\r|\n/)[start.line - 1];
+	const lineEnd = start.line === end.line ? end.column : lineText.length;
+	return {
+		text: message,
+		location: {file, line: start.line, column: start.column, length: lineEnd - start.column, lineText},
+	};
+}
+
+function compileSvelte() {
+	return {
+		name: "compile-svelte",
+		setup(build) {
+			build.onLoad({filter: /\.svelte$/}, async (args) => {
+				const source = await readFile(args.path, "utf8");
+				try {
+					const {js, warnings} = compile(source, {
+						filename: relative(process.cwd(), args.path),
+						css: "injected",
+					});
+					return {
+						contents: `${js.code}\n//# sourceMappingURL=${js.map.toUrl()}`,
+						warnings: warnings.map((warning) => toEsbuildMessage(warning, args.path, source)),
+					};
+				} catch (error) {
+					return {errors: [toEsbuildMessage(error, args.path, source)]};
+				}
+			});
+		},
+	};
+}
+
 const options = {
 	entryPoints: ["src/main.ts"],
 	bundle: true,
@@ -72,9 +105,7 @@ const options = {
 	logLevel: "info",
 	plugins: [
 		...(isProduction ? [stripDevCommandBlocks()] : []),
-		esbuildSvelte({
-			compilerOptions: {css: "injected"},
-		}),
+		compileSvelte(),
 	],
 };
 
