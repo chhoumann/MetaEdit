@@ -68,6 +68,9 @@ function compileSvelte() {
 	return {
 		name: "compile-svelte",
 		setup(build) {
+			build.onLoad({filter: /\.svelte\.[cm]?[jt]s$/}, (args) => ({
+				errors: [{text: `Svelte rune modules (.svelte.js/.svelte.ts) are not supported by this build: ${args.path}`}],
+			}));
 			build.onLoad({filter: /\.svelte$/}, async (args) => {
 				const source = await readFile(args.path, "utf8");
 				try {

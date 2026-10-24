@@ -10,5 +10,7 @@ trustPolicy: no-downgrade
 # example semver 6.3.1, chokidar 4.0.3) predate the window.
 trustPolicyIgnoreAfter: 525600
 
+# esbuild ships its binary as an optional dependency, so its install script has
+# nothing to do.
 allowBuilds:
-  esbuild: true
+  esbuild: false
