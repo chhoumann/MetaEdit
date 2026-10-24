@@ -13,8 +13,11 @@ updates:
     groups:
       actions:
         patterns: ["*"]
-        # Toolkit bumps change release behavior, so they get their own PR.
         exclude-patterns: ["chhoumann/obsidian-plugin-workflows*"]
+      # Toolkit bumps change release behavior, so they get their own PR. One
+      # group keeps the three release stubs on the same toolkit commit.
+      release-toolkit:
+        patterns: ["chhoumann/obsidian-plugin-workflows*"]
     commit-message:
       prefix: ci
     labels:
