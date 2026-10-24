@@ -1,6 +1,7 @@
 import {afterEach, beforeEach, describe, it, expect, vi} from "vitest";
 import {KanbanHelper} from "../src/automators/onFileModifyAutomators/kanbanHelper";
-import {Notice, TFile} from "obsidian";
+import {type TFile} from "obsidian";
+import {createTFile, Notice} from "../tests/obsidian-stub";
 import {log} from "../src/logger/logManager";
 import {GuiLogger} from "../src/logger/guiLogger";
 
@@ -9,7 +10,7 @@ type MockFn = ReturnType<typeof vi.fn>;
 vi.spyOn(console, "debug").mockImplementation(() => {});
 
 const resetRegisteredLoggers = () => {
-  (log.constructor as {loggers: unknown[]}).loggers = [];
+  (log.constructor as unknown as {loggers: unknown[]}).loggers = [];
 };
 
 beforeEach(() => {
@@ -121,11 +122,11 @@ function setupBoard(board: string, notes: Record<string, NoteSpec>, boardName = 
   const app = createApp();
   const plugin = createPlugin(app, [{boardName, property: "status"}]);
   const helper = new KanbanHelper(plugin as any);
-  const boardFile = new TFile(`${boardName}.md`);
+  const boardFile = createTFile(`${boardName}.md`);
 
   const noteFiles: Record<string, TFile> = {};
   for (const name of Object.keys(notes)) {
-    noteFiles[name] = new TFile(notes[name].path ?? `${name}.md`);
+    noteFiles[name] = createTFile(notes[name].path ?? `${name}.md`);
   }
 
   app.metadataCache.getFileCache.mockReturnValue(buildBoardCache(board));
@@ -160,7 +161,7 @@ describe("KanbanHelper link resolution", () => {
     const plugin = createPlugin(app);
     const helper = new KanbanHelper(plugin as any);
 
-    const targetFile = new TFile("Folder/My Note.md");
+    const targetFile = createTFile("Folder/My Note.md");
     app.metadataCache.getFirstLinkpathDest.mockImplementation((linkpath: string) => {
       if (linkpath === "Folder/My Note") {
         return targetFile;
@@ -183,7 +184,7 @@ describe("KanbanHelper link resolution", () => {
 
     // Path resolution is only used for links that already name a folder path: such a
     // path identifies exactly one file, so the direct lookup is unambiguous.
-    const targetFile = new TFile("Folder/Note.md");
+    const targetFile = createTFile("Folder/Note.md");
     app.metadataCache.getFirstLinkpathDest.mockReturnValue(null);
     app.vault.getAbstractFileByPath.mockImplementation((path: string) => {
       return path === "Folder/Note.md" ? targetFile : null;
@@ -206,8 +207,8 @@ describe("KanbanHelper link resolution", () => {
     const plugin = createPlugin(app);
     const helper = new KanbanHelper(plugin as any);
 
-    const rootNote = new TFile("Note.md");
-    const folderNote = new TFile("Areas/Note.md");
+    const rootNote = createTFile("Note.md");
+    const folderNote = createTFile("Areas/Note.md");
     app.metadataCache.getFirstLinkpathDest.mockReturnValue(null);
     // The real vault WOULD return the root file here; the fix must not act on it.
     app.vault.getAbstractFileByPath.mockImplementation((path: string) =>
@@ -226,7 +227,7 @@ describe("KanbanHelper link resolution", () => {
     const plugin = createPlugin(app);
     const helper = new KanbanHelper(plugin as any);
 
-    const targetFile = new TFile("Folder/Note.md");
+    const targetFile = createTFile("Folder/Note.md");
     app.metadataCache.getFirstLinkpathDest.mockReturnValue(null);
     app.vault.getAbstractFileByPath.mockReturnValue(null);
     app.vault.getMarkdownFiles.mockReturnValue([targetFile]);
@@ -242,8 +243,8 @@ describe("KanbanHelper link resolution", () => {
     const plugin = createPlugin(app);
     const helper = new KanbanHelper(plugin as any);
 
-    const noteA = new TFile("Areas/Note.md");
-    const noteB = new TFile("Archive/Note.md");
+    const noteA = createTFile("Areas/Note.md");
+    const noteB = createTFile("Archive/Note.md");
     app.metadataCache.getFirstLinkpathDest.mockReturnValue(null);
     app.vault.getAbstractFileByPath.mockReturnValue(null);
     app.vault.getMarkdownFiles.mockReturnValue([noteA, noteB]);
@@ -260,7 +261,7 @@ describe("KanbanHelper link resolution", () => {
     const plugin = createPlugin(app);
     const helper = new KanbanHelper(plugin as any);
 
-    const unrelatedFile = new TFile("Other/Note.md");
+    const unrelatedFile = createTFile("Other/Note.md");
     app.metadataCache.getFirstLinkpathDest.mockReturnValue(null);
     app.vault.getAbstractFileByPath.mockReturnValue(null);
     app.vault.getMarkdownFiles.mockReturnValue([unrelatedFile]);
@@ -501,8 +502,8 @@ describe("KanbanHelper updates linked file properties", () => {
     const app = createApp();
     const plugin = createPlugin(app, [{boardName: "Board", property: "status"}]);
     const helper = new KanbanHelper(plugin as any);
-    const boardFile = new TFile("Board.md");
-    const noteFile = new TFile("Note.md");
+    const boardFile = createTFile("Board.md");
+    const noteFile = createTFile("Note.md");
 
     const staleLink = {link: "Note", original: "[[Note]]", position: {start: {line: 2, col: 6}}};
     app.metadataCache.getFileCache.mockReturnValue({
@@ -528,9 +529,9 @@ describe("KanbanHelper updates linked file properties", () => {
     const app = createApp();
     const plugin = createPlugin(app, [{boardName: "Board", property: "status"}]);
     const helper = new KanbanHelper(plugin as any);
-    const boardFile = new TFile("Board.md");
-    const rootTask = new TFile("Task.md");
-    const archiveTask = new TFile("Archive/Task.md");
+    const boardFile = createTFile("Board.md");
+    const rootTask = createTFile("Task.md");
+    const archiveTask = createTFile("Archive/Task.md");
 
     const board = "## Doing\n\n- [ ] [[Task]]\n";
     app.metadataCache.getFileCache.mockReturnValue(buildBoardCache(board));
@@ -552,8 +553,8 @@ describe("KanbanHelper updates linked file properties", () => {
     const app = createApp();
     const plugin = createPlugin(app, [{boardName: "Board", property: "status"}]);
     const helper = new KanbanHelper(plugin as any);
-    const boardFile = new TFile("Board.md");
-    const note = new TFile("Areas/Task.md");
+    const boardFile = createTFile("Board.md");
+    const note = createTFile("Areas/Task.md");
 
     const board = "## Doing\n\n- [ ] [[Task]]\n";
     app.metadataCache.getFileCache.mockReturnValue(buildBoardCache(board));
@@ -615,7 +616,7 @@ describe("KanbanHelper updates linked file properties", () => {
   it("does nothing when the modified file is not a configured board", async () => {
     const board = "## Doing\n\n- [ ] [[Note]]\n";
     const {helper, plugin} = setupBoard(board, {Note: {status: "Backlog"}});
-    const otherFile = new TFile("Not A Board.md");
+    const otherFile = createTFile("Not A Board.md");
 
     await helper.onFileModify(otherFile);
 

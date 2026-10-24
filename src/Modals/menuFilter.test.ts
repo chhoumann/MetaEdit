@@ -116,7 +116,7 @@ describe("canStructureEditProperty", () => {
     });
 
     it("withholds structure edits on nested/virtual YAML rows", () => {
-        expect(canStructureEditProperty({key: "a.b", content: "v", type: MetaType.YAML, isNested: true})).toBe(false);
-        expect(canStructureEditProperty({key: "a.b", content: "v", type: MetaType.YAML, isVirtual: true})).toBe(false);
+        expect(canStructureEditProperty({type: MetaType.YAML, isNested: true})).toBe(false);
+        expect(canStructureEditProperty({type: MetaType.YAML, isVirtual: true})).toBe(false);
     });
 });
