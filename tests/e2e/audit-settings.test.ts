@@ -223,6 +223,51 @@ describe("MetaEdit settings tab", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
+	test("SET-08: the Progress properties and Kanban board helper toggles attach and detach their automators", async () => {
+		const { obsidian } = getContext();
+		const result = await evalJsonAsync<{ on: string[]; off: string[] }>(
+			obsidian,
+			`
+			(async () => {
+				${HELPERS}
+				const plugin = app.plugins.plugins.${PLUGIN_ID};
+				const snapshot = {
+					progress: plugin.settings.ProgressProperties.enabled,
+					kanban: plugin.settings.KanbanHelper.enabled,
+				};
+				plugin.settings.ProgressProperties.enabled = false;
+				plugin.settings.KanbanHelper.enabled = false;
+				plugin.toggleAutomators();
+				await plugin.saveSettings();
+				const attached = () => plugin.automatorManager.automators.map((a) => a.type).sort();
+				try {
+					const root = await openTab();
+					const toggle = async (name) => {
+						itemByName(root, name).querySelector(".checkbox-container").click();
+						await sleep(250);
+					};
+					await toggle("Progress properties");
+					await toggle("Kanban board helper");
+					const on = attached();
+					await toggle("Progress properties");
+					await toggle("Kanban board helper");
+					const off = attached();
+					app.setting.close();
+					return { on, off };
+				} finally {
+					plugin.settings.ProgressProperties.enabled = snapshot.progress;
+					plugin.settings.KanbanHelper.enabled = snapshot.kanban;
+					plugin.toggleAutomators();
+					await plugin.saveSettings();
+				}
+			})()
+		`,
+		);
+		expect(result.on).toEqual(["KanbanHelper", "ProgressProperties"]);
+		expect(result.off).toEqual([]);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
 	test("AUTO-02: add, name, and remove an Auto Property through the settings panel", async () => {
 		const { obsidian } = getContext();
 		const result = await evalJsonAsync<{ afterAdd: string[]; afterRemove: string[] }>(
