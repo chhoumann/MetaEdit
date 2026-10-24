@@ -258,11 +258,11 @@ export class NativeWidgetHost {
 		// carry Obsidian's own link autocomplete (verified in #168).
 		if (type !== "aliases") return;
 
-		const inputEl = this.hostEl.querySelector<HTMLElement>(".multi-select-input[contenteditable='true']");
+		const inputEl = this.hostEl.querySelector<HTMLDivElement>(".multi-select-input[contenteditable='true']");
 		if (!inputEl) return;
 
 		const suggester = new NativeWikilinkSuggester(this.app, inputEl, this.sourcePath);
-		this.perMountCleanup.push(() => suggester.destroy());
+		this.perMountCleanup.push(() => suggester.close());
 	}
 
 	private trackDomActivity(): void {

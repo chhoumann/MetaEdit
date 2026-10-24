@@ -9,30 +9,20 @@ type LinkSuggestion = {
 const WIKILINK_QUERY = /\[\[([^\]]*)$/;
 
 export class NativeWikilinkSuggester extends AbstractInputSuggest<LinkSuggestion> {
-	private readonly mirrorEl: HTMLInputElement;
-	private readonly onInput = () => this.refreshFromContent();
-
 	constructor(
 		app: App,
-		private readonly inputEl: HTMLElement,
+		private readonly inputEl: HTMLDivElement,
 		private readonly sourcePath: string,
 	) {
-		const mirrorHost = inputEl.parentElement ?? inputEl;
-		const mirrorEl = mirrorHost.createEl("input", {
-			cls: "metaedit-native-wikilink-suggest-mirror",
-			type: "text",
-		});
-		super(app, mirrorEl);
-		this.mirrorEl = mirrorEl;
-		this.mirrorEl.tabIndex = -1;
-		this.mirrorEl.setAttribute("aria-hidden", "true");
-		this.inputEl.addEventListener("input", this.onInput);
-		this.inputEl.addEventListener("keyup", this.onInput);
+		super(app, inputEl);
 		this.onSelect((suggestion) => this.acceptSuggestion(suggestion));
 	}
 
-	protected getSuggestions(query: string): LinkSuggestion[] {
-		const normalized = query.toLowerCase();
+	protected getSuggestions(text: string): LinkSuggestion[] {
+		const match = text.match(WIKILINK_QUERY);
+		if (!match) return [];
+
+		const normalized = (match[1] ?? "").toLowerCase();
 		return this.readLinkSuggestions()
 			.filter(suggestion => {
 				const path = suggestion.path ?? suggestion.file?.basename ?? "";
@@ -52,32 +42,6 @@ export class NativeWikilinkSuggester extends AbstractInputSuggest<LinkSuggestion
 		this.acceptSuggestion(value);
 	}
 
-	destroy(): void {
-		this.inputEl.removeEventListener("input", this.onInput);
-		this.inputEl.removeEventListener("keyup", this.onInput);
-		this.close();
-		this.mirrorEl.remove();
-	}
-
-	private refreshFromContent(): void {
-		const match = this.currentQuery();
-		if (!match) {
-			this.close();
-			return;
-		}
-
-		this.mirrorEl.value = match.query;
-		this.mirrorEl.focus();
-		this.mirrorEl.trigger("input");
-	}
-
-	private currentQuery(): {query: string} | null {
-		const text = this.inputEl.textContent ?? "";
-		const match = text.match(WIKILINK_QUERY);
-		if (!match) return null;
-		return {query: match[1] ?? ""};
-	}
-
 	private acceptSuggestion(suggestion: LinkSuggestion): void {
 		if (!suggestion.file) return;
 		const link = this.app.fileManager.generateMarkdownLink(
@@ -86,7 +50,7 @@ export class NativeWikilinkSuggester extends AbstractInputSuggest<LinkSuggestion
 			"",
 			suggestion.alias,
 		);
-		this.inputEl.textContent = link;
+		this.setValue(link);
 		this.inputEl.focus();
 		this.inputEl.trigger("input");
 		this.close();

@@ -4,6 +4,7 @@ import {dirname, join, relative, sep} from "node:path";
 import {fileURLToPath} from "node:url";
 import esbuild from "esbuild";
 import {compile} from "svelte/compiler";
+import {rejectSvelteRuneModules} from "./scripts/svelte-rune-guard.mjs";
 
 const isProduction = process.argv.includes("production");
 const projectSrcDir = `${join(dirname(fileURLToPath(import.meta.url)), "src")}${sep}`;
@@ -64,18 +65,6 @@ function toEsbuildMessage({message, start, end}, file, source) {
 	};
 }
 
-// Registered first so no other loader can hand esbuild a rune module's source.
-function rejectSvelteRuneModules() {
-	return {
-		name: "reject-svelte-rune-modules",
-		setup(build) {
-			build.onLoad({filter: /\.svelte\.[cm]?[jt]s$/}, (args) => ({
-				errors: [{text: `Svelte rune modules (.svelte.js/.svelte.ts) are not supported by this build: ${args.path}`}],
-			}));
-		},
-	};
-}
-
 function compileSvelte() {
 	return {
 		name: "compile-svelte",
@@ -116,6 +105,7 @@ const options = {
 	},
 	logLevel: "info",
 	plugins: [
+		// Registered first so no other loader can hand esbuild a rune module's source.
 		rejectSvelteRuneModules(),
 		...(isProduction ? [stripDevCommandBlocks()] : []),
 		compileSvelte(),
