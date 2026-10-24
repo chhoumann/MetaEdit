@@ -122,14 +122,6 @@
     width: 100%;
 }
 
-.metaedit-native-wikilink-suggest-mirror {
-    height: 1px;
-    opacity: 0;
-    pointer-events: none;
-    position: absolute;
-    width: 1px;
-}
-
 /* Widen the modal BOX itself (not the content past the box padding, which caused
    the horizontal scrollbar). Height hugs the content - no reserved space; the
    key-name dropdown floats as a capped overlay (see below). */
