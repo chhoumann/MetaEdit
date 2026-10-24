@@ -12,12 +12,12 @@ This works for YAML frontmatter properties and [inline Dataview fields](/concept
 ## Set it up
 
 1. Open Settings and go to the MetaEdit tab.
-2. Turn on the "Progress Properties" toggle. It takes effect immediately, no restart needed.
-3. Click the row's gear button to expand the configuration table (columns "Name" and "Type").
-4. Click "Add", type your property key into the "Property name" field, and pick a type from the dropdown: "Total Tasks", "Completed Tasks", or "Incomplete Tasks" (new rows default to "Total Tasks").
-5. Remove a row with its red cross button. Every change saves immediately.
+2. Turn on the "Progress properties" toggle. It takes effect immediately, no restart needed.
+3. Click the "Tracked task counts" row to open its page.
+4. Click the "+" button ("Add property") and enter your property key. Then pick a count from the row's dropdown: "Total tasks", "Completed tasks", or "Incomplete tasks" (new rows default to "Total tasks").
+5. Remove a row with its "x" button. Every change saves immediately.
 
-![Progress Properties settings panel expanded, showing a Name and Type table with rows Total set to Total Tasks, Complete set to Completed Tasks, and Incomplete set to Incomplete Tasks, each with a red remove button, and an Add button below](../../../assets/media/progress-properties-panel.png)
+![The "Tracked task counts" settings page listing Total set to Total tasks, Complete set to Completed tasks, and Incomplete set to Incomplete tasks, each with a delete button, and a "+" button at the top right](../../../assets/media/progress-properties-panel.png)
 
 The property names are yours to choose - `Total`, `done`, `tasks-left`, anything. What matters is the type you pair each name with. Name matching is exact and case-sensitive: a configured `Total` will not update a note's `total`.
 
@@ -29,15 +29,15 @@ MetaEdit only updates properties that already exist. It never creates them. Befo
 
 | Type | What it counts |
 | --- | --- |
-| "Total Tasks" | Every checklist item in the note, whatever its marker, including nested sub-tasks |
-| "Completed Tasks" | Only items checked as `[x]` or `[X]` |
-| "Incomplete Tasks" | Total minus completed |
+| "Total tasks" | Every checklist item in the note, whatever its marker, including nested sub-tasks |
+| "Completed tasks" | Only items checked as `[x]` or `[X]` |
+| "Incomplete tasks" | Total minus completed |
 
 Custom markers such as `[/]`, `[-]`, `[>]`, and `[?]` are not complete, so they count as incomplete. Counts are written as text (strings), not numbers: a count of 4 lands in frontmatter as `"4"`.
 
 ## Example: before and after
 
-Configure three rows: `Total` as "Total Tasks", `Complete` as "Completed Tasks", `Incomplete` as "Incomplete Tasks". Then take this note:
+Configure three rows: `Total` as "Total tasks", `Complete` as "Completed tasks", `Incomplete` as "Incomplete tasks". Then take this note:
 
 ```md
 ---
@@ -90,7 +90,7 @@ Counts never update? Check these in order:
 2. The name does not match exactly. Matching is case-sensitive: `total` and `Total` are different properties.
 3. The note has no YAML frontmatter. Even inline-field tracking requires a frontmatter block to exist.
 4. You are still within the 5-second debounce, which resets while you type. Stop editing and wait a moment.
-5. The "Progress Properties" toggle is off, or no rows are configured in its table.
+5. The "Progress properties" toggle is off, or "Tracked task counts" has no entries.
 
 One subtlety: a note whose body contains no list items at all is left untouched, but a note with a bullet list and zero checkboxes gets counts of 0 written to its configured properties. If something fails during an update, MetaEdit shows a notice prefixed `MetaEdit: (ERROR)` - see the [notices reference](/reference/notices/).
 

@@ -151,7 +151,7 @@ Adds a new top-level YAML frontmatter property. A frontmatter block is created i
 The value is shaped before writing:
 
 - A `tags`/`tag` key is canonicalized into a `#`-free string list.
-- [Edit Mode](/reference/settings/) wrapping applies, as on all legacy add paths: when Edit Mode is "All Multi", or "Some Multi" with this property listed, a non-array value is wrapped into a one-element list - unless an enabled Auto Property of the same name resolves to Single, which keeps it scalar.
+- [Edit Mode](/reference/settings/#edit-mode) wrapping applies, as on all legacy add paths: when Edit Mode is "List", or "List for chosen properties" with this property listed, a non-array value is wrapped into a one-element list - unless an enabled Auto Property of the same name resolves to Single, which keeps it scalar.
 
 ```js
 // Templater: stamp a fresh note as not yet reviewed

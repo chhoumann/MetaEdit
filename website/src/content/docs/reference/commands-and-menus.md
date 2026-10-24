@@ -48,7 +48,7 @@ Collects every `.md` file in the folder, recursing into subfolders, and starts t
 Select multiple files or folders in the file explorer (Ctrl/Cmd-click or Shift-click), then right-click the selection. Selected folders are expanded recursively, non-markdown files are ignored, and duplicates are edited once. The scope label in the first prompt is the note's name when exactly one note resolves, otherwise `<N> selected items`.
 
 :::caution[All three items share one toggle]
-The ["UI Elements" setting](/reference/settings/#ui-elements) gates all three context-menu items, even though its description only mentions the "Edit Meta" option: "Toggle UI elements: the 'Edit Meta' right-click menu option." Turning it off removes the bulk items too. The change takes effect immediately, no restart needed.
+The ["Right-click menu" setting](/reference/settings/#right-click-menu) gates all three context-menu items, even though its description only mentions "Edit Meta": "Show Edit Meta when you right-click a note or link." Turning it off removes the bulk items too. The change takes effect immediately, no restart needed.
 :::
 
 ## The property picker
@@ -67,7 +67,7 @@ When the same body tag appears more than once, each occurrence gets its own row,
 
 ### Rows that are hidden
 
-- Properties filtered by the ["Edit Meta menu" settings](/reference/settings/#edit-meta-menu): exact-name matches from the hide list, and all body-tag rows when "Hide file tags" is on. Nothing is filtered while that feature's master toggle is off, and filtering never deletes data.
+- Properties filtered by the ["Hide properties" setting](/reference/settings/#hide-properties): exact-name matches from the "Hidden properties" list, and all body-tag rows when "Hide file tags" is on. Nothing is filtered while "Hide properties" is off, and filtering never deletes data.
 - YAML values that are parent containers (an object, or a list containing objects or lists) are always hidden - they cannot be edited as a single value.
 
 ### Row actions

@@ -31,7 +31,11 @@ export default class MetaEdit extends Plugin {
     // Property choice persistence - runs through this one serialization point, so two
     // concurrent writers can't lost-update a shared in-memory snapshot and two disk
     // flushes can't complete out of order.
-    private readonly settingsWriter = new SettingsWriter(() => this.saveData(this.settings));
+    private readonly settingsWriter = new SettingsWriter(async () => {
+        await this.saveData(this.settings);
+        this.settingsTab?.syncWithSettings();
+    });
+    private settingsTab: MetaEditSettingsTab | undefined;
 
     async onload() {
         this.controller = new MetaController(this.app, this);
@@ -61,7 +65,8 @@ export default class MetaEdit extends Plugin {
             }
         });
 
-        this.addSettingTab(new MetaEditSettingsTab(this.app, this));
+        this.settingsTab = new MetaEditSettingsTab(this.app, this);
+        this.addSettingTab(this.settingsTab);
         this.linkMenu = new LinkMenu(this);
 
         if (this.settings.UIElements.enabled) {

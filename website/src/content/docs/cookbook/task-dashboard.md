@@ -9,7 +9,7 @@ Build a dashboard note that lists every open task in your vault and completes an
 
 ## Prerequisites
 
-- MetaEdit 1.9.0 or later. The plugin requires Obsidian 1.12.7+ and works on desktop and mobile.
+- MetaEdit 1.9.0 or later. The plugin requires Obsidian 1.13.4+ and works on desktop and mobile.
 - The [Dataview](https://github.com/blacksmithgu/obsidian-dataview) community plugin with "Enable JavaScript queries" turned on in its settings (the dashboard is a `dataviewjs` block).
 - The [Buttons](https://github.com/shabegom/buttons) community plugin for the first dashboard variant. The second variant uses a plain HTML button and needs no extra plugin.
 - Optionally [Templater](https://github.com/SilentVoid13/Templater), if you want new task notes to prompt for their metadata.
@@ -95,10 +95,10 @@ Same behavior, no extra plugin: a click awaits `update()` against the task's fil
 
 Each `Project::` field links to a project note. Give those notes live task counts with Progress Properties:
 
-1. Open Settings, then MetaEdit, and turn on the "Progress Properties" toggle (description: "Update properties automatically.").
-2. Click the row's extra button to expand the configuration table and click "Add" three times. Name the rows `Total`, `Complete`, and `Incomplete`, with the types "Total Tasks", "Completed Tasks", and "Incomplete Tasks" respectively.
+1. Open Settings, then MetaEdit, and turn on the "Progress properties" toggle (description: "Keep task counts in a note's properties up to date.").
+2. Click the "Tracked task counts" row to open its page. Use the "+" button ("Add property") three times to add `Total`, `Complete`, and `Incomplete`, then set their dropdowns to "Total tasks", "Completed tasks", and "Incomplete tasks" respectively.
 
-![The Progress Properties panel with rows Total, Complete, and Incomplete mapped to the Total Tasks, Completed Tasks, and Incomplete Tasks types](../../../assets/media/progress-properties-panel.png)
+![The "Tracked task counts" settings page with Total, Complete, and Incomplete set to Total tasks, Completed tasks, and Incomplete tasks](../../../assets/media/progress-properties-panel.png)
 
 3. Seed the three properties in each project note yourself - Progress Properties updates existing properties but never creates them:
 

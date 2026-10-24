@@ -9,12 +9,12 @@ An Auto Property is a named set of values you define once and reuse everywhere. 
 
 ## Turn it on and define properties
 
-Auto Properties are configured in [MetaEdit's settings](/reference/settings/) under the "Auto Properties" row. Its in-app description is the somewhat cryptic "Quick switch for values you know the value of." - in practice it means: for properties whose values come from a known set, switch values quickly instead of retyping them. The feature is off by default.
+Auto Properties are configured in [MetaEdit's settings](/reference/settings/) in the "Editing" group, under the "Auto properties" toggle. Its in-app description reads "Pick from preset values when you edit these properties." The feature is off by default.
 
-![Auto Properties settings panel showing two property cards: "status" with type Single, a description, and the values To Read, Reading, Finished, and Abandoned; and "genres" with type Multi.](../../../assets/media/autoprop-settings.png)
+![The "Preset values" settings page showing two property cards: "status" with type Single, a description, and the values To Read, Reading, Finished, and Abandoned; and "genres" with type Multi.](../../../assets/media/autoprop-settings.png)
 
-1. Enable the "Auto Properties" toggle.
-2. Click the row's gear button to expand the management panel.
+1. Enable the "Auto properties" toggle.
+2. Click the "Preset values" row to open its page.
 3. Click "Add auto property".
 4. Name it exactly after the property key. Matching is exact and case-sensitive, so `Status` does not match `status`.
 5. Pick "Single" or "Multi" from the type dropdown.
@@ -42,7 +42,7 @@ A single pasted value that contains a comma and no line break, like `Doe, Jane` 
 | "Single" | Pick exactly one value | A scalar |
 | "Multi" | Checkbox multi-select | A list |
 
-The per-property type is authoritative in both directions and overrides the global "Edit Mode" setting: a Single Auto Property stays scalar even under "All Multi", and a Multi one is a list even under "All Single". Only Auto Properties saved before the type field existed (no type set) inherit Edit Mode. See [Lists and multi-values](/guides/lists-and-multi-values/).
+The per-property type is authoritative in both directions and overrides the global "Edit mode" setting: a Single Auto Property stays scalar even under "List", and a Multi one is a list even under "One value". Only Auto Properties saved before the type field existed (no type set) inherit Edit Mode. See [Lists and multi-values](/guides/lists-and-multi-values/).
 
 ## Picking a value
 
@@ -104,7 +104,7 @@ genres:
 ---
 ```
 
-The same Multi result on an inline field is written as `genres:: Sci-Fi, Classics`. A Single Auto Property keeps its value scalar even when "Edit Mode" is set to "All Multi".
+The same Multi result on an inline field is written as `genres:: Sci-Fi, Classics`. A Single Auto Property keeps its value scalar even when "Edit mode" is set to "List".
 
 A Multi Auto Property on a nested tag is effectively single-select: checking more than one value produces a comma-joined result that fails tag validation, so MetaEdit refuses the write with the invalid-tag-name notice. Checking nothing cancels silently. See [edit tags](/guides/edit-tags/).
 

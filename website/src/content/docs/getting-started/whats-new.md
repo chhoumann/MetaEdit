@@ -60,7 +60,7 @@ Text prompts now autocomplete from your vault: property values are suggested ran
 ## A cleaner, more capable menu
 
 - Every YAML/Dataview row has native, tooltipped actions: "Delete property", or "Transform to YAML ⇄ Dataview", right from the list. See [Delete and transform properties](/guides/delete-and-transform/).
-- **Hide file tags** from the picker (Settings -> "Edit Meta menu") when you only care about frontmatter and inline fields - a frontmatter `tags:` property stays editable.
+- **Hide file tags** from the picker (Settings -> "Hide properties") when you only care about frontmatter and inline fields - a frontmatter `tags:` property stays editable.
 - Hide specific properties by name via the same [filtering settings](/reference/settings/).
 - Nested YAML shows up as individual child rows, so structured frontmatter is no longer a wall of text.
 

@@ -9,7 +9,7 @@ Build a project board where dragging a card is all it takes: about five seconds 
 
 ## What you need
 
-- MetaEdit 1.9.0 on Obsidian 1.12.7 or newer (desktop or mobile).
+- MetaEdit 1.9.0 or later on Obsidian 1.13.4 or newer (desktop or mobile).
 - The community [Kanban plugin](https://github.com/mgmeyers/obsidian-kanban). MetaEdit's board picker only lists notes with a `kanban-plugin` frontmatter key, which is what the Kanban plugin writes.
 - The community [Dataview plugin](https://github.com/blacksmithgu/obsidian-dataview) for the query at the end (optional).
 
@@ -63,16 +63,16 @@ Property names match exactly and case-sensitively: a board row configured for `s
 ## Step 3: register the board in MetaEdit
 
 1. Open Settings, then MetaEdit.
-2. Turn on the "Kanban Board Helper" toggle. Its description reads "Update properties in links in kanban boards automatically when a card is moved to a new lane." No restart is needed.
-3. Click the gear button on the row to expand the configuration panel.
-4. In the text input at the bottom, start typing `Projects`. The input suggests every note with a `kanban-plugin` frontmatter key. Pick the board, then click "Add". The typed text must exactly match a suggested board name, or "Add" does nothing.
-5. In the new table row, type `status` into the "Property in link" column (placeholder "Property name").
+2. Turn on the "Kanban board helper" toggle. Its description reads "When a card moves to another lane, update a property in the note it links to." No restart is needed.
+3. Click the "Boards" row to open its page.
+4. Click the "+" button ("Add board"). The picker lists every note with a `kanban-plugin` frontmatter key that is not added yet. Start typing `Projects` and pick the board.
+5. In the board's row, type `status` into the field with the placeholder "Property in linked notes".
 
-The "Possible values" column shows the board's current lane headings, so for this board it reads `Backlog, In Progress, Done`.
+The "Lanes:" line under the board name shows the board's current lane headings, so for this board it reads `Lanes: Backlog, In Progress, Done`.
 
-![The Kanban Board Helper settings panel, shown with a registered board named Editorial calendar, "Property in link" set to status, and "Possible values" listing the board's lanes Ideas, Drafting, Published](../../../assets/media/kanban-helper-panel.png)
+![The "Boards" settings page with a board named Editorial calendar, "Lanes: Ideas, Drafting, Published" under its name, and status in its property field](../../../assets/media/kanban-helper-panel.png)
 
-The panel above shows a different example board; yours will list `Projects` with the three lanes from step 1.
+The page above shows a different example board; yours will list `Projects` with the three lanes from step 1.
 
 ## Step 4: drag a card
 
@@ -110,8 +110,8 @@ Drag a card, wait a few seconds, and the table regroups. The same property also 
 | Notice: `MetaEdit: (WARNING) 'status' not found in "Website relaunch" (Kanban board 'Projects').` | The linked note lacks the property. The helper updates properties but never creates them - add `status` to the note first (step 2). |
 | Nothing happens after a drag | Wait for the 5-second debounce; it resets while the board keeps changing. The helper only reacts to modifications made through Obsidian. |
 | One specific card never syncs | Only the leading link of a top-level card line counts (`- [ ] [[Note]] ...`). Trailing links such as Kanban date links, links in the card text, and indented sub-items are ignored. A card sitting above the first lane heading has no lane and is skipped. If several notes share the card's bare name and Obsidian cannot resolve the link, the helper skips it rather than guess. |
-| Board stopped syncing after you renamed it | Boards are matched by file basename, and the stored row keeps the old name. Remove the row and re-add the renamed board. If the board file is gone, its "Possible values" cell shows `FILE NOT FOUND`. |
-| "Add" does nothing | The typed name must exactly match a suggested board, and boards already registered are ignored. |
-| Property present but still not updating | Matching is exact and case-sensitive: `status` is not `Status`. Check the "Property in link" spelling. |
+| Board stopped syncing after you renamed it | Boards are matched by file basename, and the stored row keeps the old name. Remove the row and re-add the renamed board. If the board file is gone, its row shows "Board not found." |
+| "Add board" shows a notice instead of a picker | "MetaEdit found no other Kanban boards in this vault." means every note with a `kanban-plugin` frontmatter key is already added. Check that the board file has that key. |
+| Property present but still not updating | Matching is exact and case-sensitive: `status` is not `Status`. Check the spelling in the board's "Property in linked notes" field. |
 
 The helper shares the automator pipeline's gates with [Progress Properties](/guides/progress-properties/): it processes markdown files only, the modified file needs YAML frontmatter (a Kanban board always has one), Excalidraw notes are skipped, and unchanged content is skipped. Every write goes through MetaEdit's per-file queue - see [how MetaEdit writes to your notes](/concepts/write-safety/).

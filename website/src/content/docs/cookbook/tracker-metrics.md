@@ -9,7 +9,7 @@ The [obsidian-tracker](https://github.com/pyrochlore/obsidian-tracker) plugin ca
 
 ## What you need
 
-- MetaEdit 1.9.0 on Obsidian 1.12.7 or newer (desktop or mobile).
+- MetaEdit 1.9.0 or later on Obsidian 1.13.4 or newer (desktop or mobile).
 - The community obsidian-tracker plugin, installed and enabled.
 
 The "Tracker value (#tag:value)" action only exists when Tracker is installed. MetaEdit checks for it once, when the plugin loads - if you install Tracker mid-session, disable and re-enable MetaEdit (or restart Obsidian) so the action appears.

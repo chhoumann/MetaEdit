@@ -17,16 +17,14 @@ For a full worked setup, see the [Kanban status sync recipe](/cookbook/kanban-st
 ## Set it up
 
 1. Open Settings and go to the MetaEdit tab.
-2. Turn on the "Kanban Board Helper" toggle. It takes effect immediately.
-3. Click the row's gear button to expand the configuration.
-4. In the text input at the bottom, type or pick a board. The autocomplete suggests every note with a `kanban-plugin` frontmatter key, filtering as you type. Click "Add".
-5. In the new table row, type the property key to sync into the "Property in link" field (for example `status`). The read-only "Possible values" column previews the board's current lane headings.
+2. Turn on the "Kanban board helper" toggle. It takes effect immediately.
+3. Click the "Boards" row to open its page.
+4. Click the "+" button ("Add board") and pick a board. The picker lists every note with a `kanban-plugin` frontmatter key that you have not added yet.
+5. In the board's row, type the property key to sync into the "Property in linked notes" field (for example `status`). The "Lanes:" line under the board name previews the board's current lane headings.
 
-![Kanban Board Helper settings panel with a configured row: board Editorial calendar, status in the Property in link column, and the lane names Ideas, Drafting, Published in the Possible values column, above the board-name input and Add button](../../../assets/media/kanban-helper-panel.png)
+![The "Boards" settings page with a board named Editorial calendar, "Lanes: Ideas, Drafting, Published" under its name, and status in its property field](../../../assets/media/kanban-helper-panel.png)
 
-:::tip[Pick from the suggestions]
-"Add" only works when the typed text exactly matches a suggested board name - otherwise it silently does nothing. Selecting a suggestion fills the input with the exact name. Boards you have already added are also silently ignored.
-:::
+If every board is already added, or the vault has none, a notice reads "MetaEdit found no other Kanban boards in this vault."
 
 Changes save immediately. From now on, moving a card writes the new lane's heading text into the configured property of the note the card links to.
 
@@ -76,8 +74,7 @@ This is a warning - nothing is broken. Fix it by adding the property to the note
 
 ## Caveats
 
-- **Renaming a board file breaks its row.** Boards are matched by file basename, and the stored name is not updated on rename. Remove the stale row and re-add the board under its new name. A row whose board file no longer exists shows "FILE NOT FOUND" in its "Possible values" column.
-- **The board list is computed when the settings tab renders.** A board created while the tab is open will not appear in the suggestions until you reopen the tab.
+- **Renaming a board file breaks its row.** Boards are matched by file basename, and the stored name is not updated on rename. Remove the stale row and re-add the board under its new name. A row whose board file no longer exists shows "Board not found." under its name.
 - **Per-card failures never abort the board.** One unresolvable link or a linked note with malformed YAML is logged to the developer console, and the rest of the cards still sync.
 - **Property names match exactly and case-sensitively**, like everywhere else in MetaEdit.
 

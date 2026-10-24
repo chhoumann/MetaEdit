@@ -10,7 +10,7 @@ Templater templates can pause and ask for metadata using the same value prompts 
 ## Prerequisites
 
 - The [Templater](https://github.com/SilentVoid13/Templater) community plugin.
-- MetaEdit 1.9.0 or later (Obsidian 1.12.7+, desktop or mobile) with the "Auto Properties" toggle on and the properties you want to prompt for defined in settings. This recipe uses the `status` (Single) and `genres` (Multi) Auto Properties from [Build a reading tracker](/cookbook/reading-tracker/).
+- MetaEdit 1.9.0 or later (Obsidian 1.13.4+, desktop or mobile) with the "Auto properties" toggle on and the properties you want to prompt for defined in settings. This recipe uses the `status` (Single) and `genres` (Multi) Auto Properties from [Build a reading tracker](/cookbook/reading-tracker/).
 
 ## How autoprop() behaves
 
@@ -39,7 +39,7 @@ Variables declared in a `<%* %>` block stay in scope for the rest of the templat
 
 `autoprop()` resolves `null` in exactly three cases:
 
-1. The "Auto Properties" toggle is off in MetaEdit's settings.
+1. The "Auto properties" toggle is off in MetaEdit's settings.
 2. No enabled Auto Property has that exact, case-sensitive name.
 3. The user cancelled the prompt (Esc, or clicking outside).
 
@@ -57,7 +57,7 @@ if (genres !== null) {
 ```
 
 :::caution[Templates must degrade gracefully]
-Because a switched-off "Auto Properties" toggle also yields `null`, a template that interpolates the raw result would print the text `null` into the note. Always default with `??` or guard with an `if`.
+Because a switched-off "Auto properties" toggle also yields `null`, a template that interpolates the raw result would print the text `null` into the note. Always default with `??` or guard with an `if`.
 :::
 
 ## Two ways to write the answer
@@ -132,7 +132,7 @@ Recommended by:: <% (await tp.system.prompt("Recommended by")) ?? "" %>
 How it holds together:
 
 - The prompts fire in order as the note is created: the `status` picker, the `genres` multi-select, then two plain Templater text prompts.
-- The `??` defaults mean a cancelled prompt, or the "Auto Properties" toggle being off, still produces a valid note instead of `null` text or a rejected write.
+- The `??` defaults mean a cancelled prompt, or the "Auto properties" toggle being off, still produces a valid note instead of `null` text or a rejected write.
 - `genres` reaches `addOrUpdateProperty()` as an array, so it lands in frontmatter as a real YAML list.
 - `started` is only written when the book begins as `Reading`. `addOrUpdateProperty()` creates missing keys, so nothing needs seeding.
 - The frontmatter writes run inside `on_all_templates_executed`, after Templater's own write; the "Recommended by" line is ordinary template output, so it needs no hook.

@@ -25,6 +25,11 @@ const HELPERS = `
 	};
 	const itemByName = (root, name) => Array.from(root.querySelectorAll(".setting-item"))
 		.find((el) => el.querySelector(".setting-item-name")?.textContent.trim() === name);
+	const openPage = async (root, name) => {
+		itemByName(root, name).click();
+		const title = await waitFor(".setting-page-title", (el) => el.textContent.trim() === name);
+		return title.closest(".setting-page").querySelector(".setting-page-content");
+	};
 	${CLOSE_ALL_MODALS_JS}
 `;
 
@@ -113,38 +118,40 @@ describe("MetaEdit modal + kanban flows", () => {
 				${HELPERS}
 				await closeAllModals();
 				const plugin = app.plugins.plugins.${PLUGIN_ID};
-				const root = await openTab();
-				const item = itemByName(root, "Progress Properties");
-				item.querySelector(".extra-setting-button").click();
-				await sleep(200);
-				const before = plugin.settings.ProgressProperties.properties.length;
-				const addBtn = Array.from(item.querySelectorAll("button")).find(b => b.textContent.trim() === "Add");
-				addBtn.click();
-				await sleep(200);
-				// Name the new row + pick a type.
-				const rows = item.querySelectorAll("tbody tr");
-				const row = rows[rows.length - 1];
-				const nameInput = row.querySelector("input[type=text]");
-				nameInput.value = "auditProg";
-				nameInput.dispatchEvent(new Event("input", { bubbles: true }));
-				nameInput.dispatchEvent(new Event("change", { bubbles: true }));
-				const select = row.querySelector("select");
-				select.value = "Completed Tasks";
-				select.dispatchEvent(new Event("change", { bubbles: true }));
-				await sleep(200);
-				const afterAdd = plugin.settings.ProgressProperties.properties.map(p => ({ name: p.name, type: p.type }));
+				const snapshot = JSON.parse(JSON.stringify(plugin.settings.ProgressProperties));
+				plugin.settings.ProgressProperties = { enabled: true, properties: [] };
+				await plugin.saveSettings();
+				let afterAdd;
+				let afterRemove;
+				try {
+					const root = await openTab();
+					const page = await openPage(root, "Tracked task counts");
+					page.querySelector("[aria-label='Add property']").click();
+					const input = await waitFor(".metaEditPromptInput");
+					input.value = "auditProg";
+					input.dispatchEvent(new Event("input", { bubbles: true }));
+					input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+					const row = await waitFor(".setting-page-content .setting-item", (el) => el.querySelector(".setting-item-name")?.textContent.trim() === "auditProg");
+					const select = row.querySelector("select");
+					select.value = "Completed Tasks";
+					select.dispatchEvent(new Event("change", { bubbles: true }));
+					await sleep(300);
+					afterAdd = plugin.settings.ProgressProperties.properties.map(p => ({ name: p.name, type: p.type }));
 
-				// Remove it.
-				const delBtn = row.querySelector("input[type=button]");
-				delBtn.click();
-				await sleep(200);
-				const afterRemove = plugin.settings.ProgressProperties.properties.length;
-				app.setting.close();
+					row.querySelector("[aria-label='Delete']").click();
+					await sleep(300);
+					afterRemove = plugin.settings.ProgressProperties.properties.length;
+					app.setting.close();
+				} finally {
+					plugin.settings.ProgressProperties = snapshot;
+					await plugin.saveSettings();
+				}
 				return { afterAdd, afterRemove };
 			})()
 		`,
 		);
-		expect(result.afterAdd).toContainEqual({ name: "auditProg", type: "Completed Tasks" });
+		expect(result.afterAdd).toEqual([{ name: "auditProg", type: "Completed Tasks" }]);
+		expect(result.afterRemove).toBe(0);
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
@@ -207,7 +214,7 @@ describe("MetaEdit modal + kanban flows", () => {
 	test("KAN-02/KAN-03: configure a board mapping and display its lane headings", async () => {
 		const { obsidian, sandbox } = getContext();
 		const boardPath = sandbox.path("board.md");
-		const result = await evalJsonAsync<{ boardsListed: boolean; lanes: string; mapped: boolean }>(
+		const result = await evalJsonAsync<{ boardsListed: boolean; lanes: string; mapped: boolean; property: string; persistedProperty: string }>(
 			obsidian,
 			`
 			(async () => {
@@ -227,24 +234,26 @@ describe("MetaEdit modal + kanban flows", () => {
 				const prevBoards = plugin.settings.KanbanHelper.boards;
 				plugin.settings.KanbanHelper.enabled = true;
 				try {
+					plugin.settings.KanbanHelper.boards = [];
 					const root = await openTab();
-					const item = itemByName(root, "Kanban Board Helper");
-					item.querySelector(".extra-setting-button").click();
-					await sleep(250);
-					// The board file should be offered (getFilesWithProperty kanban-plugin).
-					const boardsListed = plugin.getFilesWithProperty("kanban-plugin").some(b => b.path === path);
-					// Type the board name into the suggester input and click Add.
-					const input = item.querySelector("input[type=text]");
-					input.value = "board";
-					input.dispatchEvent(new Event("input", { bubbles: true }));
-					const addBtn = Array.from(item.querySelectorAll("button")).find(b => b.textContent.trim() === "Add");
-					addBtn.click();
-					await sleep(300);
+					const page = await openPage(root, "Boards");
+					page.querySelector("[aria-label='Add board']").click();
+					// The board file is offered (getFilesWithProperty kanban-plugin).
+					const option = await waitFor(".suggestion-item", (el) => el.textContent.trim() === "board");
+					const boardsListed = Boolean(option);
+					option.click();
+					const row = await waitFor(".setting-page-content .setting-item", (el) => el.querySelector(".setting-item-name")?.textContent.trim() === "board");
 					const mapped = plugin.settings.KanbanHelper.boards.some(b => b.boardName === "board");
-					// The lane headings render in the panel (getHeadingsInBoard, null-safe).
-					const lanes = item.textContent;
+					// The lane headings render as the row description.
+					const lanes = row.querySelector(".setting-item-description").textContent;
+					const input = row.querySelector("input[type=text]");
+					input.value = "status";
+					input.dispatchEvent(new Event("input", { bubbles: true }));
+					await sleep(300);
+					const property = plugin.settings.KanbanHelper.boards.find(b => b.boardName === "board")?.property;
+					const persistedProperty = (await plugin.loadData()).KanbanHelper.boards.find(b => b.boardName === "board")?.property;
 					app.setting.close();
-					return { boardsListed, lanes, mapped };
+					return { boardsListed, lanes, mapped, property, persistedProperty };
 				} finally {
 					plugin.settings.KanbanHelper.boards = prevBoards;
 					plugin.settings.KanbanHelper.enabled = false;
@@ -255,6 +264,8 @@ describe("MetaEdit modal + kanban flows", () => {
 		);
 		expect(result.boardsListed).toBe(true);
 		expect(result.mapped).toBe(true);
+		expect(result.property).toBe("status");
+		expect(result.persistedProperty).toBe("status");
 		// KAN-03: lane headings are displayed (null-safe getFileCache).
 		expect(result.lanes).toContain("To Do");
 		expect(result.lanes).toContain("Done");

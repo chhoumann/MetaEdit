@@ -50,7 +50,7 @@ Click the transform icon ("Transform to YAML ⇄ Dataview"). The direction is de
 
 **Inline to YAML.** The `key::` line is removed and the key is added to frontmatter through MetaEdit's standard add path, which means:
 
-- [Edit Mode](/reference/settings/) wrapping applies: under "All Multi", or "Some Multi" with the key listed, the value is stored as a one-element YAML list.
+- [Edit Mode](/reference/settings/#edit-mode) wrapping applies: under "List", or "List for chosen properties" with the key listed, the value is stored as a one-element YAML list.
 - A field named `tags` or `tag` is canonicalized: the value is split on commas and whitespace, leading `#`s are stripped, and the result is stored as a proper YAML list. `tags:: #sci-fi, #book-club` becomes `tags: [sci-fi, book-club]`.
 
 :::caution[Lists do not round-trip]

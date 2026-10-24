@@ -98,7 +98,7 @@ Not listed: `publish` and `sources` (parent containers), the individual `genres`
 - **Non-markdown files.** "MetaEdit: Run" silently does nothing when the active file is not a markdown note (a PDF or canvas, for example); the only trace is a developer-console message.
 - **Anything inside code fences**, whether it looks like a field or a tag.
 - **Parent YAML containers** as a single editable value, as described above.
-- **Rows hidden by settings.** The "Edit Meta menu" settings can hide named properties and body tags from the picker. Filtering only hides rows - it never deletes data, turning the feature off means nothing is filtered, and hidden-but-present keys are still excluded from new-property name suggestions. Matching is exact and case-sensitive, and hiding body tags never affects the frontmatter `tags` property. See the [settings reference](/reference/settings/).
+- **Rows hidden by settings.** The "Hide properties" settings can hide named properties and body tags from the picker. Filtering only hides rows - it never deletes data, turning the feature off means nothing is filtered, and hidden-but-present keys are still excluded from new-property name suggestions. Matching is exact and case-sensitive, and hiding body tags never affects the frontmatter `tags` property. See the [settings reference](/reference/settings/).
 
 :::note[Legacy and malformed frontmatter]
 Legacy frontmatter closed with `...` instead of `---` still parses. If the YAML itself is malformed, MetaEdit falls back to Obsidian's metadata cache, and failing that shows no YAML rows - tag and inline-field parsing keep working either way.

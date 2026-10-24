@@ -30,10 +30,10 @@ Looks up an enabled Auto Property whose name exactly equals `propertyName` (matc
 | `null` | Auto Properties are disabled, no Auto Property with that name exists, or the user cancels the prompt |
 
 :::caution[The master toggle gates this at runtime]
-A perfectly configured Auto Property still returns `null` while the "Auto Properties" toggle is off in MetaEdit's settings. If your template suddenly stops prompting, check the toggle before debugging your code.
+A perfectly configured Auto Property still returns `null` while the "Auto properties" toggle is off in MetaEdit's settings. If your template suddenly stops prompting, check the toggle before debugging your code.
 :::
 
-Whether the prompt is single- or multi-select follows the property's configured type: an explicit Single or Multi is authoritative. When the property has no type (configurations saved before types existed), it inherits the global [Edit Mode](/reference/settings/): All Multi makes it multi-select, and Some Multi makes it multi-select when the property is listed there.
+Whether the prompt is single- or multi-select follows the property's configured type: an explicit Single or Multi is authoritative. When the property has no type (configurations saved before types existed), it inherits the global [Edit Mode](/reference/settings/#edit-mode): "List" makes it multi-select, and "List for chosen properties" makes it multi-select when the property is listed there.
 
 The prompt itself is interactive. If the user types a value that is not in the choice list, they can use it once or save it as a new choice, which persists into the Auto Property's configuration.
 

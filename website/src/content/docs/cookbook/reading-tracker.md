@@ -9,7 +9,7 @@ Track your reading with a small set of typed frontmatter properties, two [Auto P
 
 ## Prerequisites
 
-- MetaEdit 1.9.0 or later. The plugin requires Obsidian 1.12.7+ and everything here works on desktop and mobile.
+- MetaEdit 1.9.0 or later. The plugin requires Obsidian 1.13.4+ and everything here works on desktop and mobile.
 - The [Dataview](https://github.com/blacksmithgu/obsidian-dataview) community plugin, for the bookshelf query in the last step. Every other step works without it.
 - A folder for book notes. This recipe uses `Library/`.
 
@@ -33,12 +33,12 @@ Property types live in Obsidian's vault-wide type registry, not in MetaEdit. Onc
 `status` and `genres` are the values you will set over and over, so give each a fixed list of choices:
 
 1. Open Settings, then MetaEdit.
-2. Turn on the "Auto Properties" toggle (its settings description reads "Quick switch for values you know the value of." - in practice: named choice lists for properties).
-3. Click the row's extra button to expand the inline management UI.
+2. Turn on the "Auto properties" toggle (its settings description reads "Pick from preset values when you edit these properties.").
+3. Click the "Preset values" row to open its page.
 4. Click "Add auto property". Name it `status`, keep the type dropdown on "Single", set the description to `Where this book is in your reading flow.`, then use "Add value" to add `To Read`, `Reading`, `Finished`, and `Abandoned`.
 5. Click "Add auto property" again. Name it `genres`, switch the type dropdown to "Multi", and add your genres as values.
 
-![Auto Properties settings with a Single "status" property (values To Read, Reading, Finished, Abandoned and a description) and a Multi "genres" property](../../../assets/media/autoprop-settings.png)
+![The "Preset values" settings page with a Single "status" property (values To Read, Reading, Finished, Abandoned and a description) and a Multi "genres" property](../../../assets/media/autoprop-settings.png)
 
 Every change saves immediately; there is no save button.
 

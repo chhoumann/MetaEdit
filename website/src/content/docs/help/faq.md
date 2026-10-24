@@ -9,7 +9,7 @@ Quick answers, with links to the full story. For symptom-driven help, see [troub
 
 ## Does MetaEdit work on mobile?
 
-Yes, fully. There are no desktop-only features - the property picker, native widgets, Auto Properties, bulk edit, and both automators all work on phones and tablets. The plugin requires Obsidian 1.12.7 or newer on every platform.
+Yes, fully. There are no desktop-only features - the property picker, native widgets, Auto Properties, bulk edit, and both automators all work on phones and tablets. The plugin requires Obsidian 1.13.4 or newer on every platform.
 
 ## Why is there no ribbon icon?
 
@@ -33,7 +33,7 @@ Not with `Ctrl+Z` - bulk edits are real file writes across many notes, and the "
 
 ## Which Obsidian version do I need?
 
-MetaEdit 1.9.0 requires Obsidian 1.12.7 or newer. On older Obsidian versions the community plugin browser automatically serves you MetaEdit 1.8.4, the newest compatible release. See the [changelog](/help/changelog/#how-older-obsidian-versions-are-served).
+MetaEdit requires Obsidian 1.13.4 or newer. On older Obsidian versions the community plugin browser automatically serves you the newest MetaEdit release your app can run, down to 1.8.4 on anything older than 1.12.7. See the [changelog](/help/changelog/#how-older-obsidian-versions-are-served).
 
 ## What's the difference between "New YAML property" and "New Dataview field"?
 
@@ -45,7 +45,7 @@ MetaEdit 1.9.0 requires Obsidian 1.12.7 or newer. On older Obsidian versions the
 
 ## Are property and Auto Property name matches case-sensitive?
 
-Yes. Everywhere MetaEdit matches names - Auto Properties, "Edit Meta menu" hidden properties, "Some Multi" lists, Progress Properties, Kanban properties - the match is exact and case-sensitive. `Status` and `status` are different keys.
+Yes. Everywhere MetaEdit matches names - Auto Properties, "Hidden properties", "List properties", Progress Properties, Kanban properties - the match is exact and case-sensitive. `Status` and `status` are different keys.
 
 ## Where are MetaEdit's settings stored?
 
