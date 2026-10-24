@@ -51,10 +51,6 @@ Yes. Everywhere MetaEdit matches names - Auto Properties, "Edit Meta menu" hidde
 
 In your vault at `.obsidian/plugins/metaedit/data.json`. Settings sync with the vault if you sync that folder. The [settings reference](/reference/settings/) documents every field.
 
-## Why does a warning say "(ERROR)"?
-
-A known logging quirk: MetaEdit's warnings are routed through the error channel, so warning notices read `MetaEdit: (ERROR) ...`. Judge the message by its text, not the label - a warning like the Kanban helper's "property not found" notice does not mean data was lost. See the [notices reference](/reference/notices/).
-
 ## Where did the body-tag delete and transform actions go?
 
 Removed in 1.9.0. Body tags have no `key:` line, so those two actions could not target the right text safely. Renaming a tag and editing the last segment of a nested tag remain, and frontmatter `tags` editing is unaffected. See [what's new in 1.9.0](/getting-started/whats-new/) and [edit tags](/guides/edit-tags/).

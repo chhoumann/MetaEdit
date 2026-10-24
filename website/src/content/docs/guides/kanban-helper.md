@@ -69,10 +69,10 @@ The helper shares its trigger pipeline with Progress Properties: modify event on
 When a card's note lacks the configured property, MetaEdit shows a notice for that card:
 
 ```text
-MetaEdit: (ERROR) 'status' not found in "Dune review" (Kanban board 'Editorial calendar').
+MetaEdit: (WARNING) 'status' not found in "Dune review" (Kanban board 'Editorial calendar').
 ```
 
-This is a warning - nothing is broken - but it appears with the `MetaEdit: (ERROR)` prefix anyway; that is a known quirk of how MetaEdit surfaces warnings. Fix it by adding the property to the note. See the [notices reference](/reference/notices/) for every message MetaEdit can show.
+This is a warning - nothing is broken. Fix it by adding the property to the note. See the [notices reference](/reference/notices/) for every message MetaEdit can show.
 
 ## Caveats
 

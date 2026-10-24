@@ -32,11 +32,9 @@ export class OnFileModifyAutomatorManager implements IAutomatorManager {
     }
 
     attach(automator: IOnFileModifyAutomator): IAutomatorManager {
-        const isExist = this.automators.some(tAuto => tAuto.type === automator.type);
-        if (isExist) {
-            log.logWarning(`a ${automator.type} automator is already attached.`);
-            return this;
-        }
+        // toggleAutomators() reconciles every automator with the settings, so the
+        // one that is already on gets attached again whenever another is toggled.
+        if (this.automators.some(tAuto => tAuto.type === automator.type)) return this;
 
         this.automators.push(automator);
         return this;

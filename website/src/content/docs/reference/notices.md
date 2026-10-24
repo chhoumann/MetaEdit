@@ -7,8 +7,8 @@ sidebar:
 
 This page lists every user-visible notice MetaEdit can show, with the exact text (placeholders in `{braces}`), the situation that triggers it, and what to do. Use your browser's find-in-page to jump to the message you saw. For symptoms without a notice, start at [troubleshooting](/help/troubleshooting/).
 
-:::note[The "MetaEdit: (ERROR)" prefix on warnings]
-Messages routed through MetaEdit's warning channel are displayed with the prefix `MetaEdit: (ERROR)` - in the notice popup and in the developer console. That is a logging quirk (warnings fan out to the error channel), not a crash. The Kanban Board Helper's "not found" message below is the most common example.
+:::note[The "(WARNING)" and "(ERROR)" prefixes]
+Notices from MetaEdit's logger start with `MetaEdit: (WARNING)` or `MetaEdit: (ERROR)`. A warning means MetaEdit skipped something it could not do, such as updating a property the note does not have. No data is lost. Older versions labeled warnings `(ERROR)` too.
 :::
 
 ## Editing properties
@@ -81,12 +81,12 @@ See [Auto Properties](/guides/auto-properties/).
 
 ## Progress Properties and Kanban Board Helper
 
-See [Progress Properties](/guides/progress-properties/) and the [Kanban Board Helper](/guides/kanban-helper/). These carry the `MetaEdit: (ERROR)` prefix described above.
+See [Progress Properties](/guides/progress-properties/) and the [Kanban Board Helper](/guides/kanban-helper/). These carry the prefixes described above.
 
 | Notice | When it appears | What to do |
 | --- | --- | --- |
-| `MetaEdit: (ERROR) '{property}' not found in "{note}" (Kanban board '{board}').` | A card changed lanes, but the linked note does not contain the configured property. The helper only updates existing properties - it never creates them. | Add the property to the note (any value), then move the card again. |
-| `MetaEdit: (ERROR) file {board} not found.` | A configured board file no longer exists - the settings panel also shows `FILE NOT FOUND` in its "Possible values" column. Boards are matched by file basename, so renaming the board file breaks the row. | Remove the row and re-add the board under its new name. |
+| `MetaEdit: (WARNING) '{property}' not found in "{note}" (Kanban board '{board}').` | A card changed lanes, but the linked note does not contain the configured property. The helper only updates existing properties - it never creates them. | Add the property to the note (any value), then move the card again. |
+| `MetaEdit: (WARNING) file {board} not found.` | A configured board file no longer exists - the settings panel also shows `FILE NOT FOUND` in its "Possible values" column. Boards are matched by file basename, so renaming the board file breaks the row. | Remove the row and re-add the board under its new name. |
 | `MetaEdit: (ERROR) {message}` | A Progress Properties update failed while writing task counts. | Check the note's frontmatter parses (Obsidian shows invalid frontmatter in the editor), then modify the note again to re-trigger the count. |
 
 ## Reserved property names
