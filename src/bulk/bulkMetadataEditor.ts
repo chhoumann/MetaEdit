@@ -170,9 +170,8 @@ export class BulkMetadataEditor {
 			}
 		}
 
-		// Report failures once, as a warning, rather than per-note error Notices
-		// (LogManager.logWarning routes to logError, which would spam the UI and
-		// register as runtime errors).
+		// List the failed notes once in the console rather than as per-note
+		// Notices. The summary Notice reports the count and points here.
 		if (summary.failures.length > 0) {
 			console.warn(
 				`MetaEdit bulk: failed to update ${summary.failures.length} note(s) for "${key}":`,
