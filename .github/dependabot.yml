@@ -8,6 +8,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     groups:
       actions:
         patterns: ["*"]
@@ -24,6 +26,10 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 10
+    # Mirrors minimumReleaseAge in pnpm-workspace.yaml.
+    cooldown:
+      default-days: 7
+      exclude: ["obsidian-e2e"]
     groups:
       dev-dependencies:
         dependency-type: development
