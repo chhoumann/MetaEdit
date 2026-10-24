@@ -95,10 +95,36 @@ class SvelteSettingPage extends SettingPage {
 
 export class MetaEditSettingsTab extends PluginSettingTab {
     plugin: MetaEdit;
+    private signature: string;
 
     constructor(app: App, plugin: MetaEdit) {
         super(app, plugin);
         this.plugin = plugin;
+        this.signature = this.structureSignature();
+    }
+
+    /**
+     * Obsidian renders from a snapshot of getSettingDefinitions() until update()
+     * rebuilds it. Rebuild after any settings write - from this tab, the API, or a
+     * prompt - that adds, removes, or retypes a list entry, but not on toggles or
+     * while typing, so a rebuild never steals focus.
+     */
+    syncWithSettings(): void {
+        const next = this.structureSignature();
+        if (next === this.signature) return;
+        this.signature = next;
+        this.update();
+    }
+
+    private structureSignature(): string {
+        const s = this.plugin.settings;
+        return JSON.stringify([
+            s.EditMode.properties,
+            s.IgnoredProperties.properties,
+            s.ProgressProperties.properties,
+            s.AutoProperties.properties.length,
+            s.KanbanHelper.boards.map(board => board.boardName),
+        ]);
     }
 
     override getControlValue(key: string): unknown {
@@ -238,10 +264,10 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                 action: async () => {
                     const name = (await GenericPrompt.Prompt(this.app, "Property name"))?.trim();
                     if (!name || names.includes(name)) return;
-                    await this.persistStructure(settings => list(settings).push(name));
+                    await this.persist(settings => list(settings).push(name));
                 },
             },
-            onDelete: index => void this.persistStructure(settings => list(settings).splice(index, 1)),
+            onDelete: index => void this.persist(settings => list(settings).splice(index, 1)),
             items: names.map(name => ({name})),
         };
     }
@@ -259,13 +285,13 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                 action: async () => {
                     const name = (await GenericPrompt.Prompt(this.app, "Property name"))?.trim();
                     if (!name || properties.some(property => property.name === name)) return;
-                    await this.persistStructure(settings => settings.ProgressProperties.properties.push({
+                    await this.persist(settings => settings.ProgressProperties.properties.push({
                         name,
                         type: ProgressPropertyOptions.TaskTotal,
                     }));
                 },
             },
-            onDelete: index => void this.persistStructure(settings => settings.ProgressProperties.properties.splice(index, 1)),
+            onDelete: index => void this.persist(settings => settings.ProgressProperties.properties.splice(index, 1)),
             items: properties.map(property => ({
                 name: property.name,
                 render: setting => {
@@ -301,14 +327,16 @@ export class MetaEditSettingsTab extends PluginSettingTab {
                     }
                     const boardName = await GenericSuggester.Suggest(this.app, candidates, candidates);
                     if (!boardName) return;
-                    await this.persistStructure(settings => settings.KanbanHelper.boards.push({boardName, property: ""}));
+                    await this.persist(settings => settings.KanbanHelper.boards.push({boardName, property: ""}));
                 },
             },
-            onDelete: index => void this.persistStructure(settings => settings.KanbanHelper.boards.splice(index, 1)),
+            onDelete: index => void this.persist(settings => settings.KanbanHelper.boards.splice(index, 1)),
             items: boards.map(board => ({
                 name: board.boardName,
-                desc: this.kanbanLanes(board.boardName),
                 render: setting => {
+                    // Read at render time: the metadata cache may not be ready when
+                    // the definitions are built at startup.
+                    setting.setDesc(this.kanbanLanes(board.boardName));
                     setting.addText(text => text
                         .setPlaceholder("Property in linked notes")
                         .setValue(board.property)
@@ -342,12 +370,6 @@ export class MetaEditSettingsTab extends PluginSettingTab {
             new Notice(`MetaEdit could not save the setting: ${reason}`);
             return false;
         }
-    }
-
-    /** Save a change that adds or removes rows, then rebuild the definitions. */
-    private async persistStructure(mutate: (settings: MetaEditSettings) => void): Promise<void> {
-        await this.persist(mutate);
-        this.update();
     }
 
     private async saveAutoPropertiesOperation(operation: AutoPropertySettingsOperation) {
