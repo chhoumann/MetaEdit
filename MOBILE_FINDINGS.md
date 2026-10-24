@@ -67,7 +67,7 @@ vault open in Obsidian, and supports restore.
 Command:
 
 ```bash
-uv run --no-project --with pymobiledevice3 python scripts/mobile/metaedit_ios.py deploy --vault notes --confirm-real-vault
+uv run scripts/mobile/metaedit_ios.py deploy --vault notes --confirm-real-vault
 ```
 
 Snapshot:
@@ -99,7 +99,7 @@ Deploy result:
 Command:
 
 ```bash
-uv run --no-project --with pymobiledevice3 python scripts/mobile/metaedit_ios.py eval --file scripts/mobile/probes/issue99_frontmatter.js
+uv run scripts/mobile/metaedit_ios.py eval --file scripts/mobile/probes/issue99_frontmatter.js
 ```
 
 Result: `ok: true`.
@@ -128,7 +128,7 @@ parsed properties or the note text.
 Command:
 
 ```bash
-uv run --no-project --with pymobiledevice3 python scripts/mobile/metaedit_ios.py eval --timeout 180 --file scripts/mobile/probes/core_smoke.js
+uv run scripts/mobile/metaedit_ios.py eval --timeout 180 --file scripts/mobile/probes/core_smoke.js
 ```
 
 Result: `ok: true`.
@@ -158,8 +158,8 @@ during the test window.
 Commands:
 
 ```bash
-uv run --no-project --with pymobiledevice3 python scripts/mobile/metaedit_ios.py eval '(()=>{console.clear(); return "cleared";})()'
-uv run --no-project --with pymobiledevice3 python scripts/mobile/metaedit_ios.py logs --seconds 10
+uv run scripts/mobile/metaedit_ios.py eval '(()=>{console.clear(); return "cleared";})()'
+uv run scripts/mobile/metaedit_ios.py logs --seconds 10
 ```
 
 Fresh post-probe result: no console errors or uncaught errors streamed.
@@ -169,7 +169,7 @@ Fresh post-probe result: no console errors or uncaught errors streamed.
 Command:
 
 ```bash
-uv run --no-project --with pymobiledevice3 python scripts/mobile/metaedit_ios.py restore --backup ~/.metaedit-mobile-backups/metaedit/<device>/notes/20260628T160849Z
+uv run scripts/mobile/metaedit_ios.py restore --backup ~/.metaedit-mobile-backups/metaedit/<device>/notes/20260628T160849Z
 ```
 
 Restore result:
@@ -190,10 +190,10 @@ and an open disposable scratch Obsidian vault are available. Android deploy has
 no backup/restore path, so it requires an explicit scratch-vault confirmation:
 
 ```bash
-uv run --no-project --with websockets python scripts/mobile/metaedit_android.py diagnose
-uv run --no-project --with websockets python scripts/mobile/metaedit_android.py deploy --confirm-scratch-vault
-uv run --no-project --with websockets python scripts/mobile/metaedit_android.py eval --file scripts/mobile/probes/issue99_frontmatter.js
-uv run --no-project --with websockets python scripts/mobile/metaedit_android.py eval --file scripts/mobile/probes/core_smoke.js
+uv run scripts/mobile/metaedit_android.py diagnose
+uv run scripts/mobile/metaedit_android.py deploy --confirm-scratch-vault
+uv run scripts/mobile/metaedit_android.py eval --file scripts/mobile/probes/issue99_frontmatter.js
+uv run scripts/mobile/metaedit_android.py eval --file scripts/mobile/probes/core_smoke.js
 ```
 
 ## Conclusion
