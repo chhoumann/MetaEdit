@@ -44,6 +44,10 @@ export interface FluidPropertyCreateOptions {
  * value, `autoProperty` to hand a key back to its Auto Property flow, or `cancel`.
  */
 export default class FluidPropertyCreatePrompt extends Modal {
+	// onOpen() focuses the key input. Obsidian 1.13+ (undocumented flag) would then
+	// move focus to the first focusable element, the type pill.
+	hasInitialInputFocus = false;
+
 	private readonly opts: FluidPropertyCreateOptions;
 	private resolvePromise: (result: FluidPropertyCreateResult) => void;
 
@@ -75,10 +79,6 @@ export default class FluidPropertyCreatePrompt extends Modal {
 
 	private constructor(app: App, options: FluidPropertyCreateOptions) {
 		super(app);
-		// onOpen() focuses the key input. hasInitialInputFocus is a private Modal flag;
-		// left on, Obsidian 1.13+ then moves focus to the first focusable element
-		// (the type pill).
-		(this as unknown as {hasInitialInputFocus: boolean}).hasInitialInputFocus = false;
 		this.opts = options;
 		this.waitForClose = new Promise((resolve) => {
 			this.resolvePromise = resolve;
