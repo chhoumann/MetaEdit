@@ -81,6 +81,32 @@ describe("MetaEdit fluid property creation", () => {
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
 
+	// The type pill precedes the key input, so Obsidian 1.13's Modal.open() would
+	// move focus onto it after onOpen() unless the modal opts out.
+	test("the create modal opens with focus in the key input", async () => {
+		const {obsidian, sandbox} = getContext();
+		const notePath = sandbox.path("fluid-create-focus.md");
+		await writeLiveFile(obsidian, notePath, "---\n---\nbody\n");
+
+		const result = await evalJsonAsync<{keyInputFocused: boolean}>(
+			obsidian,
+			`
+			(async () => {
+				${FLUID_HELPERS}
+				const file = app.vault.getAbstractFileByPath(${JSON.stringify(notePath)});
+				const {promise, modal} = await openCreate(file);
+				const keyInputFocused = document.activeElement === modal.querySelector(".metaedit-fluid-create-key");
+				cancel(modal);
+				await promise;
+				return {keyInputFocused};
+			})()
+			`,
+		);
+
+		expect(result.keyInputFocused).toBe(true);
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
+
 	test("layout: no horizontal overflow, compact height, and the floating dropdown never covers the buttons", async () => {
 		const {obsidian, sandbox} = getContext();
 		const notePath = sandbox.path("fluid-create-layout.md");

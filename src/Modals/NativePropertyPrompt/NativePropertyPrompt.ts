@@ -25,6 +25,11 @@ function isReservedTypeKey(key: string): boolean {
 }
 
 export default class NativePropertyPrompt extends Modal {
+	// onOpen() focuses the value editor. Obsidian 1.13+ (undocumented flag) would then
+	// move focus to the first focusable element, the type pill, orphaning the value
+	// autocomplete popover.
+	hasInitialInputFocus = false;
+
 	private readonly file: TFile;
 	private readonly property: Property;
 	private resolvePromise: (result: NativePropertyPromptResult) => void;

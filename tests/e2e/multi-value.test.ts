@@ -4,6 +4,13 @@ import { NATIVE_PROMPT_HELPERS_JS } from "./nativePromptHelpers";
 
 const getContext = createMetaEditE2EHarness("multi-value");
 
+// The legacy GenericSuggester is a SuggestModal, whose rows sit in
+// `.prompt-results`. Obsidian's own property-value autocomplete also renders
+// `.suggestion-item` rows (in a body-level `.suggestion-container`) whenever a
+// native editor has focus, so a bare `.suggestion-item` cannot tell them apart.
+// The legacy driver waits on this same selector, proving the probe can see it.
+const LEGACY_SUGGESTION_SELECTOR = ".prompt-results .suggestion-item";
+
 // Live regressions for the multi-value / array editing cluster (#94, #51, #31, #36).
 //
 // Since PR #168, `editMetaElement` routes eligible top-level YAML properties
@@ -332,7 +339,7 @@ async function driveNativeEdit(
 			}
 			try {
 				const {promise, host} = await openNative(file, ${JSON.stringify(opts.key)});
-				const sawLegacySuggester = Boolean(document.querySelector(".suggestion-item"));
+				const sawLegacySuggester = Boolean(document.querySelector(${JSON.stringify(LEGACY_SUGGESTION_SELECTOR)}));
 				const sawLegacyPrompt = Boolean(document.querySelector(".metaEditPromptInput"));
 				let pills = null;
 				if (action.kind === "editPill") pills = await editPillByText(host, action.from, action.to);
@@ -378,7 +385,7 @@ async function driveLegacyListEdit(
 				const editPromise = plugin.controller.editMetaElement(property, props, file);
 
 				const item = await waitFor(
-					".suggestion-item",
+					${JSON.stringify(LEGACY_SUGGESTION_SELECTOR)},
 					(el) => el.textContent?.trim() === ${JSON.stringify(opts.selectText)},
 				);
 				item.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));

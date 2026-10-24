@@ -283,6 +283,40 @@ describe("MetaEdit native Obsidian property widgets", () => {
 		expect(result.content).toContain("summary: old");
 		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
 	});
+
+	// Obsidian 1.13's Modal.open() moves focus to the modal's first focusable
+	// element - the type pill - after onOpen() unless the modal opts out. The
+	// sibling note gives the value autocomplete a suggestion, so the popover the
+	// value editor opened would be left orphaned and swallow the pill's Enter.
+	test("opens the edit prompt focused on the value editor and edits a pill in place", async () => {
+		const {obsidian, sandbox} = getContext();
+		const notePath = sandbox.path("native-focus.md");
+		await writeLiveFile(obsidian, sandbox.path("native-focus-sibling.md"), "---\nreviewers:\n  - sibling\n---\nbody\n");
+		await writeLiveFile(obsidian, notePath, "---\nreviewers:\n  - alpha\n  - beta\n---\nbody\n");
+
+		const result = await evalJsonAsync<{focusedValueEditor: boolean; pills: string[]; content: string}>(
+			obsidian,
+			`
+			(async () => {
+				${NATIVE_PROMPT_HELPERS_JS}
+				const file = app.vault.getAbstractFileByPath(${JSON.stringify(notePath)});
+				app.metadataTypeManager.setType("reviewers", "multitext");
+				await sleep(200);
+
+				const {promise, host} = await openNative(file, "reviewers");
+				const focusedValueEditor = document.activeElement === host.querySelector(".multi-select-input");
+				const pills = await editPillByText(host, "alpha", "gamma");
+				await saveOpenModal(promise);
+				return {focusedValueEditor, pills, content: await app.vault.read(file)};
+			})()
+			`,
+		);
+
+		expect(result.focusedValueEditor).toBe(true);
+		expect(result.pills).toEqual(["gamma", "beta"]);
+		expect(result.content).toBe("---\nreviewers:\n  - gamma\n  - beta\n---\nbody\n");
+		expect(await obsidian.dev.runtimeErrors()).toEqual([]);
+	});
 });
 
 async function verifyWikilinkSuggestion(
