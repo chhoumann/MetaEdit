@@ -4,7 +4,6 @@ import {dirname, join, sep} from "node:path";
 import {fileURLToPath} from "node:url";
 import esbuild from "esbuild";
 import esbuildSvelte from "esbuild-svelte";
-import sveltePreprocess from "svelte-preprocess";
 
 const isProduction = process.argv.includes("production");
 const projectSrcDir = `${join(dirname(fileURLToPath(import.meta.url)), "src")}${sep}`;
@@ -75,7 +74,6 @@ const options = {
 		...(isProduction ? [stripDevCommandBlocks()] : []),
 		esbuildSvelte({
 			compilerOptions: {css: "injected"},
-			preprocess: sveltePreprocess(),
 		}),
 	],
 };
