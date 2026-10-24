@@ -1,0 +1,29 @@
+# Supply-chain policy: a release must be a week old before pnpm resolves it, so a
+# compromised publish has time to be caught and yanked. chhoumann's own packages
+# are exempt because they are published from the same release pipeline we audit.
+minimumReleaseAge: 10080
+minimumReleaseAgeExclude:
+  - obsidian-e2e
+trustPolicy: no-downgrade
+# A takeover shows up as a fresh publish, so only versions from the last year must
+# keep the provenance level of earlier releases. Older manual publishes (for
+# example semver 6.3.1, chokidar 4.0.3) predate the window.
+trustPolicyIgnoreAfter: 525600
+
+allowBuilds:
+  esbuild: true
+  svelte-preprocess: true
+
+overrides:
+  "@babel/core@<=7.29.0": ^7.29.6
+  brace-expansion@<1.1.21: ^1.1.21
+  brace-expansion@>=2.0.0 <2.1.7: ^2.1.7
+  fast-uri@>=3.0.0 <3.1.8: ^3.1.8
+  handlebars: ^4.7.9
+  js-yaml@>=4.0.0 <4.3.2: ^4.3.2
+  moment@<2.31.0: ^2.31.0
+  nanoid@<3.3.17: ^3.3.17
+  postcss-selector-parser@<7.1.6: ^7.1.6
+  postcss@<8.5.23: ^8.5.23
+  source-map-js@<1.2.2: ^1.2.2
+  tinypool@<2.1.2: 2.1.2

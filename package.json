@@ -24,9 +24,9 @@
 	"keywords": [],
 	"author": "Christian B. B. Houmann",
 	"license": "MIT",
-	"packageManager": "pnpm@10.32.1",
+	"packageManager": "pnpm@12.14.0",
 	"engines": {
-		"node": ">=20.18.1"
+		"node": ">=22.13.0"
 	},
 	"devDependencies": {
 		"@types/node": "26.6.2",
@@ -48,25 +48,5 @@
 		"typescript-eslint": "^8.70.1",
 		"vite": "^8.3.3",
 		"vitest": "^4.1.11"
-	},
-	"pnpm": {
-		"onlyBuiltDependencies": [
-			"esbuild",
-			"svelte-preprocess"
-		],
-		"overrides": {
-			"@babel/core@<=7.29.0": "^7.29.6",
-			"brace-expansion@<1.1.21": "^1.1.21",
-			"brace-expansion@>=2.0.0 <2.1.7": "^2.1.7",
-			"fast-uri@>=3.0.0 <3.1.8": "^3.1.8",
-			"handlebars": "^4.7.9",
-			"js-yaml@>=4.0.0 <4.3.2": "^4.3.2",
-			"moment@<2.31.0": "^2.31.0",
-			"nanoid@<3.3.17": "^3.3.17",
-			"postcss-selector-parser@<7.1.6": "^7.1.6",
-			"postcss@<8.5.23": "^8.5.23",
-			"source-map-js@<1.2.2": "^1.2.2",
-			"tinypool@<2.1.2": "2.1.2"
-		}
 	}
 }
