@@ -185,8 +185,8 @@ importers:
         specifier: 1.14.4
         version: 1.14.4(@codemirror/state@6.7.6)(@codemirror/view@6.43.13)
       obsidian-e2e:
-        specifier: ^0.14.0
-        version: 0.14.0(vitest@5.0.5(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(yaml@2.9.1)))
+        specifier: ^0.15.0
+        version: 0.15.0(vitest@5.0.5(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(yaml@2.9.1)))
       svelte:
         specifier: ^5.57.2
         version: 5.57.2(@typescript-eslint/types@8.71.2)
@@ -1052,12 +1052,12 @@ packages:
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
 
-  obsidian-e2e@0.14.0:
-    resolution: {integrity: sha512-774GBjGHITC+LneNhnYCxpowVTE8w6ZmEgu+nTXuv0x8E+L95ptIe2xYQ1oRfS5Tq/RHYcEG0+cezcnpWWXKNQ==}
-    engines: {node: ^20.19.0 || >=22.12.0}
+  obsidian-e2e@0.15.0:
+    resolution: {integrity: sha512-T1+YCiK1XB6VnpQ7NtwGGE8zybba23bXxn8gM2rv98Nnx9rw82qKiaaa6jh67NfO4rjeZKT3CQ3r/PdoP3vM3A==}
+    engines: {node: '>=22.12.0'}
     hasBin: true
     peerDependencies:
-      vitest: '>=3'
+      vitest: ^5.0.0
     peerDependenciesMeta:
       vitest:
         optional: true
@@ -2090,7 +2090,7 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  obsidian-e2e@0.14.0(vitest@5.0.5(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(yaml@2.9.1))):
+  obsidian-e2e@0.15.0(vitest@5.0.5(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(yaml@2.9.1))):
     dependencies:
       yaml: 2.9.1
     optionalDependencies:

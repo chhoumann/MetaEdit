@@ -10,7 +10,8 @@
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "pnpm run typecheck && node esbuild.config.mjs production",
-		"typecheck": "tsc --noEmit -p tsconfig.src.json && svelte-check --tsconfig ./tsconfig.src.json --threshold error",
+		"typecheck": "tsc --noEmit -p tsconfig.src.json && svelte-check --tsconfig ./tsconfig.src.json --threshold error && pnpm run typecheck:tests",
+		"typecheck:tests": "tsc --noEmit -p tsconfig.json",
 		"lint": "eslint . --max-warnings=0",
 		"test": "vitest run --passWithNoTests",
 		"test:watch": "vitest",
@@ -34,7 +35,7 @@
 		"eslint-plugin-svelte": "^3.23.1",
 		"globals": "^17.13.0",
 		"obsidian": "1.14.4",
-		"obsidian-e2e": "^0.14.0",
+		"obsidian-e2e": "^0.15.0",
 		"svelte": "^5.57.2",
 		"svelte-check": "^4.7.7",
 		"typescript": "^6.0.3",

@@ -15,7 +15,7 @@ const sharedGlobals = {
 };
 
 // Obsidian developer-policy / guideline checks, expressed with core rules so we
-// don't pull in eslint-plugin-obsidianmd's dependency tree for seven rules. Each
+// don't pull in eslint-plugin-obsidianmd's dependency tree for nine rules. Each
 // entry mirrors the obsidianmd rule named in its message. Keep this scoped to
 // production plugin source: tests and harness code legitimately stub Obsidian
 // globals and should not inherit plugin-review restrictions.
@@ -23,6 +23,7 @@ const sharedGlobals = {
 // `typeof globalThis` guards; none exist in the plugin source.
 const timerFunctions = ["setTimeout", "setInterval", "clearTimeout", "clearInterval", "requestAnimationFrame"];
 const obsidianGuidelineRules = {
+	"no-console": ["error", { allow: ["debug", "warn", "error"] }],
 	"no-restricted-globals": [
 		"error",
 		...timerFunctions.map((name) => ({
@@ -61,6 +62,13 @@ const obsidianGuidelineRules = {
 			selector: "ClassDeclaration[superClass.name='PluginSettingTab'] CallExpression[callee.property.name='createEl'][arguments.0.value=/^h[1-6]$/]",
 			message: "Use new Setting(containerEl).setName(...).setHeading() instead of HTML headings (obsidianmd/settings-tab/no-manual-html-headings).",
 		},
+		...[
+			"CallExpression[callee.property.name='setHeading'] > MemberExpression > CallExpression[callee.property.name='setName']",
+			"CallExpression[callee.property.name='setName'][callee.object.callee.property.name='setHeading']",
+		].map((call) => ({
+			selector: `ClassDeclaration[superClass.name='PluginSettingTab'] ${call} > Literal.arguments[value=/settings|options|${pluginNamePattern}/i]`,
+			message: "Don't put 'settings', 'options', or the plugin name in settings headings (obsidianmd/settings-tab/no-problematic-settings-headings).",
+		})),
 		{
 			selector: `CallExpression[callee.property.name='addCommand'] > ObjectExpression > Property[key.name='name'] > Literal.value[value=/${pluginNamePattern}/i]`,
 			message: "Obsidian already prefixes command names with the plugin name (obsidianmd/commands/no-plugin-name-in-command-name).",

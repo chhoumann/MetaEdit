@@ -1,5 +1,5 @@
 {
-	"include": ["src/**/*", "__tests__/**/*", "tests/**/*", "vitest.config.mts"],
+	"include": ["src/**/*", "__tests__/**/*", "tests/**/*", "scripts/**/*.ts", "vitest.config.mts", "vitest.e2e.config.mts"],
 	"exclude": ["node_modules/*"],
 	"compilerOptions": {
 		"module": "ESNext",

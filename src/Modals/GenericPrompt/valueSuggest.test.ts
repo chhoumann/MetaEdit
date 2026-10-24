@@ -1,5 +1,6 @@
 import {describe, expect, it} from "vitest";
-import {TFile} from "obsidian";
+import {type TFile} from "obsidian";
+import {createTFile} from "../../../tests/obsidian-stub";
 import {filterSuggestions, getDateInputType, getKnownPropertyNames, getValueSuggestions} from "./valueSuggest";
 import {MetaType} from "../../Types/metaType";
 
@@ -14,7 +15,7 @@ const makeApp = (options: {
     noTypeManager?: boolean;
 }) => {
     const files = options.files ?? {};
-    const markdownFiles = Object.keys(files).map(path => new TFile(path));
+    const markdownFiles = Object.keys(files).map(path => createTFile(path));
 
     return {
         vault: {

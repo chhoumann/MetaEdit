@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TFile } from "obsidian";
+import { type TFile } from "obsidian";
+import {createTFile} from "../../tests/obsidian-stub";
 
 // MetaController and BulkMetadataEditor transitively import Svelte-backed modals
 // (and BulkOptionModal extends obsidian's Modal), which the node test environment
@@ -154,7 +155,7 @@ describe("BulkMetadataEditor serialization through the controller write queue", 
 		const path = "race-order.md";
 		const harness = makeHarness({ [path]: "---\ntitle: Note\n---\nbody\n" });
 
-		const result = await runGatedRace(harness, new TFile(path));
+		const result = await runGatedRace(harness, createTFile(path));
 
 		// The bulk write must NOT have begun while the controller write held the
 		// queue. Pre-fix (direct processFrontMatter, unqueued) this is true and the
@@ -168,7 +169,7 @@ describe("BulkMetadataEditor serialization through the controller write queue", 
 		const path = "race-loss.md";
 		const harness = makeHarness({ [path]: "---\ntitle: Note\n---\nbody\n" });
 
-		const result = await runGatedRace(harness, new TFile(path));
+		const result = await runGatedRace(harness, createTFile(path));
 
 		// Both writes survive: the controller's appended inline field AND the bulk
 		// frontmatter property. Pre-fix the controller's stale snapshot overwrites
@@ -181,7 +182,7 @@ describe("BulkMetadataEditor serialization through the controller write queue", 
 	it("isolates a failing bulk write and keeps the per-file queue usable for the next write", async () => {
 		const path = "race-error.md";
 		const harness = makeHarness({ [path]: "---\ntitle: Note\n---\nbody\n" });
-		const file = new TFile(path);
+		const file = createTFile(path);
 
 		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 		// The queued bulk write rejects. enqueueFileWrite must still propagate the
@@ -223,7 +224,7 @@ describe("BulkMetadataEditor reserved-key guard", () => {
 		for (const key of RESERVED) {
 			const path = `reserved-apply-${key}.md`;
 			const harness = makeHarness({ [path]: ORIGINAL });
-			const file = new TFile(path);
+			const file = createTFile(path);
 
 			// apply() refuses the whole batch once - it rejects rather than returning
 			// a summary that overstates the refusal as N per-note write failures.
@@ -243,7 +244,7 @@ describe("BulkMetadataEditor reserved-key guard", () => {
 		// keep "__proto__" from reaching `frontmatter[key] = ...`.
 		const path = "reserved-applyToFile.md";
 		const harness = makeHarness({ [path]: ORIGINAL });
-		const file = new TFile(path);
+		const file = createTFile(path);
 
 		await expect(
 			(harness.bulkEditor as any).applyToFile(file, "__proto__", "draft", "skip", false),
@@ -262,7 +263,7 @@ describe("BulkMetadataEditor reserved-key guard", () => {
 		(GenericPrompt.Prompt as ReturnType<typeof vi.fn>).mockResolvedValueOnce("  __proto__  ");
 		const applySpy = vi.spyOn(harness.bulkEditor, "apply");
 
-		await harness.bulkEditor.run([new TFile(path)], "Folder");
+		await harness.bulkEditor.run([createTFile(path)], "Folder");
 
 		// Trimmed to "__proto__", refused before the value prompt: apply (and thus
 		// any added/success summary) is never reached, and the note is untouched.
@@ -275,7 +276,7 @@ describe("BulkMetadataEditor reserved-key guard", () => {
 		const path = "reserved-normal-key.md";
 		const harness = makeHarness({ [path]: ORIGINAL });
 
-		const summary = await harness.bulkEditor.apply([new TFile(path)], "status", "draft", "skip");
+		const summary = await harness.bulkEditor.apply([createTFile(path)], "status", "draft", "skip");
 
 		expect(summary.added).toBe(1);
 		expect(summary.failed).toBe(0);

@@ -34,8 +34,6 @@ export default class MetaEdit extends Plugin {
     private readonly settingsWriter = new SettingsWriter(() => this.saveData(this.settings));
 
     async onload() {
-        console.log('Loading MetaEdit');
-
         this.controller = new MetaController(this.app, this);
         this.bulkEditor = new BulkMetadataEditor(this.app, this);
 
@@ -100,7 +98,6 @@ export default class MetaEdit extends Plugin {
     }
 
     onunload() {
-        console.log('Unloading MetaEdit');
         this.linkMenu.unregisterEvent();
     }
 

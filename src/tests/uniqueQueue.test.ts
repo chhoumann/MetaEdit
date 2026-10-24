@@ -1,6 +1,5 @@
+import {expect, test} from "vitest";
 import {UniqueQueue} from "../uniqueQueue";
-
-export {}
 
 test("UniqueQueue_enqueue_isEmptyFalseOnAdd", () => {
     const queue = new UniqueQueue<number>();
