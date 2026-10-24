@@ -1,0 +1,17 @@
+# The docs site is its own workspace root, so the plugin's pnpm-workspace.yaml one
+# level up does not claim it. The supply-chain policy mirrors the plugin's.
+
+# Supply-chain policy: a release must be a week old before pnpm resolves it, so a
+# compromised publish has time to be caught and yanked.
+minimumReleaseAge: 10080
+trustPolicy: no-downgrade
+# A takeover shows up as a fresh publish, so only versions from the last year must
+# keep the provenance level of earlier releases.
+trustPolicyIgnoreAfter: 525600
+
+# Their native binaries ship as optional dependencies, so none of these install
+# scripts has work to do.
+allowBuilds:
+  esbuild: false
+  sharp: false
+  workerd: false
