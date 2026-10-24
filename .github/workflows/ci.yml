@@ -127,6 +127,7 @@ jobs:
                       .obsidian-e2e-artifacts/
                       /tmp/metaedit-obsidian-e2e/*/obsidian.log
                   if-no-files-found: ignore
+                  include-hidden-files: true
             - name: Stop Obsidian
               if: always()
               run: pnpm run --silent stop:e2e-obsidian
