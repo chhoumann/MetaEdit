@@ -187,9 +187,7 @@ async function editTextWithWikilinkSuggestion(file, key, targetText) {
 	if (!input) throw new Error("text input not found");
 	input.focus();
 	document.execCommand("selectAll", false);
-	document.execCommand("insertText", false, "[[");
-	input.dispatchEvent(new InputEvent("input", {bubbles: true, inputType: "insertText", data: "[["}));
-	input.dispatchEvent(new KeyboardEvent("keyup", {key: "[", bubbles: true}));
+	document.execCommand("insertText", false, "[[" + targetText);
 	const suggestion = await waitFor(".suggestion-item", (el) => (el.textContent || "").includes(targetText));
 	const suggestionText = suggestion.textContent?.trim() ?? null;
 	suggestion.dispatchEvent(new MouseEvent("mousedown", {bubbles: true}));
@@ -205,9 +203,7 @@ async function addPillWithWikilinkSuggestion(file, key, targetText) {
 	const input = host.querySelector(".multi-select-input,[contenteditable='true']");
 	if (!input) throw new Error("multi-select input not found");
 	input.focus();
-	document.execCommand("insertText", false, "[[");
-	input.dispatchEvent(new InputEvent("input", {bubbles: true, inputType: "insertText", data: "[["}));
-	input.dispatchEvent(new KeyboardEvent("keyup", {key: "[", bubbles: true}));
+	document.execCommand("insertText", false, "[[" + targetText);
 	const suggestion = await waitFor(".suggestion-item", (el) => (el.textContent || "").includes(targetText));
 	const suggestionText = suggestion.textContent?.trim() ?? null;
 	suggestion.dispatchEvent(new MouseEvent("mousedown", {bubbles: true}));
