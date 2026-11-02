@@ -13,14 +13,14 @@
     "deploy": "astro build && wrangler deploy"
   },
   "dependencies": {
-    "@astrojs/starlight": "0.42.6",
+    "@astrojs/starlight": "0.42.7",
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/ibm-plex-sans": "^5.3.0",
-    "astro": "^7.4.0",
+    "astro": "^7.4.2",
     "sharp": "^0.35.5"
   },
   "devDependencies": {
     "starlight-links-validator": "^0.27.0",
-    "wrangler": "^4.151.1"
+    "wrangler": "^4.152.0"
   }
 }
