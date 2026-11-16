@@ -23,7 +23,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Harden Runner
-              uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+              uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
               with:
                   egress-policy: audit
             - name: Checkout
@@ -31,7 +31,7 @@ jobs:
               with:
                   persist-credentials: false
             - name: Setup pnpm
-              uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+              uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
             - name: Use Node.js 24
               uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
               with:
@@ -48,7 +48,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Harden Runner
-              uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+              uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
               with:
                   egress-policy: audit
             - name: Checkout
@@ -56,7 +56,7 @@ jobs:
               with:
                   persist-credentials: false
             - name: Setup pnpm
-              uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+              uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
             - name: Use Node.js 24
               uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
               with:
@@ -80,7 +80,7 @@ jobs:
             OBSIDIAN_SHA256: e70b7cd63787e7f798a84fec453f5c446b91877bd3f612e8fb98e9b76cc81120
         steps:
             - name: Harden Runner
-              uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+              uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
               with:
                   egress-policy: audit
             - name: Checkout
@@ -88,7 +88,7 @@ jobs:
               with:
                   persist-credentials: false
             - name: Setup pnpm
-              uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+              uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
             - name: Use Node.js 24
               uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
               with:
